@@ -11,6 +11,14 @@ const BENEFITS = [
   "Cancel anytime through Stripe",
 ];
 
+const checkoutErrorMessage = (err, fallback) => {
+  const data = err?.response?.data;
+  if (typeof data === "string" && data.trim()) return data.trim();
+  if (data?.detail) return data.detail;
+  if (err?.message) return err.message;
+  return fallback;
+};
+
 export default function PremiumPage() {
   const { user, hasPremium, config, refreshUser } = useAuth();
   const navigate = useNavigate();
@@ -27,7 +35,7 @@ export default function PremiumPage() {
     api.post("/billing/confirm-checkout", { session_id: checkoutSessionId })
       .then(() => refreshUser())
       .catch((err) => {
-        if (active) setError(err?.response?.data?.detail || "Payment succeeded, but Premium is still being confirmed.");
+        if (active) setError(checkoutErrorMessage(err, "Payment succeeded, but Premium is still being confirmed."));
       })
       .finally(() => {
         if (active) setBusy(false);
@@ -47,7 +55,7 @@ export default function PremiumPage() {
       if (!data.url) throw new Error("No checkout URL returned");
       window.location.assign(data.url);
     } catch (err) {
-      setError(err?.response?.data?.detail || "Unable to start Stripe Checkout.");
+      setError(checkoutErrorMessage(err, "Unable to start Stripe Checkout."));
       setBusy(false);
     }
   };
@@ -64,7 +72,7 @@ export default function PremiumPage() {
       if (!data.url) throw new Error("No portal URL returned");
       window.location.assign(data.url);
     } catch (err) {
-      setError(err?.response?.data?.detail || "Unable to open Stripe billing portal.");
+      setError(checkoutErrorMessage(err, "Unable to open Stripe billing portal."));
       setBusy(false);
     }
   };
