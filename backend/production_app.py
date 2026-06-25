@@ -3,6 +3,7 @@ import logging
 import mimetypes
 import os
 import re
+import uuid
 from pathlib import Path
 from typing import Optional
 
@@ -16,6 +17,11 @@ from server import FRONTEND_URL, app
 
 
 AUDIO_EXTENSIONS = {".mp3", ".wav", ".ogg", ".m4a", ".aac", ".flac"}
+ALLOWED_UPLOAD_EXTENSIONS = {
+    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".jfif",
+    ".mp3", ".wav", ".ogg", ".m4a", ".aac", ".flac",
+    ".zip", ".rar", ".7z", ".aep", ".prfpset", ".mogrt", ".ffx", ".cube",
+}
 
 
 def billing_error_response(status_code: int, detail: str, request: Request) -> JSONResponse:
@@ -99,6 +105,51 @@ async def create_checkout_session_with_price_fallback(request: Request):
 def is_audio_upload(filename: str, media_type: str = "") -> bool:
     ext = Path(filename).suffix.lower()
     return ext in AUDIO_EXTENSIONS or media_type.startswith("audio/")
+
+
+async def create_direct_upload(request: Request):
+    await server.require_uploader(request)
+    if not server.USE_OBJECT_STORAGE:
+        raise HTTPException(status_code=404, detail="Direct uploads are not configured")
+
+    payload = await request.json()
+    original_name = Path(str(payload.get("filename") or "upload")).name
+    ext = Path(original_name).suffix.lower()
+    if ext not in ALLOWED_UPLOAD_EXTENSIONS:
+        raise HTTPException(status_code=400, detail="This file type is not allowed")
+
+    size = int(payload.get("size") or 0)
+    if size <= 0:
+        raise HTTPException(status_code=400, detail="File is empty")
+    if size > server.MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail=f"File exceeds the {server.MAX_UPLOAD_BYTES // (1024 * 1024)}MB limit")
+
+    content_type = str(payload.get("content_type") or mimetypes.guess_type(original_name)[0] or "application/octet-stream")
+    file_id = f"{uuid.uuid4().hex}{ext}"
+    try:
+        upload_url = await asyncio.to_thread(
+            server.s3.generate_presigned_url,
+            "put_object",
+            Params={
+                "Bucket": server.S3_BUCKET,
+                "Key": file_id,
+                "ContentType": content_type,
+            },
+            ExpiresIn=600,
+        )
+    except Exception:
+        logging.exception("Unable to create direct upload URL")
+        raise HTTPException(status_code=502, detail="Upload storage is temporarily unavailable")
+
+    return {
+        "direct": True,
+        "upload_url": upload_url,
+        "content_type": content_type,
+        "url": f"/api/uploads/{file_id}",
+        "filename": original_name,
+        "original_filename": original_name,
+        "size": size,
+    }
 
 
 async def stream_s3_audio(filename: str, request: Request, download: int = 0, name: Optional[str] = None):
@@ -272,6 +323,7 @@ def replace_route(path: str, method: str, endpoint) -> None:
 
 
 replace_route("/api/billing/create-checkout-session", "POST", create_checkout_session_with_price_fallback)
+replace_route("/api/uploads/presign", "POST", create_direct_upload)
 replace_route("/api/uploads/{filename}", "GET", serve_upload_with_audio_proxy)
 
 
