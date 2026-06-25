@@ -78,12 +78,31 @@ async function compressThumbnail(file) {
   }
 }
 
+function uploadToPresignedUrl(uploadUrl, file, contentType, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", uploadUrl);
+    xhr.setRequestHeader("Content-Type", contentType || file.type || "application/octet-stream");
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable) return;
+      onProgress?.(Math.max(1, Math.round((event.loaded / event.total) * 100)));
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) resolve();
+      else reject(new Error(`Direct upload failed (${xhr.status})`));
+    };
+    xhr.onerror = () => reject(new Error("Direct upload failed"));
+    xhr.send(file);
+  });
+}
+
 export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
   const [form, setForm] = useState(editing || initial);
   const [packs, setPacks] = useState([]);
   const [newPackOpen, setNewPackOpen] = useState(false);
   const [newPackName, setNewPackName] = useState("");
   const [uploadingField, setUploadingField] = useState("");
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [knownCreators, setKnownCreators] = useState([]);
   const [knownShows, setKnownShows] = useState([]);
@@ -106,30 +125,59 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
     } catch {}
   };
 
-  // load packs when category changes
   const setCategory = async (v) => {
     set("category", v);
     await loadPacks(v);
   };
 
-  const uploadFile = async (file, field) => {
-    setUploadingField(field);
+  const uploadViaBackend = async (file, onProgress) => {
     const fd = new FormData();
     fd.append("file", file);
+    const { data } = await api.post("/uploads", fd, {
+      headers: { "Content-Type": "multipart/form-data" },
+      onUploadProgress: (event) => {
+        if (!event.total) return;
+        onProgress?.(Math.max(1, Math.round((event.loaded / event.total) * 100)));
+      },
+    });
+    return data;
+  };
+
+  const uploadFile = async (file, field) => {
+    setUploadingField(field);
+    setUploadProgress(0);
     try {
-      const { data } = await api.post("/uploads", fd, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      let data;
+      try {
+        const { data: presign } = await api.post("/uploads/presign", {
+          filename: file.name,
+          content_type: file.type || "application/octet-stream",
+          size: file.size,
+        });
+        await uploadToPresignedUrl(
+          presign.upload_url,
+          file,
+          presign.content_type,
+          setUploadProgress
+        );
+        data = presign;
+      } catch (directError) {
+        data = await uploadViaBackend(file, setUploadProgress);
+      }
+
       setForm((f) => ({
         ...f,
         [field]: data.url,
         ...(field === "file_url" ? { original_filename: data.original_filename || file.name } : {}),
       }));
+      setUploadProgress(100);
       toast.success("File uploaded.");
     } catch (e) {
-      toast.error("Upload failed.");
+      toast.error(e?.response?.data?.detail || "Upload failed.");
+    } finally {
+      setUploadingField("");
+      setUploadProgress(0);
     }
-    setUploadingField("");
   };
 
   const uploadThumbnail = async (file) => {
@@ -191,6 +239,11 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
   const isAudio = form.category === "Audios";
   const isPF = form.category === "Project Files";
   const isTorrent = form.category === "Torrents";
+
+  const uploadLabel = (field, ready) => {
+    if (uploadingField !== field) return ready ? "File ready ✓" : "Click to upload";
+    return uploadProgress ? `Uploading ${uploadProgress}%...` : "Preparing upload...";
+  };
 
   return (
     <Dialog
@@ -451,6 +504,11 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
                   />
                 </label>
               </div>
+              {uploadingField === "thumbnail_url" && (
+                <p className="mt-1 text-xs text-zinc-400">
+                  {uploadProgress ? `Uploading thumbnail ${uploadProgress}%...` : "Preparing thumbnail upload..."}
+                </p>
+              )}
               <p className="mt-1 text-xs text-zinc-500">
                 Tip: after using Snipping Tool, click the thumbnail field and press Ctrl+V to paste a compressed thumbnail.
               </p>
@@ -488,6 +546,11 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
                     />
                   </label>
                 </div>
+                {uploadingField === "audio_preview_url" && (
+                  <p className="mt-1 text-xs text-zinc-400">
+                    {uploadProgress ? `Uploading preview ${uploadProgress}%...` : "Preparing preview upload..."}
+                  </p>
+                )}
               </div>
             )}
 
@@ -498,11 +561,7 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
                 </label>
                 <label className="mt-1 flex items-center justify-center gap-2 h-11 cursor-pointer bg-white/5 border border-dashed border-white/15 rounded-md hover:bg-white/10 btn-press text-sm text-zinc-300">
                   <Upload className="w-4 h-4" />
-                  {uploadingField === "file_url"
-                    ? "Uploading..."
-                    : form.file_url
-                    ? "File ready ✓"
-                    : "Click to upload"}
+                  {uploadLabel("file_url", Boolean(form.file_url))}
                   <input
                     type="file"
                     hidden
@@ -529,7 +588,7 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
 
           <Button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || Boolean(uploadingField)}
             className="w-full bg-neon text-[#05050A] hover:bg-neon/90 font-semibold btn-press h-11"
             data-testid="upload-submit-btn"
           >
