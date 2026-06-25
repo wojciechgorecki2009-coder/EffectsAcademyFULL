@@ -17,7 +17,7 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Upload, ImagePlus, Plus } from "lucide-react";
-import { api, CATEGORIES, AUDIO_CREATORS, SHOWS } from "@/lib/api";
+import { api, CATEGORIES, AUDIO_CREATORS, SHOWS, FILE_BASE } from "@/lib/api";
 import { toast } from "sonner";
 
 const initial = {
@@ -36,6 +36,47 @@ const initial = {
   external_url: "",
   pack_id: "",
 };
+
+async function compressThumbnail(file) {
+  if (!file?.type?.startsWith("image/")) return file;
+
+  const imageUrl = URL.createObjectURL(file);
+
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = reject;
+      image.src = imageUrl;
+    });
+
+    const maxWidth = 900;
+    const scale = Math.min(1, maxWidth / img.width);
+    const width = Math.round(img.width * scale);
+    const height = Math.round(img.height * scale);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(img, 0, 0, width, height);
+
+    const blob = await new Promise((resolve) =>
+      canvas.toBlob(resolve, "image/jpeg", 0.82)
+    );
+
+    if (!blob) return file;
+
+    return new File(
+      [blob],
+      file.name.replace(/\.[^.]+$/, "") + "-thumbnail.jpg",
+      { type: "image/jpeg" }
+    );
+  } finally {
+    URL.revokeObjectURL(imageUrl);
+  }
+}
 
 export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
   const [form, setForm] = useState(editing || initial);
@@ -89,6 +130,22 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
       toast.error("Upload failed.");
     }
     setUploadingField("");
+  };
+
+  const uploadThumbnail = async (file) => {
+    const compressed = await compressThumbnail(file);
+    await uploadFile(compressed, "thumbnail_url");
+  };
+
+  const handleThumbnailPaste = async (e) => {
+    const file = Array.from(e.clipboardData?.files || []).find((f) =>
+      f.type.startsWith("image/")
+    );
+
+    if (!file) return;
+
+    e.preventDefault();
+    await uploadThumbnail(file);
   };
 
   const createPack = async () => {
@@ -369,7 +426,7 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
               </>
             )}
 
-            <div className="col-span-2">
+            <div className="col-span-2" onPaste={handleThumbnailPaste}>
               <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">
                 Thumbnail URL
               </label>
@@ -389,14 +446,17 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
                     hidden
                     onChange={(e) =>
                       e.target.files?.[0] &&
-                      uploadFile(e.target.files[0], "thumbnail_url")
+                      uploadThumbnail(e.target.files[0])
                     }
                   />
                 </label>
               </div>
+              <p className="mt-1 text-xs text-zinc-500">
+                Tip: after using Snipping Tool, click the thumbnail field and press Ctrl+V to paste a compressed thumbnail.
+              </p>
               {form.thumbnail_url && (
                 <img
-                  src={form.thumbnail_url.startsWith("http") ? form.thumbnail_url : `${process.env.REACT_APP_BACKEND_URL}${form.thumbnail_url}`}
+                  src={form.thumbnail_url.startsWith("http") ? form.thumbnail_url : `${FILE_BASE}${form.thumbnail_url}`}
                   alt=""
                   className="mt-2 w-full max-h-44 object-cover rounded-lg border border-white/10"
                 />
