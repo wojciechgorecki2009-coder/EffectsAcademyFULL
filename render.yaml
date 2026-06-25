@@ -14,6 +14,10 @@ services:
         value: effects_academy
       - key: PYTHON_VERSION
         value: 3.11.9
+      - key: FRONTEND_URL
+        value: https://effects-academy-web.onrender.com
+      - key: CORS_ORIGINS
+        value: https://effects-academy-web.onrender.com
 
   - type: web
     name: effects-academy-web
@@ -21,6 +25,9 @@ services:
     rootDir: frontend
     buildCommand: npm ci --legacy-peer-deps && npm install --legacy-peer-deps ajv@8.20.0 && npm run build
     staticPublishPath: build
+    envVars:
+      - key: REACT_APP_BACKEND_URL
+        value: https://effects-academy-api.onrender.com
     routes:
       - type: rewrite
         source: /*
