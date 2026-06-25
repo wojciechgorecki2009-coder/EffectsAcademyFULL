@@ -152,6 +152,46 @@ async def create_direct_upload(request: Request):
     }
 
 
+async def create_direct_playback_url(
+    request: Request,
+    filename: str,
+    download: int = 0,
+    name: Optional[str] = None,
+):
+    if Path(filename).name != filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    media_type, _ = mimetypes.guess_type(filename)
+    media_type = media_type or "application/octet-stream"
+    if not is_audio_upload(filename, media_type):
+        raise HTTPException(status_code=400, detail="Direct playback is only available for audio files")
+
+    asset = await server.db.assets.find_one(
+        {"file_url": f"/api/uploads/{filename}"},
+        {"_id": 0},
+    )
+    if asset:
+        await server.require_asset_access(request, asset)
+
+    if not server.USE_OBJECT_STORAGE:
+        return {"url": f"/api/uploads/{filename}"}
+
+    try:
+        url = await asyncio.to_thread(
+            server.s3.generate_presigned_url,
+            "get_object",
+            Params={
+                "Bucket": server.S3_BUCKET,
+                "Key": filename,
+                **({"ResponseContentDisposition": f'attachment; filename="{(name or filename).replace(chr(34), "")}"'} if download else {}),
+            },
+            ExpiresIn=1800,
+        )
+    except Exception:
+        logging.exception("Unable to create direct audio playback URL")
+        raise HTTPException(status_code=404, detail="File not found")
+    return {"url": url, "expires_in": 1800}
+
+
 async def stream_s3_audio(filename: str, request: Request, download: int = 0, name: Optional[str] = None):
     media_type, _ = mimetypes.guess_type(filename)
     media_type = media_type or "application/octet-stream"
@@ -244,7 +284,7 @@ async def serve_upload_with_audio_proxy(
 
     if server.USE_OBJECT_STORAGE:
         # Browsers need CORS + byte-range support for audio playback and client-side slowed exports.
-        # R2 public redirects can be missing CORS, so audio is proxied through the API instead.
+        # R2 public redirects can be missing CORS, so audio is proxied through the API as a safe fallback.
         if is_audio:
             return await stream_s3_audio(filename, request, download=download, name=name)
 
@@ -324,6 +364,7 @@ def replace_route(path: str, method: str, endpoint) -> None:
 
 replace_route("/api/billing/create-checkout-session", "POST", create_checkout_session_with_price_fallback)
 replace_route("/api/uploads/presign", "POST", create_direct_upload)
+replace_route("/api/uploads/{filename}/direct", "GET", create_direct_playback_url)
 replace_route("/api/uploads/{filename}", "GET", serve_upload_with_audio_proxy)
 
 
