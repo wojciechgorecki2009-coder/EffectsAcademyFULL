@@ -19,7 +19,7 @@ services:
     name: effects-academy-web
     env: static
     rootDir: frontend
-    buildCommand: yarn install --frozen-lockfile && yarn build
+    buildCommand: npm ci && npm run build
     staticPublishPath: build
     routes:
       - type: rewrite
