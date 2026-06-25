@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: effects-academy-api
+    env: python
+    rootDir: backend
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: USE_MOCK_DB
+        value: "0"
+      - key: DB_NAME
+        value: effects_academy
+      - key: PYTHON_VERSION
+        value: 3.11.9
+
+  - type: web
+    name: effects-academy-web
+    env: static
+    rootDir: frontend
+    buildCommand: yarn install --frozen-lockfile && yarn build
+    staticPublishPath: build
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

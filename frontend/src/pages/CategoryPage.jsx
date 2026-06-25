@@ -1,0 +1,342 @@
+import { useEffect, useMemo, useState } from "react";
+import { useParams, Link } from "react-router-dom";
+import {
+  api,
+  AUDIO_CREATORS,
+  CREATOR_THEMES,
+  SHOWS,
+  SHOW_THEMES,
+  SHOW_IMAGES,
+  CATEGORY_COLORS,
+} from "@/lib/api";
+import AssetCard from "@/components/AssetCard";
+import CategoryPicker from "@/components/CategoryPicker";
+import { Loader2, ChevronLeft, Music2, Tv, Film } from "lucide-react";
+
+const SLUG_TO_CATEGORY = {
+  "torrents": "Torrents",
+  "project-files": "Project Files",
+  "overlays": "Overlays",
+  "audios": "Audios",
+  "sound-fx": "Sound FX",
+  "presets": "Presets",
+  "premium": "Premium",
+};
+
+const DESCRIPTIONS = {
+  Torrents: "Complete season torrents and movies — clean, organized.",
+  "Project Files": "After Effects PJFs. Drag, drop, customize.",
+  Overlays: "Effects, particles, transitions. Linear color key ready.",
+  Audios: "Tracks curated by the community's top audio creators.",
+  "Sound FX": "Whooshes, impacts, risers, foley. Built for cuts.",
+  Presets: "Plug-and-play presets for AE & beyond.",
+  Premium: "Premium drops, exclusive packs.",
+};
+
+export default function CategoryPage() {
+  const { slug } = useParams();
+  const category = SLUG_TO_CATEGORY[slug];
+  const [assets, setAssets] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [sub, setSub] = useState(null);          // creator OR show name
+  const [torrentBranch, setTorrentBranch] = useState(null); // "Shows" | "Movies" | null
+  const [overrides, setOverrides] = useState({ creator: {}, show: {} });
+  const c = CATEGORY_COLORS[category];
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const { data } = await api.get("/assets", { params: { category } });
+      setAssets(data);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadOverrides = async () => {
+    try {
+      const { data } = await api.get("/category-overrides");
+      const grouped = { creator: {}, show: {} };
+      for (const o of data) {
+        if (grouped[o.kind]) grouped[o.kind][o.name] = o;
+      }
+      setOverrides(grouped);
+    } catch {}
+  };
+
+  useEffect(() => {
+    if (category) {
+      setSub(null);
+      setTorrentBranch(null);
+      load();
+      loadOverrides();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [category]);
+
+  const filteredAudios = useMemo(
+    () => (sub ? assets.filter((a) => a.creator_tag === sub) : []),
+    [assets, sub]
+  );
+  const filteredShowAssets = useMemo(
+    () => (sub ? assets.filter((a) => a.show_group === sub) : []),
+    [assets, sub]
+  );
+  const movieAssets = useMemo(
+    () => assets.filter((a) => a.torrent_type === "Movie"),
+    [assets]
+  );
+  const showAssets = useMemo(
+    () => assets.filter((a) => (a.torrent_type || "Show") === "Show"),
+    [assets]
+  );
+
+  const mergedCreators = useMemo(() => {
+    const customs = Array.from(
+      new Set(assets.filter((a) => a.creator_tag).map((a) => a.creator_tag))
+    );
+    return [...AUDIO_CREATORS, ...customs.filter((c) => !AUDIO_CREATORS.includes(c))];
+  }, [assets]);
+
+  const mergedShows = useMemo(() => {
+    const customs = Array.from(
+      new Set(showAssets.filter((a) => a.show_group).map((a) => a.show_group))
+    );
+    return [...SHOWS, ...customs.filter((s) => !SHOWS.includes(s))];
+  }, [showAssets]);
+
+  if (!category) {
+    return (
+      <div className="text-center py-24">
+        <h2 className="font-display text-3xl mb-2">Category not found</h2>
+        <Link to="/" className="text-neon">Back home</Link>
+      </div>
+    );
+  }
+
+  return (
+    <section className="max-w-[1400px] mx-auto px-6 md:px-12 pt-28 pb-12" data-testid={`page-${slug}`}>
+      <Link
+        to="/"
+        className="inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-white mb-6 btn-press"
+        data-testid="back-home"
+      >
+        <ChevronLeft className="w-4 h-4" /> Browse
+      </Link>
+
+      <div className="flex flex-wrap items-end justify-between gap-4 mb-10">
+        <div>
+          <span
+            className="text-xs font-mono uppercase tracking-widest px-2.5 py-1 rounded-md border"
+            style={{ color: c.text, background: c.bg, borderColor: c.border }}
+          >
+            {category}
+          </span>
+          <h1 className="font-display text-4xl md:text-5xl font-black tracking-tighter mt-3">
+            {category}
+          </h1>
+          <p className="text-zinc-400 max-w-xl mt-2">{DESCRIPTIONS[category]}</p>
+        </div>
+        <p className="text-xs font-mono uppercase tracking-widest text-zinc-500">
+          {assets.length} items
+        </p>
+      </div>
+
+      {category === "Audios" && (
+        <>
+          {!sub ? (
+            <>
+              <h2 className="font-display text-lg font-semibold mb-4 flex items-center gap-2">
+                <Music2 className="w-5 h-5 text-neon" /> Choose an Audio Pack
+              </h2>
+              <CategoryPicker
+                items={mergedCreators}
+                themes={CREATOR_THEMES}
+                images={{}}
+                overrides={overrides.creator}
+                kind="creator"
+                onChanged={loadOverrides}
+                getCount={(cr) => assets.filter((a) => a.creator_tag === cr).length}
+                onPick={setSub}
+                testIdPrefix="creator"
+              />
+            </>
+          ) : (
+            <SubList sub={sub} onBack={() => setSub(null)} backLabel="creators" filtered={filteredAudios} loading={loading} reload={load} />
+          )}
+        </>
+      )}
+
+      {category === "Torrents" && (
+        <>
+          {!torrentBranch && (
+            <>
+              <h2 className="font-display text-lg font-semibold mb-4 flex items-center gap-2">
+                <Tv className="w-5 h-5 text-neon" /> Shows or Movies?
+              </h2>
+              <div
+                className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-12"
+                data-testid="torrent-branch-grid"
+              >
+                <BranchCard
+                  label="Shows"
+                  count={showAssets.length}
+                  icon={<Tv className="w-7 h-7" />}
+                  from="#0E2A5C"
+                  to="#040E26"
+                  accent="#3B82F6"
+                  onClick={() => setTorrentBranch("Shows")}
+                  testId="torrent-branch-shows"
+                />
+                <BranchCard
+                  label="Movies"
+                  count={movieAssets.length}
+                  icon={<Film className="w-7 h-7" />}
+                  from="#3A0C18"
+                  to="#0A0204"
+                  accent="#EF4444"
+                  onClick={() => setTorrentBranch("Movies")}
+                  testId="torrent-branch-movies"
+                />
+              </div>
+            </>
+          )}
+
+          {torrentBranch === "Shows" && !sub && (
+            <>
+              <button
+                onClick={() => setTorrentBranch(null)}
+                className="inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-white mb-6 btn-press"
+                data-testid="back-to-branch"
+              >
+                <ChevronLeft className="w-4 h-4" /> Torrents
+              </button>
+              <h2 className="font-display text-lg font-semibold mb-4 flex items-center gap-2">
+                <Tv className="w-5 h-5 text-neon" /> Choose a Show
+              </h2>
+              <CategoryPicker
+                items={mergedShows}
+                themes={SHOW_THEMES}
+                images={SHOW_IMAGES}
+                overrides={overrides.show}
+                kind="show"
+                onChanged={loadOverrides}
+                getCount={(s) => showAssets.filter((a) => a.show_group === s).length}
+                onPick={setSub}
+                testIdPrefix="show"
+              />
+            </>
+          )}
+
+          {torrentBranch === "Shows" && sub && (
+            <SubList
+              sub={sub}
+              onBack={() => setSub(null)}
+              backLabel="shows"
+              filtered={filteredShowAssets.filter((a) => (a.torrent_type || "Show") === "Show")}
+              loading={loading}
+              reload={load}
+            />
+          )}
+
+          {torrentBranch === "Movies" && (
+            <>
+              <button
+                onClick={() => setTorrentBranch(null)}
+                className="inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-white mb-6 btn-press"
+                data-testid="back-to-branch"
+              >
+                <ChevronLeft className="w-4 h-4" /> Torrents
+              </button>
+              <h2 className="font-display text-2xl font-bold mb-4 flex items-center gap-2">
+                <Film className="w-5 h-5 text-neon" /> Movies
+              </h2>
+              <AssetGrid assets={movieAssets} loading={loading} reload={load} />
+            </>
+          )}
+        </>
+      )}
+
+      {category !== "Audios" && category !== "Torrents" && (
+        <AssetGrid assets={assets} loading={loading} reload={load} />
+      )}
+    </section>
+  );
+}
+
+function BranchCard({ label, count, icon, from, to, accent, onClick, testId }) {
+  return (
+    <button
+      onClick={onClick}
+      className="asset-3d-in relative h-44 rounded-2xl p-7 text-left btn-press overflow-hidden border border-white/5 hover:border-white/20 transition-colors group"
+      style={{ background: `linear-gradient(135deg, ${from} 0%, ${to} 100%)` }}
+      data-testid={testId}
+    >
+      <div
+        className="absolute -top-10 -right-10 w-48 h-48 rounded-full opacity-30 blur-3xl pointer-events-none"
+        style={{ background: accent }}
+      />
+      <div className="relative flex items-start justify-between">
+        <div>
+          <div className="flex items-center gap-3 text-white">
+            {icon}
+            <span className="font-display text-3xl font-black tracking-tight">{label}</span>
+          </div>
+          <p className="mt-2 text-sm text-white/60">
+            {count} item{count === 1 ? "" : "s"}
+          </p>
+        </div>
+        <span className="text-xs uppercase tracking-widest text-white/70 group-hover:text-white">
+          Open →
+        </span>
+      </div>
+    </button>
+  );
+}
+
+function SubList({ sub, onBack, backLabel, filtered, loading, reload }) {
+  return (
+    <>
+      <button
+        onClick={onBack}
+        className="inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-white mb-6 btn-press"
+        data-testid="back-to-picker"
+      >
+        <ChevronLeft className="w-4 h-4" /> All {backLabel}
+      </button>
+      <h2 className="font-display text-2xl font-bold mb-4">{sub}</h2>
+      <AssetGrid assets={filtered} loading={loading} reload={reload} />
+    </>
+  );
+}
+
+function AssetGrid({ assets, loading, reload }) {
+  if (loading) {
+    return (
+      <div className="flex justify-center py-24">
+        <Loader2 className="w-7 h-7 text-neon animate-spin" />
+      </div>
+    );
+  }
+  if (assets.length === 0) {
+    return (
+      <div className="text-center py-24 border border-dashed border-white/10 rounded-2xl bg-white/[0.02]">
+        <h3 className="font-display text-2xl mb-2">Nothing here yet</h3>
+        <p className="text-zinc-500">Check back soon — moderators are curating drops.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {assets.map((a, idx) => (
+        <div
+          key={a.id}
+          className="asset-3d-in"
+          style={{ animationDelay: `${Math.min(idx, 12) * 60}ms` }}
+        >
+          <AssetCard asset={a} onChanged={reload} />
+        </div>
+      ))}
+    </div>
+  );
+}

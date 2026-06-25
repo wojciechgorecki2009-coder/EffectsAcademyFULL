@@ -1,0 +1,135 @@
+{
+  "theme": "dark",
+  "archetype": "7 (Electric & Neon) - Tailored for Cinematic Creators",
+  "colors": {
+    "background": "#05050A",
+    "surface": "#0D0D14",
+    "surface_glass": "rgba(22, 22, 34, 0.6)",
+    "border": "rgba(255, 255, 255, 0.08)",
+    "text_primary": "#FFFFFF",
+    "text_secondary": "#A1A1AA",
+    "accent_primary": "#00F0FF",
+    "accent_secondary": "#5D00FF",
+    "discord_brand": "#5865F2",
+    "categories": {
+      "Torrents": { "bg": "rgba(59, 130, 246, 0.1)", "text": "#60A5FA", "border": "rgba(59, 130, 246, 0.2)" },
+      "Project Files": { "bg": "rgba(245, 158, 11, 0.1)", "text": "#FBBF24", "border": "rgba(245, 158, 11, 0.2)" },
+      "Overlays": { "bg": "rgba(236, 72, 153, 0.1)", "text": "#F472B6", "border": "rgba(236, 72, 153, 0.2)" },
+      "Audios": { "bg": "rgba(16, 185, 129, 0.1)", "text": "#34D399", "border": "rgba(16, 185, 129, 0.2)" },
+      "Sound FX": { "bg": "rgba(139, 92, 246, 0.1)", "text": "#A78BFA", "border": "rgba(139, 92, 246, 0.2)" },
+      "Presets": { "bg": "rgba(6, 182, 212, 0.1)", "text": "#22D3EE", "border": "rgba(6, 182, 212, 0.2)" },
+      "Premium": { "bg": "rgba(234, 179, 8, 0.1)", "text": "#FDE047", "border": "rgba(234, 179, 8, 0.2)" }
+    }
+  },
+  "typography": {
+    "fonts": {
+      "heading": "Outfit, sans-serif",
+      "body": "Manrope, sans-serif",
+      "mono": "JetBrains Mono, monospace"
+    },
+    "hierarchy": {
+      "h1": "text-5xl md:text-6xl font-black tracking-tighter leading-none",
+      "h2": "text-3xl md:text-4xl font-bold tracking-tight",
+      "h3": "text-xl md:text-2xl font-semibold",
+      "body": "text-base leading-relaxed text-zinc-400",
+      "label": "text-xs font-mono tracking-[0.2em] uppercase"
+    }
+  },
+  "spacing_and_layout": {
+    "grid_system": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8",
+    "container_padding": "px-6 md:px-12 lg:px-24",
+    "section_spacing": "py-24 md:py-32",
+    "card_padding": "p-4 md:p-6"
+  },
+  "components": {
+    "hero": {
+      "layout": "Relative full-width container, min-h-[80vh] flex flex-col items-center justify-center text-center",
+      "background": "Absolute inset-0, overflow-hidden. Use a CSS grid of blurred images (mosaic) with `scale-110` and mouse-parallax movement via framer-motion. Overlay with `bg-[#05050A]/70 backdrop-blur-md` to ensure text contrast.",
+      "badge": "Pill-shaped badge 'Free assets for video editors', `bg-white/5 border border-white/10 rounded-full px-4 py-1.5 text-sm mb-6`",
+      "title": "Sentence case 'Level up your edits'. 'edits' must be wrapped in a span with `text-[#00F0FF]` and a subtle `drop-shadow-[0_0_20px_rgba(0,240,255,0.4)]`. Use framer-motion for bouncy entrance `type: 'spring', bounce: 0.6`.",
+      "search_bar": "Centered massive search bar, `backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl h-16 w-full max-w-2xl px-6 text-lg focus:border-[#00F0FF]/50 transition-all`"
+    },
+    "navigation": {
+      "layout": "Fixed top-0 w-full z-50 flex items-center justify-between px-6 py-4",
+      "surface": "Crystal glass variant: `backdrop-blur-2xl bg-[#05050A]/70 border-b border-white/10 shadow-[0_4px_30px_rgba(0,0,0,0.5)]`",
+      "tabs": "Center aligned tabs. Inactive `text-zinc-400 hover:text-white transition-colors`, active `text-white bg-white/10 rounded-lg px-3 py-1.5`",
+      "actions": "'Access Upload' button with lock icon (ghost style). 'Discord' button (solid fill `bg-[#5865F2] hover:bg-[#4752C4] text-white rounded-lg px-4 py-2 transition-all`)"
+    },
+    "asset_card": {
+      "surface": "Glassmorphism: `bg-[#0D0D14]/80 backdrop-blur-xl border border-white/5 rounded-2xl overflow-hidden`",
+      "thumbnail": "Aspect ratio 16:9, `w-full object-cover`",
+      "meta_layout": "Flex column, `p-5` gap-3",
+      "interactions": "On hover: `scale-[1.03]` (not too extreme), `border-white/20`, image slightly zooms `scale-105`. 3D tilt effect via `react-tilt` component with `max: 15, scale: 1.03, speed: 400`."
+    },
+    "audio_player": {
+      "surface": "Sticky bottom bar or inline card player.",
+      "elements": "Play/Pause button (`bg-emerald-500 hover:bg-emerald-400 text-black rounded-full p-3 transition-colors`), custom waveform visualization (use abstract waveform image or HTML5 canvas), volume slider (`accent-emerald-500`), download counter."
+    }
+  },
+  "motion": {
+    "entrance_bezier": "cubic-bezier(0.68, -0.55, 0.265, 1.55)",
+    "hover_scale": "scale-105 duration-300 ease-out",
+    "tap_scale": "active:scale-95",
+    "parallax_panning": "Use `framer-motion` `useScroll` or `usePointer` to shift hero background by -20px to 20px based on mouse position."
+  },
+  "testing": {
+    "requirements": "All interactive elements MUST have `data-testid` (e.g., `data-testid=\"nav-discord-link\"`, `data-testid=\"asset-card-download\"`)"
+  },
+  "media": {
+    "hero_mosaic_backgrounds": [
+      {
+        "url": "https://images.pexels.com/photos/30412656/pexels-photo-30412656.jpeg",
+        "description": "Abstract metallic spiral",
+        "category": "hero_mosaic"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1712961751512-412da27901e4?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNTl8MHwxfHNlYXJjaHwyfHxuZW9uJTIwY3liZXJwdW5rJTIwY2l0eXNjYXBlfGVufDB8fHx8MTc4MDI3MDc1OHww&ixlib=rb-4.1.0&q=85",
+        "description": "Cyberpunk street neon",
+        "category": "hero_mosaic"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1710438399422-2fca27686bcd?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzF8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMDNEJTIwZGFya3xlbnwwfHx8fDE3ODAyNzA3NTd8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Abstract wave",
+        "category": "hero_mosaic"
+      }
+    ],
+    "asset_thumbnails": [
+      {
+        "url": "https://images.unsplash.com/photo-1724185773486-0b39642e607e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1MDV8MHwxfHNlYXJjaHwxfHxhdWRpbyUyMHdhdmVmb3JtJTIwbmVvbnxlbnwwfHx8fDE3ODAyNzA3NTh8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Audio Waveform Neon",
+        "category": "Audios"
+      },
+      {
+        "url": "https://images.pexels.com/photos/27141312/pexels-photo-27141312.jpeg",
+        "description": "Digital audio interface",
+        "category": "Sound FX"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1477346611705-65d1883cee1e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzh8MHwxfHNlYXJjaHwyfHxjaW5lbWF0aWMlMjBsYW5kc2NhcGUlMjBkYXJrfGVufDB8fHx8MTc4MDI3MDc1OHww&ixlib=rb-4.1.0&q=85",
+        "description": "Cinematic mountain",
+        "category": "Project Files"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1594886801340-88d2d9c028e2?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNTl8MHwxfHNlYXJjaHwzfHxuZW9uJTIwY3liZXJwdW5rJTIwY2l0eXNjYXBlfGVufDB8fHx8MTc4MDI3MDc1OHww&ixlib=rb-4.1.0&q=85",
+        "description": "Neon skyline",
+        "category": "Overlays"
+      },
+      {
+        "url": "https://images.pexels.com/photos/31650385/pexels-photo-31650385.jpeg",
+        "description": "Abstract metallic spiral",
+        "category": "Torrents"
+      }
+    ]
+  },
+  "instructions_to_main_agent": [
+    "Use pure HTML/Tailwind for the main marketing/hero layouts to allow absolute freedom with the mosaic background and overlapping elements.",
+    "Use framer-motion for the 'Level up your edits' title entrance. Split the text into characters or words and stagger them with the provided cubic-bezier bounce.",
+    "Install `@phosphor-icons/react` for sleek, duotone icons.",
+    "Implement the 3D tilt effect on the asset cards using `react-tilt` or `framer-motion` to give them a premium physical feel.",
+    "Ensure the hero background mosaic images are significantly blurred (`blur-xl` or similar) so they create a colorful texture rather than distracting from the search and title.",
+    "Ensure Discord CTA button uses the official Discord color (#5865F2) as requested.",
+    "Use .js/.jsx extensions for all React components, NOT .tsx.",
+    "The audio player needs a custom aesthetic avoiding native <audio> controls. Build a sleek UI using a slider and play/pause button.",
+    "All navigation, forms, and cards must strictly adhere to the `data-testid` convention (e.g. `data-testid='hero-search-input'`)."
+  ]
+}
