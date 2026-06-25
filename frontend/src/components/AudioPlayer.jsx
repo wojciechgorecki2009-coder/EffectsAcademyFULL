@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Play, Pause, Volume2, VolumeX, Download } from "lucide-react";
+import { Play, Pause, Volume2, VolumeX, Download, Repeat } from "lucide-react";
 import { toast } from "sonner";
 import { api, FILE_BASE } from "@/lib/api";
 
@@ -62,6 +62,7 @@ export default function AudioPlayer({ src, title, onDownload }) {
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.8);
   const [muted, setMuted] = useState(false);
+  const [looping, setLooping] = useState(false);
   const [generatingRate, setGeneratingRate] = useState(null);
   const [loadingAudio, setLoadingAudio] = useState(false);
   const [playbackSrc, setPlaybackSrc] = useState("");
@@ -71,7 +72,8 @@ export default function AudioPlayer({ src, title, onDownload }) {
     if (!a) return;
     a.volume = volume;
     a.muted = muted;
-  }, [volume, muted]);
+    a.loop = looping;
+  }, [volume, muted, looping]);
 
   useEffect(() => {
     const a = audioRef.current;
@@ -220,6 +222,16 @@ export default function AudioPlayer({ src, title, onDownload }) {
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setLooping((v) => !v)}
+            className={`${looping ? "text-neon bg-neon/10 border-neon/30" : "text-zinc-400 hover:text-white border-white/10"} border rounded-md w-8 h-8 flex items-center justify-center btn-press`}
+            data-testid="audio-loop-toggle"
+            title={looping ? "Loop is on" : "Loop is off"}
+            aria-pressed={looping}
+          >
+            <Repeat className="w-4 h-4" />
+          </button>
           <button
             onClick={() => setMuted((v) => !v)}
             className="text-zinc-400 hover:text-white btn-press"
