@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Play, Pause, Volume2, VolumeX, Download } from "lucide-react";
 import { toast } from "sonner";
+import { api, FILE_BASE } from "@/lib/api";
 
 function fmt(t) {
   if (!isFinite(t) || t < 0) return "0:00";
@@ -46,6 +47,14 @@ function audioBufferToWav(buffer) {
   return new Blob([arrayBuffer], { type: "audio/wav" });
 }
 
+function directUrlEndpoint(src) {
+  if (!src) return "";
+  const path = src.startsWith(FILE_BASE) ? src.slice(FILE_BASE.length) : src;
+  const match = path.match(/\/api\/uploads\/([^/?#]+)/);
+  if (!match) return "";
+  return `/uploads/${encodeURIComponent(decodeURIComponent(match[1]))}/direct`;
+}
+
 export default function AudioPlayer({ src, title, onDownload }) {
   const audioRef = useRef(null);
   const [playing, setPlaying] = useState(false);
@@ -54,6 +63,8 @@ export default function AudioPlayer({ src, title, onDownload }) {
   const [volume, setVolume] = useState(0.8);
   const [muted, setMuted] = useState(false);
   const [generatingRate, setGeneratingRate] = useState(null);
+  const [loadingAudio, setLoadingAudio] = useState(false);
+  const [playbackSrc, setPlaybackSrc] = useState("");
 
   useEffect(() => {
     const a = audioRef.current;
@@ -80,15 +91,48 @@ export default function AudioPlayer({ src, title, onDownload }) {
     };
   }, []);
 
-  const toggle = () => {
+  useEffect(() => {
+    setPlaybackSrc("");
+    setPlaying(false);
+    setProgress(0);
+    setDuration(0);
+  }, [src]);
+
+  const resolvePlaybackSrc = async () => {
+    if (playbackSrc) return playbackSrc;
+    const endpoint = directUrlEndpoint(src);
+    if (!endpoint) {
+      setPlaybackSrc(src);
+      return src;
+    }
+    const { data } = await api.get(endpoint);
+    const resolved = data?.url || src;
+    setPlaybackSrc(resolved);
+    return resolved;
+  };
+
+  const toggle = async () => {
     const a = audioRef.current;
     if (!a) return;
     if (playing) {
       a.pause();
       setPlaying(false);
-    } else {
-      a.play();
+      return;
+    }
+
+    setLoadingAudio(true);
+    try {
+      const resolved = await resolvePlaybackSrc();
+      if (a.src !== resolved) {
+        a.src = resolved;
+        a.load();
+      }
+      await a.play();
       setPlaying(true);
+    } catch (error) {
+      toast.error("Unable to play this audio yet.");
+    } finally {
+      setLoadingAudio(false);
     }
   };
 
@@ -107,7 +151,8 @@ export default function AudioPlayer({ src, title, onDownload }) {
     if (generatingRate) return;
     setGeneratingRate(rate);
     try {
-      const response = await fetch(src);
+      const resolved = await resolvePlaybackSrc();
+      const response = await fetch(resolved);
       if (!response.ok) throw new Error("Unable to load audio");
       const encoded = await response.arrayBuffer();
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -149,7 +194,8 @@ export default function AudioPlayer({ src, title, onDownload }) {
       <div className="flex items-center gap-3">
         <button
           onClick={toggle}
-          className="w-9 h-9 rounded-full bg-neon text-white flex items-center justify-center btn-press shrink-0"
+          disabled={loadingAudio}
+          className="w-9 h-9 rounded-full bg-neon text-white flex items-center justify-center btn-press shrink-0 disabled:opacity-60"
           data-testid="audio-play-toggle"
         >
           {playing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
@@ -169,7 +215,7 @@ export default function AudioPlayer({ src, title, onDownload }) {
             data-testid="audio-progress-slider"
           />
           <div className="flex justify-between text-[10px] font-mono text-zinc-500 mt-1">
-            <span>{fmt(progress)}</span>
+            <span>{loadingAudio ? "Loading..." : fmt(progress)}</span>
             <span>{fmt(duration)}</span>
           </div>
         </div>
@@ -216,7 +262,7 @@ export default function AudioPlayer({ src, title, onDownload }) {
           ))}
         </div>
       </div>
-      <audio ref={audioRef} src={src} preload="metadata" crossOrigin="anonymous" />
+      <audio ref={audioRef} preload="none" crossOrigin="anonymous" />
     </div>
   );
 }
