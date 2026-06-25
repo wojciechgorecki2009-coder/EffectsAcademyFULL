@@ -19,7 +19,7 @@ services:
     name: effects-academy-web
     env: static
     rootDir: frontend
-    buildCommand: npm ci && npm run build
+    buildCommand: npm ci --legacy-peer-deps && npm run build
     staticPublishPath: build
     routes:
       - type: rewrite
