@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "https://effects-academy-api.onrender.com";
 export const API = `${BACKEND_URL}/api`;
 export const FILE_BASE = BACKEND_URL;
 
