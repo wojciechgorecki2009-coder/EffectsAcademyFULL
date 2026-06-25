@@ -4,7 +4,7 @@ import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
 export default function LoginPage() {
-  const { user, config, loginAsLocalViewer } = useAuth();
+  const { user, config, loginWithGoogle, loginAsLocalViewer } = useAuth();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const buttonRef = useRef(null);
@@ -26,10 +26,26 @@ export default function LoginPage() {
     const render = () => {
       if (!window.google?.accounts?.id || !buttonRef.current) return;
       window.google.accounts.id.initialize({
-        client_id: config.google_client_id,
-        ux_mode: "redirect",
-        login_uri: config.google_login_uri,
-      });
+  client_id: config.google_client_id,
+  callback: async (response) => {
+    if (!response?.credential) {
+      setError("Google sign-in did not return a credential.");
+      return;
+    }
+
+    setBusy(true);
+    setError("");
+
+    try {
+      await loginWithGoogle(response.credential);
+      navigate(safeReturnTo, { replace: true });
+    } catch {
+      setError("Google sign-in failed. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  },
+});
       buttonRef.current.innerHTML = "";
       window.google.accounts.id.renderButton(buttonRef.current, {
         theme: "filled_black",
@@ -57,7 +73,7 @@ export default function LoginPage() {
     return () => {
       script.onload = null;
     };
-  }, [config.google_client_id, config.google_login_uri]);
+  }, [config.google_client_id, loginWithGoogle, navigate, safeReturnTo]);
 
   const localLogin = async () => {
     setBusy(true);
