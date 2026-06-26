@@ -37,6 +37,7 @@ const PRIMARY_TABS = [
 ];
 
 const MORE_TABS = [
+  { to: "/audio-lab", label: "Audio Lab" },
   { to: "/category/sound-fx", label: "Sound FX" },
   { to: "/category/presets", label: "Presets" },
   { to: "/category/premium", label: "Premium" },
