@@ -16,6 +16,8 @@ import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
 
+const ASSETS_CHANGED_EVENT = "effectsacademy:assets-changed";
+
 const THEME_OPTIONS = [
   { value: "dark", label: "Dark" },
   { value: "blue", label: "Blue", note: "Default" },
@@ -59,6 +61,10 @@ export default function Nav() {
         ? "text-white bg-white/10"
         : "text-zinc-400 hover:text-white hover:bg-white/5"
     }`;
+
+  const notifyAssetsChanged = () => {
+    window.dispatchEvent(new Event(ASSETS_CHANGED_EVENT));
+  };
 
   return (
     <header
@@ -289,7 +295,7 @@ export default function Nav() {
       )}
 
       <AccessUploadModal open={accessOpen} onOpenChange={setAccessOpen} />
-      <UploadModal open={uploadOpen} onOpenChange={setUploadOpen} />
+      <UploadModal open={uploadOpen} onOpenChange={setUploadOpen} onSaved={notifyAssetsChanged} />
     </header>
   );
 }
