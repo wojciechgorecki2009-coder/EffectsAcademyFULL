@@ -11,7 +11,7 @@ import {
 } from "@/lib/api";
 import AssetCard from "@/components/AssetCard";
 import CategoryPicker from "@/components/CategoryPicker";
-import { Loader2, ChevronLeft, Music2, Tv, Film } from "lucide-react";
+import { Loader2, ChevronLeft, Music2, Tv, Film, Search, Tags } from "lucide-react";
 
 const SLUG_TO_CATEGORY = {
   "torrents": "Torrents",
@@ -33,6 +33,8 @@ const DESCRIPTIONS = {
   Premium: "Premium drops, exclusive packs.",
 };
 
+const getGenre = (asset) => (asset.genre || (asset.category === "Audios" ? asset.bpm : "") || "").trim();
+
 export default function CategoryPage() {
   const { slug } = useParams();
   const category = SLUG_TO_CATEGORY[slug];
@@ -40,6 +42,7 @@ export default function CategoryPage() {
   const [loading, setLoading] = useState(true);
   const [sub, setSub] = useState(null);          // creator OR show name
   const [torrentBranch, setTorrentBranch] = useState(null); // "Shows" | "Movies" | null
+  const [genreQuery, setGenreQuery] = useState("");
   const [overrides, setOverrides] = useState({ creator: {}, show: {} });
   const c = CATEGORY_COLORS[category];
 
@@ -68,15 +71,29 @@ export default function CategoryPage() {
     if (category) {
       setSub(null);
       setTorrentBranch(null);
+      setGenreQuery("");
       load();
       loadOverrides();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [category]);
 
+  const genreFilteredAssets = useMemo(() => {
+    const q = genreQuery.trim().toLowerCase();
+    if (!q) return assets;
+    return assets.filter((a) => {
+      const genre = getGenre(a).toLowerCase();
+      return genre.includes(q) || a.title?.toLowerCase().includes(q) || a.creator_tag?.toLowerCase().includes(q);
+    });
+  }, [assets, genreQuery]);
+
+  const availableGenres = useMemo(() => {
+    return Array.from(new Set(assets.map(getGenre).filter(Boolean))).slice(0, 12);
+  }, [assets]);
+
   const filteredAudios = useMemo(
-    () => (sub ? assets.filter((a) => a.creator_tag === sub) : []),
-    [assets, sub]
+    () => (sub ? genreFilteredAssets.filter((a) => a.creator_tag === sub) : []),
+    [genreFilteredAssets, sub]
   );
   const filteredShowAssets = useMemo(
     () => (sub ? assets.filter((a) => a.show_group === sub) : []),
@@ -93,10 +110,10 @@ export default function CategoryPage() {
 
   const mergedCreators = useMemo(() => {
     const customs = Array.from(
-      new Set(assets.filter((a) => a.creator_tag).map((a) => a.creator_tag))
+      new Set(genreFilteredAssets.filter((a) => a.creator_tag).map((a) => a.creator_tag))
     );
     return [...AUDIO_CREATORS, ...customs.filter((c) => !AUDIO_CREATORS.includes(c))];
-  }, [assets]);
+  }, [genreFilteredAssets]);
 
   const mergedShows = useMemo(() => {
     const customs = Array.from(
@@ -138,13 +155,28 @@ export default function CategoryPage() {
           <p className="text-zinc-400 max-w-xl mt-2">{DESCRIPTIONS[category]}</p>
         </div>
         <p className="text-xs font-mono uppercase tracking-widest text-zinc-500">
-          {assets.length} items
+          {genreFilteredAssets.length} items
         </p>
       </div>
 
       {category === "Audios" && (
+        <AudioGenreSearch
+          value={genreQuery}
+          onChange={setGenreQuery}
+          genres={availableGenres}
+        />
+      )}
+
+      {category === "Audios" && (
         <>
-          {!sub ? (
+          {genreQuery.trim() && !sub ? (
+            <>
+              <h2 className="font-display text-lg font-semibold mb-4 flex items-center gap-2">
+                <Tags className="w-5 h-5 text-neon" /> Genre search results
+              </h2>
+              <AssetGrid assets={genreFilteredAssets} loading={loading} reload={load} allAssets={assets} />
+            </>
+          ) : !sub ? (
             <>
               <h2 className="font-display text-lg font-semibold mb-4 flex items-center gap-2">
                 <Music2 className="w-5 h-5 text-neon" /> Choose an Audio Pack
@@ -156,13 +188,13 @@ export default function CategoryPage() {
                 overrides={overrides.creator}
                 kind="creator"
                 onChanged={loadOverrides}
-                getCount={(cr) => assets.filter((a) => a.creator_tag === cr).length}
+                getCount={(cr) => genreFilteredAssets.filter((a) => a.creator_tag === cr).length}
                 onPick={setSub}
                 testIdPrefix="creator"
               />
             </>
           ) : (
-            <SubList sub={sub} onBack={() => setSub(null)} backLabel="creators" filtered={filteredAudios} loading={loading} reload={load} />
+            <SubList sub={sub} onBack={() => setSub(null)} backLabel="creators" filtered={filteredAudios} loading={loading} reload={load} allAssets={assets} />
           )}
         </>
       )}
@@ -236,6 +268,7 @@ export default function CategoryPage() {
               filtered={filteredShowAssets.filter((a) => (a.torrent_type || "Show") === "Show")}
               loading={loading}
               reload={load}
+              allAssets={assets}
             />
           )}
 
@@ -251,16 +284,50 @@ export default function CategoryPage() {
               <h2 className="font-display text-2xl font-bold mb-4 flex items-center gap-2">
                 <Film className="w-5 h-5 text-neon" /> Movies
               </h2>
-              <AssetGrid assets={movieAssets} loading={loading} reload={load} />
+              <AssetGrid assets={movieAssets} loading={loading} reload={load} allAssets={assets} />
             </>
           )}
         </>
       )}
 
       {category !== "Audios" && category !== "Torrents" && (
-        <AssetGrid assets={assets} loading={loading} reload={load} />
+        <AssetGrid assets={assets} loading={loading} reload={load} allAssets={assets} />
       )}
     </section>
+  );
+}
+
+function AudioGenreSearch({ value, onChange, genres }) {
+  return (
+    <div className="mb-8 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+      <label className="text-xs font-mono uppercase tracking-widest text-zinc-500 flex items-center gap-2 mb-2">
+        <Search className="w-4 h-4" /> Search audios by genre
+      </label>
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+        <input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Try phonk, cinematic, dark, chill..."
+          className="w-full rounded-xl bg-black/30 border border-white/10 py-3 pl-10 pr-4 text-sm text-white placeholder:text-zinc-600 outline-none focus:border-neon/60"
+          data-testid="audio-genre-search"
+        />
+      </div>
+      {genres.length > 0 && (
+        <div className="flex flex-wrap gap-2 mt-3">
+          {genres.map((genre) => (
+            <button
+              key={genre}
+              type="button"
+              onClick={() => onChange(genre)}
+              className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-zinc-300 hover:text-white hover:border-white/20 btn-press"
+            >
+              {genre}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -294,7 +361,7 @@ function BranchCard({ label, count, icon, from, to, accent, onClick, testId }) {
   );
 }
 
-function SubList({ sub, onBack, backLabel, filtered, loading, reload }) {
+function SubList({ sub, onBack, backLabel, filtered, loading, reload, allAssets }) {
   return (
     <>
       <button
@@ -305,12 +372,12 @@ function SubList({ sub, onBack, backLabel, filtered, loading, reload }) {
         <ChevronLeft className="w-4 h-4" /> All {backLabel}
       </button>
       <h2 className="font-display text-2xl font-bold mb-4">{sub}</h2>
-      <AssetGrid assets={filtered} loading={loading} reload={reload} />
+      <AssetGrid assets={filtered} loading={loading} reload={reload} allAssets={allAssets} />
     </>
   );
 }
 
-function AssetGrid({ assets, loading, reload }) {
+function AssetGrid({ assets, loading, reload, allAssets }) {
   if (loading) {
     return (
       <div className="flex justify-center py-24">
@@ -334,7 +401,7 @@ function AssetGrid({ assets, loading, reload }) {
           className="asset-3d-in"
           style={{ animationDelay: `${Math.min(idx, 12) * 60}ms` }}
         >
-          <AssetCard asset={a} onChanged={reload} />
+          <AssetCard asset={a} onChanged={reload} allAssets={allAssets || assets} />
         </div>
       ))}
     </div>
