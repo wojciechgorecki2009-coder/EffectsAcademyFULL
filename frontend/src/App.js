@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Toaster } from "sonner";
 import { UploadAccessProvider } from "@/lib/uploadAccess";
@@ -16,6 +16,8 @@ import PremiumPage from "@/pages/PremiumPage";
 import GoogleCallbackPage from "@/pages/GoogleCallbackPage";
 import "@/App.css";
 
+const ASSETS_CHANGED_EVENT = "effectsacademy:assets-changed";
+
 function MouseParallaxRoot({ children }) {
   useEffect(() => {
     const handler = (e) => {
@@ -30,6 +32,30 @@ function MouseParallaxRoot({ children }) {
   return children;
 }
 
+function RefreshableRoutes() {
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    const handler = () => setRefreshKey((key) => key + 1);
+    window.addEventListener(ASSETS_CHANGED_EVENT, handler);
+    return () => window.removeEventListener(ASSETS_CHANGED_EVENT, handler);
+  }, []);
+
+  return (
+    <main key={refreshKey}>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/category/:slug" element={<CategoryPage />} />
+        <Route path="/dmca" element={<DmcaPage />} />
+        <Route path="/suggestions" element={<SuggestionsPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/premium" element={<PremiumPage />} />
+        <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />
+      </Routes>
+    </main>
+  );
+}
+
 export default function App() {
   return (
     <ThemeProvider>
@@ -39,17 +65,7 @@ export default function App() {
         <MouseParallaxRoot>
           <div className="App min-h-screen bg-[var(--site-bg)] text-white transition-colors duration-300">
             <Nav />
-            <main>
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/category/:slug" element={<CategoryPage />} />
-                <Route path="/dmca" element={<DmcaPage />} />
-                <Route path="/suggestions" element={<SuggestionsPage />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/premium" element={<PremiumPage />} />
-                <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />
-              </Routes>
-            </main>
+            <RefreshableRoutes />
             <Footer />
             <PersistentAudioBar />
             <Toaster
