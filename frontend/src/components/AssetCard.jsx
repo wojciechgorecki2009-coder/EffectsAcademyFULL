@@ -76,12 +76,19 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
   const onMove = (e) => {
     if (!ref.current) return;
     const r = ref.current.getBoundingClientRect();
-    const x = (e.clientX - r.left) / r.width - 0.5;
-    const y = (e.clientY - r.top) / r.height - 0.5;
-    ref.current.style.transform = `perspective(900px) rotateY(${x * 8}deg) rotateX(${-y * 8}deg) scale(1.03)`;
+    const pointerX = (e.clientX - r.left) / r.width;
+    const pointerY = (e.clientY - r.top) / r.height;
+    const x = pointerX - 0.5;
+    const y = pointerY - 0.5;
+    ref.current.style.setProperty("--asset-glow-x", `${Math.round(pointerX * 100)}%`);
+    ref.current.style.setProperty("--asset-glow-y", `${Math.round(pointerY * 100)}%`);
+    ref.current.style.transform = `perspective(1000px) rotateY(${x * 5.5}deg) rotateX(${-y * 5.5}deg) scale(1.018)`;
   };
   const onLeave = () => {
-    if (ref.current) ref.current.style.transform = "perspective(900px) rotateY(0) rotateX(0) scale(1)";
+    if (!ref.current) return;
+    ref.current.style.setProperty("--asset-glow-x", "50%");
+    ref.current.style.setProperty("--asset-glow-y", "18%");
+    ref.current.style.transform = "perspective(1000px) rotateY(0) rotateX(0) scale(1)";
   };
 
   const download = async () => {
@@ -186,7 +193,7 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
               <img
                 src={thumbnailSrc}
                 alt={asset.title}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.06]"
               />
             </button>
           ) : (
