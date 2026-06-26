@@ -216,9 +216,6 @@ export default function AudioPlayer({ src, title, onDownload }) {
             style={{ "--pct": `${pct}%` }}
             data-testid="audio-progress-slider"
           />
-          <div className="text-[10px] font-mono text-zinc-500 mt-1 tabular-nums whitespace-nowrap leading-none">
-            {loadingAudio ? "Loading..." : `${fmt(progress)} / ${fmt(duration)}`}
-          </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button
@@ -254,6 +251,10 @@ export default function AudioPlayer({ src, title, onDownload }) {
             data-testid="audio-volume-slider"
           />
         </div>
+      </div>
+      <div className="mt-2 flex items-center justify-between gap-3 text-[10px] font-mono text-zinc-500 tabular-nums leading-none">
+        <span className="whitespace-nowrap">{loadingAudio ? "Loading..." : `Now ${fmt(progress)}`}</span>
+        <span className="whitespace-nowrap">Total {fmt(duration)}</span>
       </div>
       <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between gap-3">
         <span className="text-[10px] uppercase tracking-wider text-zinc-500">Download slowed</span>
