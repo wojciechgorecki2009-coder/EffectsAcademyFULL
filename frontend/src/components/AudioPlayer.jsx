@@ -193,7 +193,7 @@ export default function AudioPlayer({ src, title, onDownload }) {
       className="mt-2 p-3 bg-black/40 border border-white/5 rounded-lg"
       data-testid="audio-player"
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         <button
           onClick={toggle}
           disabled={loadingAudio}
@@ -202,7 +202,7 @@ export default function AudioPlayer({ src, title, onDownload }) {
         >
           {playing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
         </button>
-        <div className="flex-1 min-w-[82px]">
+        <div className="flex-1 min-w-0">
           <input
             type="range"
             min={0}
@@ -217,20 +217,23 @@ export default function AudioPlayer({ src, title, onDownload }) {
             data-testid="audio-progress-slider"
           />
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={() => setLooping((v) => !v)}
-            className={`${looping ? "text-neon bg-neon/10 border-neon/30" : "text-zinc-400 hover:text-white border-white/10"} border rounded-md w-8 h-8 flex items-center justify-center btn-press`}
-            data-testid="audio-loop-toggle"
-            title={looping ? "Loop is on" : "Loop is off"}
-            aria-pressed={looping}
-          >
-            <Repeat className="w-4 h-4" />
-          </button>
+        <button
+          type="button"
+          onClick={() => setLooping((v) => !v)}
+          className={`${looping ? "text-neon bg-neon/10 border-neon/30" : "text-zinc-400 hover:text-white border-white/10"} border rounded-md w-8 h-8 flex items-center justify-center btn-press shrink-0`}
+          data-testid="audio-loop-toggle"
+          title={looping ? "Loop is on" : "Loop is off"}
+          aria-pressed={looping}
+        >
+          <Repeat className="w-4 h-4" />
+        </button>
+      </div>
+      <div className="mt-2 flex items-center justify-between gap-3 text-[10px] font-mono text-zinc-500 tabular-nums leading-none">
+        <span className="whitespace-nowrap">{loadingAudio ? "Loading..." : fmt(progress)}</span>
+        <div className="flex items-center gap-2 min-w-0">
           <button
             onClick={() => setMuted((v) => !v)}
-            className="text-zinc-400 hover:text-white btn-press"
+            className="text-zinc-400 hover:text-white btn-press shrink-0"
             data-testid="audio-mute-toggle"
           >
             {muted || volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
@@ -246,15 +249,12 @@ export default function AudioPlayer({ src, title, onDownload }) {
               setVolume(v);
               if (v > 0) setMuted(false);
             }}
-            className="audio-slider audio-slider-volume w-16"
+            className="audio-slider audio-slider-volume w-14 max-w-[56px]"
             style={{ "--pct": `${(muted ? 0 : volume) * 100}%` }}
             data-testid="audio-volume-slider"
           />
         </div>
-      </div>
-      <div className="mt-2 flex items-center justify-between gap-3 text-[10px] font-mono text-zinc-500 tabular-nums leading-none">
-        <span className="whitespace-nowrap">{loadingAudio ? "Loading..." : `Now ${fmt(progress)}`}</span>
-        <span className="whitespace-nowrap">Total {fmt(duration)}</span>
+        <span className="whitespace-nowrap">{fmt(duration)}</span>
       </div>
       <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between gap-3">
         <span className="text-[10px] uppercase tracking-wider text-zinc-500">Download slowed</span>
