@@ -11,7 +11,7 @@ import {
 } from "@/lib/api";
 import AssetCard from "@/components/AssetCard";
 import CategoryPicker from "@/components/CategoryPicker";
-import { Loader2, ChevronLeft, Music2, Tv, Film, Search, Tags } from "lucide-react";
+import { ChevronLeft, Music2, Tv, Film, Search, Tags, SlidersHorizontal, Sparkles } from "lucide-react";
 
 const SLUG_TO_CATEGORY = {
   "torrents": "Torrents",
@@ -33,7 +33,19 @@ const DESCRIPTIONS = {
   Premium: "Premium drops, exclusive packs.",
 };
 
+const SORT_OPTIONS = [
+  { value: "newest", label: "Newest" },
+  { value: "downloads", label: "Most downloaded" },
+  { value: "az", label: "A-Z" },
+];
+
 const getGenre = (asset) => (asset.genre || (asset.category === "Audios" ? asset.bpm : "") || "").trim();
+const getStamp = (asset) => new Date(asset.created_at || asset.createdAt || 0).getTime() || 0;
+const sortAssets = (list, sortBy) => [...list].sort((a, b) => {
+  if (sortBy === "downloads") return (b.download_count || 0) - (a.download_count || 0);
+  if (sortBy === "az") return (a.title || "").localeCompare(b.title || "");
+  return getStamp(b) - getStamp(a);
+});
 
 export default function CategoryPage() {
   const { slug } = useParams();
@@ -43,6 +55,7 @@ export default function CategoryPage() {
   const [sub, setSub] = useState(null);          // creator OR show name
   const [torrentBranch, setTorrentBranch] = useState(null); // "Shows" | "Movies" | null
   const [genreQuery, setGenreQuery] = useState("");
+  const [sortBy, setSortBy] = useState("newest");
   const [overrides, setOverrides] = useState({ creator: {}, show: {} });
   const c = CATEGORY_COLORS[category];
 
@@ -72,6 +85,7 @@ export default function CategoryPage() {
       setSub(null);
       setTorrentBranch(null);
       setGenreQuery("");
+      setSortBy("newest");
       load();
       loadOverrides();
     }
@@ -80,12 +94,14 @@ export default function CategoryPage() {
 
   const genreFilteredAssets = useMemo(() => {
     const q = genreQuery.trim().toLowerCase();
-    if (!q) return assets;
-    return assets.filter((a) => {
+    const list = !q ? assets : assets.filter((a) => {
       const genre = getGenre(a).toLowerCase();
       return genre.includes(q) || a.title?.toLowerCase().includes(q) || a.creator_tag?.toLowerCase().includes(q);
     });
-  }, [assets, genreQuery]);
+    return sortAssets(list, sortBy);
+  }, [assets, genreQuery, sortBy]);
+
+  const sortedAssets = useMemo(() => sortAssets(assets, sortBy), [assets, sortBy]);
 
   const availableGenres = useMemo(() => {
     return Array.from(new Set(assets.map(getGenre).filter(Boolean))).slice(0, 12);
@@ -96,16 +112,16 @@ export default function CategoryPage() {
     [genreFilteredAssets, sub]
   );
   const filteredShowAssets = useMemo(
-    () => (sub ? assets.filter((a) => a.show_group === sub) : []),
-    [assets, sub]
+    () => (sub ? sortedAssets.filter((a) => a.show_group === sub) : []),
+    [sortedAssets, sub]
   );
   const movieAssets = useMemo(
-    () => assets.filter((a) => a.torrent_type === "Movie"),
-    [assets]
+    () => sortedAssets.filter((a) => a.torrent_type === "Movie"),
+    [sortedAssets]
   );
   const showAssets = useMemo(
-    () => assets.filter((a) => (a.torrent_type || "Show") === "Show"),
-    [assets]
+    () => sortedAssets.filter((a) => (a.torrent_type || "Show") === "Show"),
+    [sortedAssets]
   );
 
   const mergedCreators = useMemo(() => {
@@ -132,7 +148,7 @@ export default function CategoryPage() {
   }
 
   return (
-    <section className="max-w-[1400px] mx-auto px-6 md:px-12 pt-28 pb-12" data-testid={`page-${slug}`}>
+    <section className="max-w-[1400px] mx-auto px-6 md:px-12 pt-28 pb-12 page-soft-enter" data-testid={`page-${slug}`}>
       <Link
         to="/"
         className="inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-white mb-6 btn-press"
@@ -154,9 +170,12 @@ export default function CategoryPage() {
           </h1>
           <p className="text-zinc-400 max-w-xl mt-2">{DESCRIPTIONS[category]}</p>
         </div>
-        <p className="text-xs font-mono uppercase tracking-widest text-zinc-500">
-          {genreFilteredAssets.length} items
-        </p>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <SortControl sortBy={sortBy} setSortBy={setSortBy} />
+          <p className="text-xs font-mono uppercase tracking-widest text-zinc-500 sm:text-right">
+            {genreFilteredAssets.length} items
+          </p>
+        </div>
       </div>
 
       {category === "Audios" && (
@@ -174,27 +193,29 @@ export default function CategoryPage() {
               <h2 className="font-display text-lg font-semibold mb-4 flex items-center gap-2">
                 <Tags className="w-5 h-5 text-neon" /> Genre search results
               </h2>
-              <AssetGrid assets={genreFilteredAssets} loading={loading} reload={load} allAssets={assets} />
+              <AssetGrid assets={genreFilteredAssets} loading={loading} reload={load} allAssets={assets} category={category} />
             </>
           ) : !sub ? (
             <>
               <h2 className="font-display text-lg font-semibold mb-4 flex items-center gap-2">
                 <Music2 className="w-5 h-5 text-neon" /> Choose an Audio Pack
               </h2>
-              <CategoryPicker
-                items={mergedCreators}
-                themes={CREATOR_THEMES}
-                images={{}}
-                overrides={overrides.creator}
-                kind="creator"
-                onChanged={loadOverrides}
-                getCount={(cr) => genreFilteredAssets.filter((a) => a.creator_tag === cr).length}
-                onPick={setSub}
-                testIdPrefix="creator"
-              />
+              {loading ? <PickerSkeleton /> : (
+                <CategoryPicker
+                  items={mergedCreators}
+                  themes={CREATOR_THEMES}
+                  images={{}}
+                  overrides={overrides.creator}
+                  kind="creator"
+                  onChanged={loadOverrides}
+                  getCount={(cr) => genreFilteredAssets.filter((a) => a.creator_tag === cr).length}
+                  onPick={setSub}
+                  testIdPrefix="creator"
+                />
+              )}
             </>
           ) : (
-            <SubList sub={sub} onBack={() => setSub(null)} backLabel="creators" filtered={filteredAudios} loading={loading} reload={load} allAssets={assets} />
+            <SubList sub={sub} onBack={() => setSub(null)} backLabel="creators" filtered={filteredAudios} loading={loading} reload={load} allAssets={assets} category={category} />
           )}
         </>
       )}
@@ -206,31 +227,33 @@ export default function CategoryPage() {
               <h2 className="font-display text-lg font-semibold mb-4 flex items-center gap-2">
                 <Tv className="w-5 h-5 text-neon" /> Shows or Movies?
               </h2>
-              <div
-                className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-12"
-                data-testid="torrent-branch-grid"
-              >
-                <BranchCard
-                  label="Shows"
-                  count={showAssets.length}
-                  icon={<Tv className="w-7 h-7" />}
-                  from="#0E2A5C"
-                  to="#040E26"
-                  accent="#3B82F6"
-                  onClick={() => setTorrentBranch("Shows")}
-                  testId="torrent-branch-shows"
-                />
-                <BranchCard
-                  label="Movies"
-                  count={movieAssets.length}
-                  icon={<Film className="w-7 h-7" />}
-                  from="#3A0C18"
-                  to="#0A0204"
-                  accent="#EF4444"
-                  onClick={() => setTorrentBranch("Movies")}
-                  testId="torrent-branch-movies"
-                />
-              </div>
+              {loading ? <PickerSkeleton /> : (
+                <div
+                  className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-12"
+                  data-testid="torrent-branch-grid"
+                >
+                  <BranchCard
+                    label="Shows"
+                    count={showAssets.length}
+                    icon={<Tv className="w-7 h-7" />}
+                    from="#0E2A5C"
+                    to="#040E26"
+                    accent="#3B82F6"
+                    onClick={() => setTorrentBranch("Shows")}
+                    testId="torrent-branch-shows"
+                  />
+                  <BranchCard
+                    label="Movies"
+                    count={movieAssets.length}
+                    icon={<Film className="w-7 h-7" />}
+                    from="#3A0C18"
+                    to="#0A0204"
+                    accent="#EF4444"
+                    onClick={() => setTorrentBranch("Movies")}
+                    testId="torrent-branch-movies"
+                  />
+                </div>
+              )}
             </>
           )}
 
@@ -246,17 +269,19 @@ export default function CategoryPage() {
               <h2 className="font-display text-lg font-semibold mb-4 flex items-center gap-2">
                 <Tv className="w-5 h-5 text-neon" /> Choose a Show
               </h2>
-              <CategoryPicker
-                items={mergedShows}
-                themes={SHOW_THEMES}
-                images={SHOW_IMAGES}
-                overrides={overrides.show}
-                kind="show"
-                onChanged={loadOverrides}
-                getCount={(s) => showAssets.filter((a) => a.show_group === s).length}
-                onPick={setSub}
-                testIdPrefix="show"
-              />
+              {loading ? <PickerSkeleton /> : (
+                <CategoryPicker
+                  items={mergedShows}
+                  themes={SHOW_THEMES}
+                  images={SHOW_IMAGES}
+                  overrides={overrides.show}
+                  kind="show"
+                  onChanged={loadOverrides}
+                  getCount={(s) => showAssets.filter((a) => a.show_group === s).length}
+                  onPick={setSub}
+                  testIdPrefix="show"
+                />
+              )}
             </>
           )}
 
@@ -269,6 +294,7 @@ export default function CategoryPage() {
               loading={loading}
               reload={load}
               allAssets={assets}
+              category={category}
             />
           )}
 
@@ -284,16 +310,33 @@ export default function CategoryPage() {
               <h2 className="font-display text-2xl font-bold mb-4 flex items-center gap-2">
                 <Film className="w-5 h-5 text-neon" /> Movies
               </h2>
-              <AssetGrid assets={movieAssets} loading={loading} reload={load} allAssets={assets} />
+              <AssetGrid assets={movieAssets} loading={loading} reload={load} allAssets={assets} category={category} />
             </>
           )}
         </>
       )}
 
       {category !== "Audios" && category !== "Torrents" && (
-        <AssetGrid assets={assets} loading={loading} reload={load} allAssets={assets} />
+        <AssetGrid assets={sortedAssets} loading={loading} reload={load} allAssets={assets} category={category} />
       )}
     </section>
+  );
+}
+
+function SortControl({ sortBy, setSortBy }) {
+  return (
+    <label className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-zinc-300">
+      <SlidersHorizontal className="w-4 h-4 text-zinc-500" />
+      <span className="text-xs uppercase tracking-widest text-zinc-500">Sort</span>
+      <select
+        value={sortBy}
+        onChange={(e) => setSortBy(e.target.value)}
+        className="bg-transparent text-white outline-none"
+        data-testid="category-sort"
+      >
+        {SORT_OPTIONS.map((option) => <option key={option.value} value={option.value} className="bg-[#090913]">{option.label}</option>)}
+      </select>
+    </label>
   );
 }
 
@@ -361,7 +404,7 @@ function BranchCard({ label, count, icon, from, to, accent, onClick, testId }) {
   );
 }
 
-function SubList({ sub, onBack, backLabel, filtered, loading, reload, allAssets }) {
+function SubList({ sub, onBack, backLabel, filtered, loading, reload, allAssets, category }) {
   return (
     <>
       <button
@@ -372,27 +415,14 @@ function SubList({ sub, onBack, backLabel, filtered, loading, reload, allAssets 
         <ChevronLeft className="w-4 h-4" /> All {backLabel}
       </button>
       <h2 className="font-display text-2xl font-bold mb-4">{sub}</h2>
-      <AssetGrid assets={filtered} loading={loading} reload={reload} allAssets={allAssets} />
+      <AssetGrid assets={filtered} loading={loading} reload={reload} allAssets={allAssets} category={category} />
     </>
   );
 }
 
-function AssetGrid({ assets, loading, reload, allAssets }) {
-  if (loading) {
-    return (
-      <div className="flex justify-center py-24">
-        <Loader2 className="w-7 h-7 text-neon animate-spin" />
-      </div>
-    );
-  }
-  if (assets.length === 0) {
-    return (
-      <div className="text-center py-24 border border-dashed border-white/10 rounded-2xl bg-white/[0.02]">
-        <h3 className="font-display text-2xl mb-2">Nothing here yet</h3>
-        <p className="text-zinc-500">Check back soon — moderators are curating drops.</p>
-      </div>
-    );
-  }
+function AssetGrid({ assets, loading, reload, allAssets, category }) {
+  if (loading) return <AssetSkeletonGrid />;
+  if (assets.length === 0) return <EmptyCategoryState category={category} />;
   return (
     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {assets.map((a, idx) => (
@@ -404,6 +434,45 @@ function AssetGrid({ assets, loading, reload, allAssets }) {
           <AssetCard asset={a} onChanged={reload} allAssets={allAssets || assets} />
         </div>
       ))}
+    </div>
+  );
+}
+
+function AssetSkeletonGrid() {
+  return (
+    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {Array.from({ length: 8 }).map((_, idx) => (
+        <div key={idx} className="rounded-2xl overflow-hidden border border-white/5 bg-[var(--site-surface)] animate-pulse">
+          <div className="aspect-video bg-white/5" />
+          <div className="p-5 space-y-3">
+            <div className="h-5 w-20 rounded bg-white/5" />
+            <div className="h-6 w-3/4 rounded bg-white/5" />
+            <div className="h-4 w-full rounded bg-white/5" />
+            <div className="h-10 w-full rounded-lg bg-white/5" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PickerSkeleton() {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-12">
+      {Array.from({ length: 4 }).map((_, idx) => (
+        <div key={idx} className="h-44 rounded-2xl border border-white/5 bg-white/[0.035] animate-pulse" />
+      ))}
+    </div>
+  );
+}
+
+function EmptyCategoryState({ category }) {
+  return (
+    <div className="relative overflow-hidden text-center py-24 border border-dashed border-white/10 rounded-2xl bg-white/[0.02]">
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-neon/50 to-transparent" />
+      <Sparkles className="w-8 h-8 text-neon mx-auto mb-4 opacity-80" />
+      <h3 className="font-display text-2xl mb-2">Nothing here yet</h3>
+      <p className="text-zinc-500 max-w-md mx-auto">No {category?.toLowerCase() || "assets"} have been uploaded here yet. Check back soon — moderators are curating drops.</p>
     </div>
   );
 }
