@@ -1,7 +1,16 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Play, Pause, Volume2, VolumeX, Download, Repeat } from "lucide-react";
 import { toast } from "sonner";
 import { api, FILE_BASE } from "@/lib/api";
+import {
+  playGlobalAudio,
+  seekGlobalAudio,
+  setGlobalLooping,
+  setGlobalVolume,
+  toggleGlobalAudio,
+  toggleGlobalMute,
+  useGlobalAudio,
+} from "@/lib/globalAudio";
 
 function fmt(t) {
   if (!isFinite(t) || t < 0) return "0:00";
@@ -56,49 +65,25 @@ function directUrlEndpoint(src) {
 }
 
 export default function AudioPlayer({ src, title, onDownload }) {
-  const audioRef = useRef(null);
-  const [playing, setPlaying] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(0.8);
-  const [muted, setMuted] = useState(false);
-  const [looping, setLooping] = useState(false);
+  const globalAudio = useGlobalAudio();
   const [generatingRate, setGeneratingRate] = useState(null);
-  const [loadingAudio, setLoadingAudio] = useState(false);
+  const [resolvingAudio, setResolvingAudio] = useState(false);
   const [playbackSrc, setPlaybackSrc] = useState("");
 
   useEffect(() => {
-    const a = audioRef.current;
-    if (!a) return;
-    a.volume = volume;
-    a.muted = muted;
-    a.loop = looping;
-  }, [volume, muted, looping]);
-
-  useEffect(() => {
-    const a = audioRef.current;
-    if (!a) return;
-    const onTime = () => setProgress(a.currentTime);
-    const onMeta = () => setDuration(a.duration || 0);
-    const onEnd = () => setPlaying(false);
-    a.addEventListener("timeupdate", onTime);
-    a.addEventListener("loadedmetadata", onMeta);
-    a.addEventListener("durationchange", onMeta);
-    a.addEventListener("ended", onEnd);
-    return () => {
-      a.removeEventListener("timeupdate", onTime);
-      a.removeEventListener("loadedmetadata", onMeta);
-      a.removeEventListener("durationchange", onMeta);
-      a.removeEventListener("ended", onEnd);
-    };
-  }, []);
-
-  useEffect(() => {
     setPlaybackSrc("");
-    setPlaying(false);
-    setProgress(0);
-    setDuration(0);
+    setResolvingAudio(false);
   }, [src]);
+
+  const isCurrentTrack = Boolean(src) && (globalAudio.originalSrc === src || (playbackSrc && globalAudio.src === playbackSrc));
+  const playing = isCurrentTrack && globalAudio.playing;
+  const progress = isCurrentTrack ? globalAudio.progress : 0;
+  const duration = isCurrentTrack ? globalAudio.duration : 0;
+  const volume = globalAudio.volume;
+  const muted = globalAudio.muted;
+  const looping = globalAudio.looping;
+  const loadingAudio = resolvingAudio || (isCurrentTrack && globalAudio.loading);
+  const pct = duration > 0 ? Math.min(100, (progress / duration) * 100) : 0;
 
   const resolvePlaybackSrc = async () => {
     if (playbackSrc) return playbackSrc;
@@ -114,40 +99,35 @@ export default function AudioPlayer({ src, title, onDownload }) {
   };
 
   const toggle = async () => {
-    const a = audioRef.current;
-    if (!a) return;
-    if (playing) {
-      a.pause();
-      setPlaying(false);
+    if (!src) return;
+
+    if (isCurrentTrack) {
+      toggleGlobalAudio();
       return;
     }
 
-    setLoadingAudio(true);
+    setResolvingAudio(true);
     try {
       const resolved = await resolvePlaybackSrc();
-      if (a.src !== resolved) {
-        a.src = resolved;
-        a.load();
-      }
-      await a.play();
-      setPlaying(true);
+      await playGlobalAudio({
+        src: resolved,
+        originalSrc: src,
+        title: title || "Audio preview",
+        subtitle: "Playing from EffectsAcademy",
+      });
     } catch (error) {
       toast.error("Unable to play this audio yet.");
     } finally {
-      setLoadingAudio(false);
+      setResolvingAudio(false);
     }
   };
 
   const seek = (e) => {
-    const a = audioRef.current;
-    if (!a) return;
+    if (!isCurrentTrack) return;
     const t = parseFloat(e.target.value);
     if (!isFinite(t)) return;
-    a.currentTime = t;
-    setProgress(t);
+    seekGlobalAudio(t);
   };
-
-  const pct = duration > 0 ? Math.min(100, (progress / duration) * 100) : 0;
 
   const downloadSlowed = async (rate) => {
     if (generatingRate) return;
@@ -211,7 +191,7 @@ export default function AudioPlayer({ src, title, onDownload }) {
             value={progress}
             onChange={seek}
             onInput={seek}
-            disabled={!duration}
+            disabled={!duration || !isCurrentTrack}
             className="audio-slider audio-slider-progress w-full"
             style={{ "--pct": `${pct}%` }}
             data-testid="audio-progress-slider"
@@ -219,7 +199,7 @@ export default function AudioPlayer({ src, title, onDownload }) {
         </div>
         <button
           type="button"
-          onClick={() => setLooping((v) => !v)}
+          onClick={() => setGlobalLooping(!looping)}
           className={`${looping ? "text-neon bg-neon/10 border-neon/30" : "text-zinc-400 hover:text-white border-white/10"} border rounded-md w-8 h-8 flex items-center justify-center btn-press shrink-0`}
           data-testid="audio-loop-toggle"
           title={looping ? "Loop is on" : "Loop is off"}
@@ -231,7 +211,7 @@ export default function AudioPlayer({ src, title, onDownload }) {
       <div className="mt-2 flex items-center justify-between gap-3 text-[10px] font-mono text-zinc-500 tabular-nums leading-none">
         <div className="flex items-center gap-2 min-w-0">
           <button
-            onClick={() => setMuted((v) => !v)}
+            onClick={toggleGlobalMute}
             className="text-zinc-400 hover:text-white btn-press shrink-0"
             data-testid="audio-mute-toggle"
           >
@@ -243,11 +223,7 @@ export default function AudioPlayer({ src, title, onDownload }) {
             max={1}
             step={0.01}
             value={muted ? 0 : volume}
-            onChange={(e) => {
-              const v = parseFloat(e.target.value);
-              setVolume(v);
-              if (v > 0) setMuted(false);
-            }}
+            onChange={(e) => setGlobalVolume(parseFloat(e.target.value))}
             className="audio-slider audio-slider-volume w-16 max-w-[64px]"
             style={{ "--pct": `${(muted ? 0 : volume) * 100}%` }}
             data-testid="audio-volume-slider"
@@ -277,7 +253,6 @@ export default function AudioPlayer({ src, title, onDownload }) {
           ))}
         </div>
       </div>
-      <audio ref={audioRef} preload="none" crossOrigin="anonymous" />
     </div>
   );
 }
