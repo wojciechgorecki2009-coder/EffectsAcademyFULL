@@ -8,7 +8,6 @@ import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import Home from "@/pages/Home";
 import CategoryPage from "@/pages/CategoryPage";
-import AudioLabPage from "@/pages/AudioLabPage";
 import DmcaPage from "@/pages/DmcaPage";
 import SuggestionsPage from "@/pages/SuggestionsPage";
 import LoginPage from "@/pages/LoginPage";
@@ -43,7 +42,6 @@ export default function App() {
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/category/:slug" element={<CategoryPage />} />
-                <Route path="/audio-lab" element={<AudioLabPage />} />
                 <Route path="/dmca" element={<DmcaPage />} />
                 <Route path="/suggestions" element={<SuggestionsPage />} />
                 <Route path="/login" element={<LoginPage />} />
