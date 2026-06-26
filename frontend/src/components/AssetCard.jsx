@@ -23,6 +23,33 @@ const isRecentlyAdded = (asset) => {
   return Date.now() - created < 7 * 24 * 60 * 60 * 1000;
 };
 
+const isVideoPreview = (url = "") => /\.(mp4|webm|mov|m4v)(?:[?#]|$)/i.test(url);
+
+function PreviewMedia({ src, title, className = "", videoClassName = "", imageClassName = "" }) {
+  if (!src) return null;
+  if (isVideoPreview(src)) {
+    return (
+      <video
+        src={src}
+        className={`${className} ${videoClassName}`}
+        muted
+        loop
+        playsInline
+        autoPlay
+        preload="metadata"
+      />
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={title || "Asset preview"}
+      className={`${className} ${imageClassName}`}
+    />
+  );
+}
+
 export default function AssetCard({ asset, onChanged, allAssets = [] }) {
   const { isUploader } = useUploadAccess();
   const { hasPremium } = useAuth();
@@ -44,6 +71,7 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
     ? buildFileUrl(asset.file_url, isPremium ? getAuthToken() : "", isPremium && isUploader ? getPass() : "")
     : "";
   const displayGenre = asset.genre || (isAudio ? asset.bpm : "");
+  const thumbnailIsVideo = isVideoPreview(thumbnailSrc);
 
   const relatedAssets = useMemo(() => {
     if (!allAssets?.length) return [];
@@ -190,15 +218,20 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
               className={`block w-full h-full text-left ${!isAudio ? "cursor-zoom-in" : "cursor-default"}`}
               title={!isAudio ? "Open larger preview" : undefined}
             >
-              <img
+              <PreviewMedia
                 src={thumbnailSrc}
-                alt={asset.title}
+                title={asset.title}
                 className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.06]"
               />
             </button>
           ) : (
             <div className="w-full h-full flex items-center justify-center text-zinc-700 text-sm">
               No preview
+            </div>
+          )}
+          {thumbnailIsVideo && (
+            <div className="absolute bottom-3 left-3 z-[2] bg-black/65 text-[10px] font-mono px-2 py-1 rounded-full text-white border border-white/10">
+              VIDEO PREVIEW
             </div>
           )}
           <div className="absolute top-3 left-3 z-[2] flex flex-wrap gap-2">
@@ -348,11 +381,23 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
               </DialogDescription>
             </DialogHeader>
             {thumbnailSrc ? (
-              <img
-                src={thumbnailSrc}
-                alt={asset.title}
-                className="w-full max-h-[60vh] object-contain rounded-2xl border border-white/10 bg-black/40"
-              />
+              thumbnailIsVideo ? (
+                <video
+                  src={thumbnailSrc}
+                  className="w-full max-h-[60vh] object-contain rounded-2xl border border-white/10 bg-black/40"
+                  controls
+                  muted
+                  loop
+                  playsInline
+                  autoPlay
+                />
+              ) : (
+                <img
+                  src={thumbnailSrc}
+                  alt={asset.title}
+                  className="w-full max-h-[60vh] object-contain rounded-2xl border border-white/10 bg-black/40"
+                />
+              )
             ) : (
               <div className="min-h-72 rounded-2xl border border-white/10 bg-black/40 flex items-center justify-center text-zinc-500">
                 <ImageIcon className="w-8 h-8" />
@@ -370,7 +415,7 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
                       <div key={related.id} className="rounded-xl border border-white/10 bg-white/[0.03] overflow-hidden">
                         <div className="aspect-video bg-black/40">
                           {relatedThumb ? (
-                            <img src={relatedThumb} alt={related.title} className="w-full h-full object-cover" />
+                            <PreviewMedia src={relatedThumb} title={related.title} className="w-full h-full object-cover" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-zinc-700 text-xs">No preview</div>
                           )}
