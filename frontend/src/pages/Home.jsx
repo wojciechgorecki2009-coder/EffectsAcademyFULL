@@ -13,7 +13,7 @@ import {
 import AssetCard from "@/components/AssetCard";
 import CategoryPicker from "@/components/CategoryPicker";
 import Hero from "@/components/Hero";
-import { Loader2, ChevronLeft, ChevronRight, Music2, Tv, Film } from "lucide-react";
+import { ChevronLeft, ChevronRight, Music2, Tv, Film, Sparkles } from "lucide-react";
 
 const FILTER_TABS = ["All", ...CATEGORIES];
 
@@ -35,6 +35,8 @@ const DASHBOARD_SECTIONS = [
   "Sound FX",
   "Torrents",
 ];
+
+const getStamp = (asset) => new Date(asset.created_at || asset.createdAt || 0).getTime() || 0;
 
 export default function Home() {
   const [assets, setAssets] = useState([]);
@@ -76,6 +78,9 @@ export default function Home() {
 
   const showsPickerForFilter = filter === "Audios" || filter === "Torrents";
 
+  const sortedAssets = useMemo(() => [...assets].sort((a, b) => getStamp(b) - getStamp(a)), [assets]);
+  const recentlyAdded = useMemo(() => sortedAssets.slice(0, 8), [sortedAssets]);
+
   const mergedAudioCreators = useMemo(() => {
     const customs = Array.from(
       new Set(
@@ -103,20 +108,18 @@ export default function Home() {
     return [...SHOWS, ...customs.filter((s) => !SHOWS.includes(s))];
   }, [assets]);
 
-  // Dashboard sections — last 4 of each category
   const dashboardData = useMemo(() => {
     const byCat = {};
     for (const cat of DASHBOARD_SECTIONS) {
-      byCat[cat] = assets
+      byCat[cat] = sortedAssets
         .filter((a) => a.category === cat)
-        .slice(0, 4); // assets already sorted desc by created_at server-side
+        .slice(0, 4);
     }
     return byCat;
-  }, [assets]);
+  }, [sortedAssets]);
 
-  // Non-"All" filter with search applied
   const filteredForFilter = useMemo(() => {
-    let list = assets;
+    let list = sortedAssets;
     if (filter !== "All") list = list.filter((a) => a.category === filter);
     if (filter === "Audios" && sub) list = list.filter((a) => a.creator_tag === sub);
     if (filter === "Torrents" && torrentBranch === "Shows") {
@@ -132,23 +135,24 @@ export default function Home() {
         (a) =>
           a.title.toLowerCase().includes(q) ||
           (a.description || "").toLowerCase().includes(q) ||
-          (a.creator_tag || "").toLowerCase().includes(q)
+          (a.creator_tag || "").toLowerCase().includes(q) ||
+          (a.genre || a.bpm || "").toLowerCase().includes(q)
       );
     }
     return list;
-  }, [assets, filter, sub, torrentBranch, query]);
+  }, [sortedAssets, filter, sub, torrentBranch, query]);
 
-  // For All-tab, search filters all assets across sections
   const searchedAll = useMemo(() => {
     if (!query.trim()) return null;
     const q = query.toLowerCase();
-    return assets.filter(
+    return sortedAssets.filter(
       (a) =>
         a.title.toLowerCase().includes(q) ||
         (a.description || "").toLowerCase().includes(q) ||
-        (a.creator_tag || "").toLowerCase().includes(q)
+        (a.creator_tag || "").toLowerCase().includes(q) ||
+        (a.genre || a.bpm || "").toLowerCase().includes(q)
     );
-  }, [assets, query]);
+  }, [sortedAssets, query]);
 
   const isAllTab = filter === "All";
 
@@ -156,7 +160,7 @@ export default function Home() {
     <>
       <Hero query={query} setQuery={setQuery} totalAssets={assets.length} />
 
-      <section className="max-w-[1400px] mx-auto px-6 md:px-12 pb-24" data-testid="asset-section">
+      <section className="max-w-[1400px] mx-auto px-6 md:px-12 pb-24 page-soft-enter" data-testid="asset-section">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-8 mt-6">
           <div className="flex flex-wrap gap-2" data-testid="filter-tabs">
             {FILTER_TABS.map((t) => {
@@ -193,24 +197,16 @@ export default function Home() {
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-24">
-            <Loader2 className="w-7 h-7 text-neon animate-spin" />
-          </div>
+          <AssetSkeletonGrid />
         ) : isAllTab ? (
           searchedAll && searchedAll.length >= 0 && query.trim() ? (
             searchedAll.length === 0 ? (
               <EmptyState filter={filter} />
             ) : (
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {searchedAll.map((a, idx) => (
-                  <div key={a.id} className="asset-3d-in" style={{ animationDelay: `${Math.min(idx, 12) * 60}ms` }}>
-                    <AssetCard asset={a} onChanged={load} />
-                  </div>
-                ))}
-              </div>
+              <AssetGrid assets={searchedAll} onChanged={load} allAssets={assets} />
             )
           ) : (
-            <DashboardView data={dashboardData} totalAssets={assets.length} onChanged={load} />
+            <DashboardView data={dashboardData} totalAssets={assets.length} recentlyAdded={recentlyAdded} allAssets={assets} onChanged={load} />
           )
         ) : (
           <FilteredView
@@ -233,15 +229,17 @@ export default function Home() {
   );
 }
 
-function DashboardView({ data, totalAssets, onChanged }) {
+function DashboardView({ data, totalAssets, recentlyAdded, allAssets, onChanged }) {
   if (totalAssets === 0) return <EmptyState filter="All" />;
   return (
     <div className="space-y-14">
+      <RecentlyAdded assets={recentlyAdded} allAssets={allAssets} onChanged={onChanged} />
       {DASHBOARD_SECTIONS.map((cat) => (
         <DashboardSection
           key={cat}
           category={cat}
           assets={data[cat] || []}
+          allAssets={allAssets}
           onChanged={onChanged}
         />
       ))}
@@ -249,7 +247,26 @@ function DashboardView({ data, totalAssets, onChanged }) {
   );
 }
 
-function DashboardSection({ category, assets, onChanged }) {
+function RecentlyAdded({ assets, allAssets, onChanged }) {
+  return (
+    <div data-testid="recently-added-section" className="relative rounded-3xl border border-white/10 bg-white/[0.025] p-5 md:p-6 overflow-hidden">
+      <div className="absolute -top-24 right-0 w-64 h-64 bg-neon/10 blur-3xl rounded-full pointer-events-none" />
+      <div className="relative flex items-end justify-between mb-5 pb-3 border-b border-white/5">
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-mono uppercase tracking-widest px-2.5 py-1 rounded-md border text-neon bg-neon/10 border-neon/20">
+            Fresh
+          </span>
+          <h2 className="font-display text-2xl md:text-3xl font-black tracking-tighter flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-neon" /> Recently Added
+          </h2>
+        </div>
+      </div>
+      <AssetGrid assets={assets} onChanged={onChanged} allAssets={allAssets} />
+    </div>
+  );
+}
+
+function DashboardSection({ category, assets, allAssets, onChanged }) {
   const c = CATEGORY_COLORS[category];
   const slug = CATEGORY_TO_SLUG[category];
   return (
@@ -280,14 +297,20 @@ function DashboardSection({ category, assets, onChanged }) {
           No {category.toLowerCase()} yet — moderators can drop them via the Upload modal.
         </p>
       ) : (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {assets.map((a, idx) => (
-            <div key={a.id} className="asset-3d-in" style={{ animationDelay: `${idx * 60}ms` }}>
-              <AssetCard asset={a} onChanged={onChanged} />
-            </div>
-          ))}
-        </div>
+        <AssetGrid assets={assets} onChanged={onChanged} allAssets={allAssets} />
       )}
+    </div>
+  );
+}
+
+function AssetGrid({ assets, onChanged, allAssets }) {
+  return (
+    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {assets.map((a, idx) => (
+        <div key={a.id} className="asset-3d-in" style={{ animationDelay: `${Math.min(idx, 12) * 60}ms` }}>
+          <AssetCard asset={a} onChanged={onChanged} allAssets={allAssets || assets} />
+        </div>
+      ))}
     </div>
   );
 }
@@ -396,13 +419,7 @@ function FilteredView({
       {filtered.length === 0 ? (
         <EmptyState filter={filter} />
       ) : (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filtered.map((a, idx) => (
-            <div key={a.id} className="asset-3d-in" style={{ animationDelay: `${Math.min(idx, 12) * 60}ms` }}>
-              <AssetCard asset={a} onChanged={load} />
-            </div>
-          ))}
-        </div>
+        <AssetGrid assets={filtered} onChanged={load} allAssets={assets} />
       )}
     </>
   );
@@ -438,12 +455,32 @@ function TorrentBranchCard({ label, count, icon, from, to, accent, onClick, test
   );
 }
 
+function AssetSkeletonGrid() {
+  return (
+    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {Array.from({ length: 8 }).map((_, idx) => (
+        <div key={idx} className="rounded-2xl overflow-hidden border border-white/5 bg-[var(--site-surface)] animate-pulse">
+          <div className="aspect-video bg-white/5" />
+          <div className="p-5 space-y-3">
+            <div className="h-5 w-20 rounded bg-white/5" />
+            <div className="h-6 w-3/4 rounded bg-white/5" />
+            <div className="h-4 w-full rounded bg-white/5" />
+            <div className="h-10 w-full rounded-lg bg-white/5" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function EmptyState({ filter }) {
   return (
     <div
-      className="text-center py-24 border border-dashed border-white/10 rounded-2xl bg-white/[0.02]"
+      className="relative overflow-hidden text-center py-24 border border-dashed border-white/10 rounded-2xl bg-white/[0.02]"
       data-testid="empty-state"
     >
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-neon/50 to-transparent" />
+      <Sparkles className="w-8 h-8 text-neon mx-auto mb-4 opacity-80" />
       <h3 className="font-display text-2xl mb-2">No assets yet</h3>
       <p className="text-zinc-500 max-w-md mx-auto mb-6">
         {filter === "All"
