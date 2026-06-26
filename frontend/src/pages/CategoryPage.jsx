@@ -11,7 +11,13 @@ import {
 } from "@/lib/api";
 import AssetCard from "@/components/AssetCard";
 import CategoryPicker from "@/components/CategoryPicker";
-import { ChevronLeft, Music2, Tv, Film, Search, Tags, SlidersHorizontal, Sparkles } from "lucide-react";
+import { ChevronDown, ChevronLeft, Check, Music2, Tv, Film, Search, Tags, SlidersHorizontal, Sparkles } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 
 const SLUG_TO_CATEGORY = {
   "torrents": "Torrents",
@@ -324,19 +330,34 @@ export default function CategoryPage() {
 }
 
 function SortControl({ sortBy, setSortBy }) {
+  const activeOption = SORT_OPTIONS.find((option) => option.value === sortBy) || SORT_OPTIONS[0];
   return (
-    <label className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-zinc-300">
-      <SlidersHorizontal className="w-4 h-4 text-zinc-500" />
-      <span className="text-xs uppercase tracking-widest text-zinc-500">Sort</span>
-      <select
-        value={sortBy}
-        onChange={(e) => setSortBy(e.target.value)}
-        className="bg-transparent text-white outline-none"
-        data-testid="category-sort"
-      >
-        {SORT_OPTIONS.map((option) => <option key={option.value} value={option.value} className="bg-[#090913]">{option.label}</option>)}
-      </select>
-    </label>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.035] hover:bg-white/[0.07] px-3 py-2 text-sm text-zinc-300 btn-press shadow-[0_0_24px_rgba(0,0,0,0.18)]"
+          data-testid="category-sort"
+        >
+          <SlidersHorizontal className="w-4 h-4 text-zinc-500" />
+          <span className="text-xs uppercase tracking-widest text-zinc-500">Sort</span>
+          <span className="text-white font-semibold min-w-[92px] text-left">{activeOption.label}</span>
+          <ChevronDown className="w-3.5 h-3.5 text-zinc-500" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="glass border-white/10 text-white min-w-48 p-1" align="end">
+        {SORT_OPTIONS.map((option) => (
+          <DropdownMenuItem
+            key={option.value}
+            onClick={() => setSortBy(option.value)}
+            className="cursor-pointer hover:bg-white/10 focus:bg-white/10 rounded-lg flex items-center justify-between gap-4"
+          >
+            <span>{option.label}</span>
+            {sortBy === option.value && <Check className="w-4 h-4 text-neon" />}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
