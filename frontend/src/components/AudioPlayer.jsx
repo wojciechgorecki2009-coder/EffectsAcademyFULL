@@ -202,7 +202,7 @@ export default function AudioPlayer({ src, title, onDownload }) {
         >
           {playing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
         </button>
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-[82px]">
           <input
             type="range"
             min={0}
@@ -216,9 +216,8 @@ export default function AudioPlayer({ src, title, onDownload }) {
             style={{ "--pct": `${pct}%` }}
             data-testid="audio-progress-slider"
           />
-          <div className="flex justify-between text-[10px] font-mono text-zinc-500 mt-1">
-            <span>{loadingAudio ? "Loading..." : fmt(progress)}</span>
-            <span>{fmt(duration)}</span>
+          <div className="text-[10px] font-mono text-zinc-500 mt-1 tabular-nums whitespace-nowrap leading-none">
+            {loadingAudio ? "Loading..." : `${fmt(progress)} / ${fmt(duration)}`}
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
