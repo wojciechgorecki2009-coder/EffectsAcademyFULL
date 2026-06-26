@@ -53,14 +53,34 @@ const sortAssets = (list, sortBy) => [...list].sort((a, b) => {
   return getStamp(b) - getStamp(a);
 });
 
+const matchesSearch = (asset, query) => {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  return [
+    asset.title,
+    asset.description,
+    asset.creator_tag,
+    asset.genre,
+    asset.bpm,
+    asset.category,
+    asset.show_group,
+    asset.torrent_type,
+    asset.ae_version,
+    asset.original_filename,
+  ]
+    .filter(Boolean)
+    .some((value) => String(value).toLowerCase().includes(q));
+};
+
 export default function CategoryPage() {
   const { slug } = useParams();
   const category = SLUG_TO_CATEGORY[slug];
   const [assets, setAssets] = useState([]);
+  const [allAssets, setAllAssets] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [sub, setSub] = useState(null);          // creator OR show name
-  const [torrentBranch, setTorrentBranch] = useState(null); // "Shows" | "Movies" | null
-  const [genreQuery, setGenreQuery] = useState("");
+  const [sub, setSub] = useState(null);
+  const [torrentBranch, setTorrentBranch] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("newest");
   const [overrides, setOverrides] = useState({ creator: {}, show: {} });
   const c = CATEGORY_COLORS[category];
@@ -68,8 +88,9 @@ export default function CategoryPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const { data } = await api.get("/assets", { params: { category } });
-      setAssets(data);
+      const { data } = await api.get("/assets");
+      setAllAssets(data);
+      setAssets(data.filter((asset) => asset.category === category));
     } finally {
       setLoading(false);
     }
@@ -90,7 +111,7 @@ export default function CategoryPage() {
     if (category) {
       setSub(null);
       setTorrentBranch(null);
-      setGenreQuery("");
+      setSearchQuery("");
       setSortBy("newest");
       load();
       loadOverrides();
@@ -98,14 +119,18 @@ export default function CategoryPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [category]);
 
-  const genreFilteredAssets = useMemo(() => {
-    const q = genreQuery.trim().toLowerCase();
-    const list = !q ? assets : assets.filter((a) => {
-      const genre = getGenre(a).toLowerCase();
-      return genre.includes(q) || a.title?.toLowerCase().includes(q) || a.creator_tag?.toLowerCase().includes(q);
-    });
+  const isSearching = Boolean(searchQuery.trim());
+
+  const categorySearchFilteredAssets = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    const list = !q ? assets : assets.filter((a) => matchesSearch(a, q));
     return sortAssets(list, sortBy);
-  }, [assets, genreQuery, sortBy]);
+  }, [assets, searchQuery, sortBy]);
+
+  const globalSearchResults = useMemo(() => {
+    if (!isSearching) return [];
+    return sortAssets(allAssets.filter((a) => matchesSearch(a, searchQuery)), sortBy);
+  }, [allAssets, searchQuery, sortBy, isSearching]);
 
   const sortedAssets = useMemo(() => sortAssets(assets, sortBy), [assets, sortBy]);
 
@@ -114,8 +139,8 @@ export default function CategoryPage() {
   }, [assets]);
 
   const filteredAudios = useMemo(
-    () => (sub ? genreFilteredAssets.filter((a) => a.creator_tag === sub) : []),
-    [genreFilteredAssets, sub]
+    () => (sub ? categorySearchFilteredAssets.filter((a) => a.creator_tag === sub) : []),
+    [categorySearchFilteredAssets, sub]
   );
   const filteredShowAssets = useMemo(
     () => (sub ? sortedAssets.filter((a) => a.show_group === sub) : []),
@@ -132,10 +157,10 @@ export default function CategoryPage() {
 
   const mergedCreators = useMemo(() => {
     const customs = Array.from(
-      new Set(genreFilteredAssets.filter((a) => a.creator_tag).map((a) => a.creator_tag))
+      new Set(categorySearchFilteredAssets.filter((a) => a.creator_tag).map((a) => a.creator_tag))
     );
     return [...AUDIO_CREATORS, ...customs.filter((c) => !AUDIO_CREATORS.includes(c))];
-  }, [genreFilteredAssets]);
+  }, [categorySearchFilteredAssets]);
 
   const mergedShows = useMemo(() => {
     const customs = Array.from(
@@ -179,29 +204,30 @@ export default function CategoryPage() {
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           <SortControl sortBy={sortBy} setSortBy={setSortBy} />
           <p className="text-xs font-mono uppercase tracking-widest text-zinc-500 sm:text-right">
-            {genreFilteredAssets.length} items
+            {isSearching
+              ? `${globalSearchResults.length} search result${globalSearchResults.length === 1 ? "" : "s"}`
+              : `${categorySearchFilteredAssets.length} items`}
           </p>
         </div>
       </div>
 
-      {category === "Audios" && (
-        <AudioGenreSearch
-          value={genreQuery}
-          onChange={setGenreQuery}
-          genres={availableGenres}
-        />
-      )}
+      <AssetSearch
+        value={searchQuery}
+        onChange={setSearchQuery}
+        genres={category === "Audios" ? availableGenres : []}
+        category={category}
+      />
 
-      {category === "Audios" && (
+      {isSearching ? (
         <>
-          {genreQuery.trim() && !sub ? (
-            <>
-              <h2 className="font-display text-lg font-semibold mb-4 flex items-center gap-2">
-                <Tags className="w-5 h-5 text-neon" /> Genre search results
-              </h2>
-              <AssetGrid assets={genreFilteredAssets} loading={loading} reload={load} allAssets={assets} category={category} />
-            </>
-          ) : !sub ? (
+          <h2 className="font-display text-lg font-semibold mb-4 flex items-center gap-2">
+            <Search className="w-5 h-5 text-neon" /> Search results across all tabs
+          </h2>
+          <AssetGrid assets={globalSearchResults} loading={loading} reload={load} allAssets={allAssets} category="Search" />
+        </>
+      ) : category === "Audios" ? (
+        <>
+          {!sub ? (
             <>
               <h2 className="font-display text-lg font-semibold mb-4 flex items-center gap-2">
                 <Music2 className="w-5 h-5 text-neon" /> Choose an Audio Pack
@@ -214,19 +240,17 @@ export default function CategoryPage() {
                   overrides={overrides.creator}
                   kind="creator"
                   onChanged={loadOverrides}
-                  getCount={(cr) => genreFilteredAssets.filter((a) => a.creator_tag === cr).length}
+                  getCount={(cr) => categorySearchFilteredAssets.filter((a) => a.creator_tag === cr).length}
                   onPick={setSub}
                   testIdPrefix="creator"
                 />
               )}
             </>
           ) : (
-            <SubList sub={sub} onBack={() => setSub(null)} backLabel="creators" filtered={filteredAudios} loading={loading} reload={load} allAssets={assets} category={category} />
+            <SubList sub={sub} onBack={() => setSub(null)} backLabel="creators" filtered={filteredAudios} loading={loading} reload={load} allAssets={allAssets} category={category} />
           )}
         </>
-      )}
-
-      {category === "Torrents" && (
+      ) : category === "Torrents" ? (
         <>
           {!torrentBranch && (
             <>
@@ -299,7 +323,7 @@ export default function CategoryPage() {
               filtered={filteredShowAssets.filter((a) => (a.torrent_type || "Show") === "Show")}
               loading={loading}
               reload={load}
-              allAssets={assets}
+              allAssets={allAssets}
               category={category}
             />
           )}
@@ -316,14 +340,12 @@ export default function CategoryPage() {
               <h2 className="font-display text-2xl font-bold mb-4 flex items-center gap-2">
                 <Film className="w-5 h-5 text-neon" /> Movies
               </h2>
-              <AssetGrid assets={movieAssets} loading={loading} reload={load} allAssets={assets} category={category} />
+              <AssetGrid assets={movieAssets} loading={loading} reload={load} allAssets={allAssets} category={category} />
             </>
           )}
         </>
-      )}
-
-      {category !== "Audios" && category !== "Torrents" && (
-        <AssetGrid assets={sortedAssets} loading={loading} reload={load} allAssets={assets} category={category} />
+      ) : (
+        <AssetGrid assets={sortedAssets} loading={loading} reload={load} allAssets={allAssets} category={category} />
       )}
     </section>
   );
@@ -361,23 +383,26 @@ function SortControl({ sortBy, setSortBy }) {
   );
 }
 
-function AudioGenreSearch({ value, onChange, genres }) {
+function AssetSearch({ value, onChange, genres, category }) {
   return (
     <div className="mb-8 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
       <label className="text-xs font-mono uppercase tracking-widest text-zinc-500 flex items-center gap-2 mb-2">
-        <Search className="w-4 h-4" /> Search audios by genre
+        <Search className="w-4 h-4" /> Search all assets
       </label>
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
         <input
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="Try phonk, cinematic, dark, chill..."
+          placeholder={`Search titles, creators, genres, shows...`}
           className="w-full rounded-xl bg-black/30 border border-white/10 py-3 pl-10 pr-4 text-sm text-white placeholder:text-zinc-600 outline-none focus:border-neon/60"
-          data-testid="audio-genre-search"
+          data-testid="asset-global-search"
         />
       </div>
-      {genres.length > 0 && (
+      <p className="mt-2 text-xs text-zinc-500">
+        Searches every tab, including creators like MrBit, Nexlo, and Iusets.
+      </p>
+      {category === "Audios" && genres.length > 0 && (
         <div className="flex flex-wrap gap-2 mt-3">
           {genres.map((genre) => (
             <button
@@ -492,8 +517,8 @@ function EmptyCategoryState({ category }) {
     <div className="relative overflow-hidden text-center py-24 border border-dashed border-white/10 rounded-2xl bg-white/[0.02]">
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-neon/50 to-transparent" />
       <Sparkles className="w-8 h-8 text-neon mx-auto mb-4 opacity-80" />
-      <h3 className="font-display text-2xl mb-2">Nothing here yet</h3>
-      <p className="text-zinc-500 max-w-md mx-auto">No {category?.toLowerCase() || "assets"} have been uploaded here yet. Check back soon — moderators are curating drops.</p>
+      <h3 className="font-display text-2xl mb-2">Nothing found</h3>
+      <p className="text-zinc-500 max-w-md mx-auto">No {category?.toLowerCase() || "assets"} matched this view. Try a title, creator, genre, show, or category name.</p>
     </div>
   );
 }
