@@ -38,6 +38,24 @@ const DASHBOARD_SECTIONS = [
 
 const getStamp = (asset) => new Date(asset.created_at || asset.createdAt || 0).getTime() || 0;
 
+const matchesSearch = (asset, query) => {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  return [
+    asset.title,
+    asset.description,
+    asset.creator_tag,
+    asset.genre,
+    asset.bpm,
+    asset.category,
+    asset.show_group,
+    asset.torrent_type,
+    asset.ae_version,
+  ]
+    .filter(Boolean)
+    .some((value) => String(value).toLowerCase().includes(q));
+};
+
 export default function Home() {
   const [assets, setAssets] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -129,32 +147,16 @@ export default function Home() {
     if (filter === "Torrents" && torrentBranch === "Movies") {
       list = list.filter((a) => a.torrent_type === "Movie");
     }
-    if (query.trim()) {
-      const q = query.toLowerCase();
-      list = list.filter(
-        (a) =>
-          a.title.toLowerCase().includes(q) ||
-          (a.description || "").toLowerCase().includes(q) ||
-          (a.creator_tag || "").toLowerCase().includes(q) ||
-          (a.genre || a.bpm || "").toLowerCase().includes(q)
-      );
-    }
     return list;
-  }, [sortedAssets, filter, sub, torrentBranch, query]);
+  }, [sortedAssets, filter, sub, torrentBranch]);
 
   const searchedAll = useMemo(() => {
     if (!query.trim()) return null;
-    const q = query.toLowerCase();
-    return sortedAssets.filter(
-      (a) =>
-        a.title.toLowerCase().includes(q) ||
-        (a.description || "").toLowerCase().includes(q) ||
-        (a.creator_tag || "").toLowerCase().includes(q) ||
-        (a.genre || a.bpm || "").toLowerCase().includes(q)
-    );
+    return sortedAssets.filter((a) => matchesSearch(a, query));
   }, [sortedAssets, query]);
 
   const isAllTab = filter === "All";
+  const isSearching = Boolean(query.trim());
 
   return (
     <>
@@ -188,26 +190,26 @@ export default function Home() {
             })}
           </div>
           <p className="text-xs font-mono uppercase tracking-widest text-zinc-500">
-            {isAllTab
-              ? `${assets.length} total`
-              : showsPickerForFilter && !sub
-                ? `${assets.filter((a) => a.category === filter).length} items`
-                : `${filteredForFilter.length} assets`}
+            {isSearching
+              ? `${searchedAll?.length || 0} search result${searchedAll?.length === 1 ? "" : "s"}`
+              : isAllTab
+                ? `${assets.length} total`
+                : showsPickerForFilter && !sub
+                  ? `${assets.filter((a) => a.category === filter).length} items`
+                  : `${filteredForFilter.length} assets`}
           </p>
         </div>
 
         {loading ? (
           <AssetSkeletonGrid />
-        ) : isAllTab ? (
-          searchedAll && searchedAll.length >= 0 && query.trim() ? (
-            searchedAll.length === 0 ? (
-              <EmptyState filter={filter} />
-            ) : (
-              <AssetGrid assets={searchedAll} onChanged={load} allAssets={assets} />
-            )
+        ) : isSearching ? (
+          searchedAll.length === 0 ? (
+            <EmptyState filter="Search" />
           ) : (
-            <DashboardView data={dashboardData} totalAssets={assets.length} recentlyAdded={recentlyAdded} allAssets={assets} onChanged={load} />
+            <AssetGrid assets={searchedAll} onChanged={load} allAssets={assets} />
           )
+        ) : isAllTab ? (
+          <DashboardView data={dashboardData} totalAssets={assets.length} recentlyAdded={recentlyAdded} allAssets={assets} onChanged={load} />
         ) : (
           <FilteredView
             filter={filter}
@@ -481,11 +483,13 @@ function EmptyState({ filter }) {
     >
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-neon/50 to-transparent" />
       <Sparkles className="w-8 h-8 text-neon mx-auto mb-4 opacity-80" />
-      <h3 className="font-display text-2xl mb-2">No assets yet</h3>
+      <h3 className="font-display text-2xl mb-2">No assets found</h3>
       <p className="text-zinc-500 max-w-md mx-auto mb-6">
-        {filter === "All"
-          ? "The vault is empty. Moderators can unlock upload access and start dropping packs."
-          : `Nothing under "${filter}" yet. Try another category or check back soon.`}
+        {filter === "Search"
+          ? "No assets matched that search. Try a title, creator, genre, show, or category name."
+          : filter === "All"
+            ? "The vault is empty. Moderators can unlock upload access and start dropping packs."
+            : `Nothing under "${filter}" yet. Try another category or check back soon.`}
       </p>
       <Link
         to="/category/torrents"
