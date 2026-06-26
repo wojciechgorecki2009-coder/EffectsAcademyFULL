@@ -5,10 +5,11 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 const BENEFITS = [
+  "All premium assets included with membership",
   "Unlimited premium asset downloads",
   "New exclusive drops every month",
   "Subscription tied securely to your Google account",
-  "Cancel anytime through Stripe",
+  "Manage or cancel anytime through Stripe",
 ];
 
 const checkoutErrorMessage = (err, fallback) => {
@@ -107,7 +108,7 @@ export default function PremiumPage() {
               </div>
               <h1 className="font-display text-4xl md:text-6xl font-black tracking-tighter mt-6">Unlock the whole vault.</h1>
               <p className="text-zinc-300 mt-5 max-w-xl text-lg leading-relaxed">
-                Premium packs, project files, presets, and curated resources for editors who want more.
+                Premium packs, project files, presets, and curated resources included with your monthly membership.
               </p>
               <div className="mt-8 flex items-end gap-2">
                 <span className="font-display text-5xl font-black">$4.99</span>
@@ -127,7 +128,11 @@ export default function PremiumPage() {
               </div>
             </div>
 
-            <ul className="space-y-4 mt-8 flex-1">
+            <div className="mt-6 rounded-2xl border border-purple-300/20 bg-purple-300/10 px-4 py-3 text-sm text-purple-100 flex items-center gap-2">
+              <Crown className="w-4 h-4 flex-shrink-0" /> Included with membership: every Premium asset on the site.
+            </div>
+
+            <ul className="space-y-4 mt-6 flex-1">
               {BENEFITS.map((benefit) => (
                 <li key={benefit} className="flex items-start gap-3 text-zinc-300">
                   <span className="w-6 h-6 rounded-full bg-emerald-400/10 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -146,6 +151,9 @@ export default function PremiumPage() {
             >
               {busy ? "Opening Stripe..." : hasPremium ? "Manage subscription" : user ? "Subscribe with Stripe" : "Sign in with Google"}
             </button>
+            {!hasPremium && user && (
+              <p className="text-xs text-zinc-500 mt-3 text-center">After subscribing, this button becomes Manage subscription.</p>
+            )}
             {!config.stripe_configured && config.dev_login_enabled && (
               <p className="text-xs text-zinc-500 mt-3 text-center">Local preview mode — no payment will be submitted.</p>
             )}
