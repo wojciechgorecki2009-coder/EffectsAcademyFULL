@@ -6,6 +6,7 @@ import { AuthProvider } from "@/lib/auth";
 import { ThemeProvider } from "@/lib/theme";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
+import PersistentAudioBar from "@/components/PersistentAudioBar";
 import Home from "@/pages/Home";
 import CategoryPage from "@/pages/CategoryPage";
 import DmcaPage from "@/pages/DmcaPage";
@@ -50,6 +51,7 @@ export default function App() {
               </Routes>
             </main>
             <Footer />
+            <PersistentAudioBar />
             <Toaster
               theme="dark"
               position="bottom-right"
