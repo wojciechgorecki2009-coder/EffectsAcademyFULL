@@ -12,7 +12,6 @@
 
 .tilt-card {
   position: relative;
-  isolation: isolate;
   overflow: hidden;
   transform-style: preserve-3d;
   will-change: transform, box-shadow, border-color, filter;
@@ -24,35 +23,9 @@
     filter 260ms ease;
 }
 
-.tilt-card > * {
-  position: relative;
-  z-index: 1;
-}
-
-.tilt-card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0;
-  background:
-    radial-gradient(circle at var(--asset-glow-x, 50%) var(--asset-glow-y, 20%), rgba(99, 102, 241, 0.12), transparent 34%),
-    radial-gradient(circle at 85% 0%, rgba(168, 85, 247, 0.08), transparent 30%);
-  transform: scale(0.98);
-  transition:
-    opacity 320ms cubic-bezier(0.16, 1, 0.3, 1),
-    transform 520ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
 .tilt-card:hover {
-  filter: saturate(1.04);
+  filter: saturate(1.03);
   box-shadow: 0 22px 65px rgba(0, 0, 0, 0.34), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
-}
-
-.tilt-card:hover::before {
-  opacity: 1;
-  transform: scale(1);
 }
 
 .tilt-card img {
@@ -117,7 +90,6 @@
   }
 
   .tilt-card,
-  .tilt-card::before,
   .tilt-card img,
   .tilt-card button,
   .tilt-card a,
