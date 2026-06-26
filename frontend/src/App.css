@@ -1,3 +1,36 @@
 .App {
   min-height: 100vh;
 }
+
+.page-soft-enter {
+  animation: page-soft-enter 420ms ease both;
+}
+
+.tilt-card {
+  will-change: transform;
+}
+
+.tilt-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.10), transparent 38%, rgba(82,87,255,0.10));
+  transition: opacity 220ms ease;
+}
+
+.tilt-card:hover::after {
+  opacity: 1;
+}
+
+@keyframes page-soft-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
