@@ -16,7 +16,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
-import { Upload, ImagePlus, Plus } from "lucide-react";
+import { Upload, ImagePlus, Plus, Files } from "lucide-react";
 import { api, CATEGORIES, AUDIO_CREATORS, SHOWS, FILE_BASE } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -36,6 +36,13 @@ const initial = {
   external_url: "",
   pack_id: "",
 };
+
+const titleFromFilename = (name = "") =>
+  name
+    .replace(/\.[^.]+$/, "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim() || "Untitled asset";
 
 async function compressThumbnail(file) {
   if (!file?.type?.startsWith("image/")) return file;
@@ -97,12 +104,13 @@ function uploadToPresignedUrl(uploadUrl, file, contentType, onProgress) {
 }
 
 export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
-  const [form, setForm] = useState(editing || initial);
+  const [form, setForm] = useState(editing ? { ...initial, ...editing, genre: editing.genre || editing.bpm || "", bpm: "" } : initial);
   const [packs, setPacks] = useState([]);
   const [newPackOpen, setNewPackOpen] = useState(false);
   const [newPackName, setNewPackName] = useState("");
   const [uploadingField, setUploadingField] = useState("");
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [bulkProgress, setBulkProgress] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [knownCreators, setKnownCreators] = useState([]);
   const [knownShows, setKnownShows] = useState([]);
@@ -143,27 +151,30 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
     return data;
   };
 
+  const uploadAssetFile = async (file, onProgress) => {
+    try {
+      const { data: presign } = await api.post("/uploads/presign", {
+        filename: file.name,
+        content_type: file.type || "application/octet-stream",
+        size: file.size,
+      });
+      await uploadToPresignedUrl(
+        presign.upload_url,
+        file,
+        presign.content_type,
+        onProgress
+      );
+      return presign;
+    } catch (directError) {
+      return uploadViaBackend(file, onProgress);
+    }
+  };
+
   const uploadFile = async (file, field) => {
     setUploadingField(field);
     setUploadProgress(0);
     try {
-      let data;
-      try {
-        const { data: presign } = await api.post("/uploads/presign", {
-          filename: file.name,
-          content_type: file.type || "application/octet-stream",
-          size: file.size,
-        });
-        await uploadToPresignedUrl(
-          presign.upload_url,
-          file,
-          presign.content_type,
-          setUploadProgress
-        );
-        data = presign;
-      } catch (directError) {
-        data = await uploadViaBackend(file, setUploadProgress);
-      }
+      const data = await uploadAssetFile(file, setUploadProgress);
 
       setForm((f) => ({
         ...f,
@@ -183,6 +194,44 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
   const uploadThumbnail = async (file) => {
     const compressed = await compressThumbnail(file);
     await uploadFile(compressed, "thumbnail_url");
+  };
+
+  const bulkUploadFiles = async (files) => {
+    if (editing) return;
+    if (!files.length) return;
+    setUploadingField("bulk_file_url");
+    setSubmitting(true);
+    let completed = 0;
+    try {
+      for (const file of files) {
+        setBulkProgress(`${completed + 1}/${files.length}: ${file.name}`);
+        setUploadProgress(0);
+        const data = await uploadAssetFile(file, setUploadProgress);
+        const payload = {
+          ...form,
+          title: files.length === 1 && form.title.trim() ? form.title.trim() : titleFromFilename(file.name),
+          file_url: data.url,
+          original_filename: data.original_filename || file.name,
+          external_url: "",
+          bpm: "",
+          genre: form.genre || form.bpm || "",
+        };
+        await api.post("/assets", payload);
+        completed += 1;
+      }
+      toast.success(`Bulk uploaded ${completed} asset${completed === 1 ? "" : "s"}.`);
+      onSaved?.();
+      onOpenChange(false);
+      setForm(initial);
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || `Bulk upload stopped after ${completed} file${completed === 1 ? "" : "s"}.`);
+      onSaved?.();
+    } finally {
+      setUploadingField("");
+      setUploadProgress(0);
+      setBulkProgress("");
+      setSubmitting(false);
+    }
   };
 
   const handleThumbnailPaste = async (e) => {
@@ -220,11 +269,12 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
       return toast.error("Provide a file upload or external link.");
     setSubmitting(true);
     try {
+      const payload = { ...form, bpm: "", genre: form.genre || form.bpm || "" };
       if (editing?.id) {
-        await api.patch(`/assets/${editing.id}`, form);
+        await api.patch(`/assets/${editing.id}`, payload);
         toast.success("Asset updated.");
       } else {
-        await api.post("/assets", form);
+        await api.post("/assets", payload);
         toast.success("Asset published.");
       }
       onSaved?.();
@@ -265,7 +315,7 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
             {editing ? "Edit Asset" : "Upload Asset"}
           </DialogTitle>
           <DialogDescription className="text-zinc-400">
-            Pick a category, drop a thumbnail, and add a file or external link.
+            Pick a category, drop a thumbnail, and add one file or bulk upload a batch.
           </DialogDescription>
         </DialogHeader>
 
@@ -278,6 +328,7 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
               <Input
                 value={form.title}
                 onChange={(e) => set("title", e.target.value)}
+                placeholder="For bulk uploads, filenames become titles automatically"
                 className="bg-white/5 border-white/10 mt-1"
                 data-testid="upload-title-input"
               />
@@ -395,12 +446,14 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
                 </div>
                 <div>
                   <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">
-                    BPM / Genre
+                    Genre
                   </label>
                   <Input
-                    value={form.bpm}
-                    onChange={(e) => set("bpm", e.target.value)}
+                    value={form.genre || form.bpm || ""}
+                    onChange={(e) => set("genre", e.target.value)}
+                    placeholder="e.g. phonk, cinematic, dark"
                     className="bg-white/5 border-white/10 mt-1"
+                    data-testid="upload-genre-input"
                   />
                 </div>
               </>
@@ -584,6 +637,28 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
                 />
               </div>
             </div>
+
+            {!editing && (
+              <div className="col-span-2 rounded-xl border border-neon/20 bg-neon/5 p-4">
+                <label className="text-xs font-mono uppercase tracking-widest text-zinc-400">
+                  Bulk Upload
+                </label>
+                <label className="mt-2 flex items-center justify-center gap-2 min-h-12 cursor-pointer bg-black/20 border border-dashed border-neon/30 rounded-lg hover:bg-neon/10 btn-press text-sm text-zinc-200">
+                  <Files className="w-4 h-4" />
+                  {uploadingField === "bulk_file_url" ? `Uploading ${bulkProgress || "batch"}${uploadProgress ? ` (${uploadProgress}%)` : ""}` : "Choose multiple files to publish as separate assets"}
+                  <input
+                    type="file"
+                    multiple
+                    hidden
+                    disabled={Boolean(uploadingField)}
+                    onChange={(e) => bulkUploadFiles(Array.from(e.target.files || []))}
+                  />
+                </label>
+                <p className="mt-2 text-xs text-zinc-500">
+                  Uses the category, creator, genre, pack, description, and thumbnail above. Each file gets its own asset title from the filename.
+                </p>
+              </div>
+            )}
           </div>
 
           <Button
