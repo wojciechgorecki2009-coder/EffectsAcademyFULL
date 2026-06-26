@@ -229,7 +229,6 @@ export default function AudioPlayer({ src, title, onDownload }) {
         </button>
       </div>
       <div className="mt-2 flex items-center justify-between gap-3 text-[10px] font-mono text-zinc-500 tabular-nums leading-none">
-        <span className="whitespace-nowrap">{loadingAudio ? "Loading..." : fmt(progress)}</span>
         <div className="flex items-center gap-2 min-w-0">
           <button
             onClick={() => setMuted((v) => !v)}
@@ -249,12 +248,16 @@ export default function AudioPlayer({ src, title, onDownload }) {
               setVolume(v);
               if (v > 0) setMuted(false);
             }}
-            className="audio-slider audio-slider-volume w-14 max-w-[56px]"
+            className="audio-slider audio-slider-volume w-16 max-w-[64px]"
             style={{ "--pct": `${(muted ? 0 : volume) * 100}%` }}
             data-testid="audio-volume-slider"
           />
         </div>
-        <span className="whitespace-nowrap">{fmt(duration)}</span>
+        <div className="flex items-center gap-1.5 whitespace-nowrap">
+          <span>{loadingAudio ? "Loading..." : fmt(progress)}</span>
+          <span className="text-zinc-700">/</span>
+          <span>{fmt(duration)}</span>
+        </div>
       </div>
       <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between gap-3">
         <span className="text-[10px] uppercase tracking-wider text-zinc-500">Download slowed</span>
