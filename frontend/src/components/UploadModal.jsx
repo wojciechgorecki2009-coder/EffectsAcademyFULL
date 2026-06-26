@@ -20,6 +20,8 @@ import { Upload, ImagePlus, Plus, Files } from "lucide-react";
 import { api, CATEGORIES, AUDIO_CREATORS, SHOWS, FILE_BASE } from "@/lib/api";
 import { toast } from "sonner";
 
+const THUMBNAIL_ACCEPT = "image/*,video/mp4,video/webm,video/quicktime,video/x-m4v";
+
 const initial = {
   title: "",
   description: "",
@@ -44,8 +46,11 @@ const titleFromFilename = (name = "") =>
     .replace(/\s+/g, " ")
     .trim() || "Untitled asset";
 
+const isVideoPreview = (url = "") => /\.(mp4|webm|mov|m4v)(?:[?#]|$)/i.test(url);
+
 async function compressThumbnail(file) {
   if (!file?.type?.startsWith("image/")) return file;
+  if (file.type === "image/gif") return file;
 
   const imageUrl = URL.createObjectURL(file);
 
@@ -236,7 +241,7 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
 
   const handleThumbnailPaste = async (e) => {
     const file = Array.from(e.clipboardData?.files || []).find((f) =>
-      f.type.startsWith("image/")
+      f.type.startsWith("image/") || f.type.startsWith("video/")
     );
 
     if (!file) return;
@@ -289,6 +294,9 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
   const isAudio = form.category === "Audios";
   const isPF = form.category === "Project Files";
   const isTorrent = form.category === "Torrents";
+  const thumbnailPreviewSrc = form.thumbnail_url
+    ? form.thumbnail_url.startsWith("http") ? form.thumbnail_url : `${FILE_BASE}${form.thumbnail_url}`
+    : "";
 
   const uploadLabel = (field, ready) => {
     if (uploadingField !== field) return ready ? "File ready ✓" : "Click to upload";
@@ -534,13 +542,13 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
 
             <div className="col-span-2" onPaste={handleThumbnailPaste}>
               <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">
-                Thumbnail URL
+                Thumbnail / Preview URL
               </label>
               <div className="flex gap-2 mt-1">
                 <Input
                   value={form.thumbnail_url}
                   onChange={(e) => set("thumbnail_url", e.target.value)}
-                  placeholder="https://... or upload"
+                  placeholder="https://... or upload image, GIF, MP4"
                   className="bg-white/5 border-white/10"
                   data-testid="upload-thumbnail-url"
                 />
@@ -548,7 +556,7 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
                   <ImagePlus className="w-4 h-4" />
                   <input
                     type="file"
-                    accept="image/*"
+                    accept={THUMBNAIL_ACCEPT}
                     hidden
                     onChange={(e) =>
                       e.target.files?.[0] &&
@@ -559,18 +567,30 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
               </div>
               {uploadingField === "thumbnail_url" && (
                 <p className="mt-1 text-xs text-zinc-400">
-                  {uploadProgress ? `Uploading thumbnail ${uploadProgress}%...` : "Preparing thumbnail upload..."}
+                  {uploadProgress ? `Uploading preview ${uploadProgress}%...` : "Preparing preview upload..."}
                 </p>
               )}
               <p className="mt-1 text-xs text-zinc-500">
-                Tip: after using Snipping Tool, click the thumbnail field and press Ctrl+V to paste a compressed thumbnail.
+                Supports JPG/PNG, animated GIF, and MP4/WebM previews. Snipping Tool paste still works for images.
               </p>
-              {form.thumbnail_url && (
-                <img
-                  src={form.thumbnail_url.startsWith("http") ? form.thumbnail_url : `${FILE_BASE}${form.thumbnail_url}`}
-                  alt=""
-                  className="mt-2 w-full max-h-44 object-cover rounded-lg border border-white/10"
-                />
+              {thumbnailPreviewSrc && (
+                isVideoPreview(thumbnailPreviewSrc) ? (
+                  <video
+                    src={thumbnailPreviewSrc}
+                    className="mt-2 w-full max-h-44 object-cover rounded-lg border border-white/10 bg-black/40"
+                    muted
+                    loop
+                    playsInline
+                    autoPlay
+                    controls
+                  />
+                ) : (
+                  <img
+                    src={thumbnailPreviewSrc}
+                    alt=""
+                    className="mt-2 w-full max-h-44 object-cover rounded-lg border border-white/10"
+                  />
+                )
               )}
             </div>
 
