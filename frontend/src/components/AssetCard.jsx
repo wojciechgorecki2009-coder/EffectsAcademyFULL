@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Crown, Copy, Download, ImageIcon, Link as LinkIcon, LockKeyhole, Pencil, Trash2 } from "lucide-react";
+import { Crown, Copy, Download, ImageIcon, Link as LinkIcon, LockKeyhole, Pencil, Sparkles, Trash2 } from "lucide-react";
 import { CATEGORY_COLORS, api, buildFileUrl, buildDownloadUrl, deriveDownloadFilename, getAuthToken, getPass } from "@/lib/api";
 import { useUploadAccess } from "@/lib/uploadAccess";
 import { useAuth } from "@/lib/auth";
@@ -15,6 +15,14 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
+const isRecentlyAdded = (asset) => {
+  const stamp = asset.created_at || asset.createdAt || asset.updated_at;
+  if (!stamp) return false;
+  const created = new Date(stamp).getTime();
+  if (!Number.isFinite(created)) return false;
+  return Date.now() - created < 7 * 24 * 60 * 60 * 1000;
+};
+
 export default function AssetCard({ asset, onChanged, allAssets = [] }) {
   const { isUploader } = useUploadAccess();
   const { hasPremium } = useAuth();
@@ -23,9 +31,11 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
   const [editOpen, setEditOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const color = CATEGORY_COLORS[asset.category] || CATEGORY_COLORS.Overlays;
   const isAudio = asset.category === "Audios" || asset.category === "Sound FX";
   const isPremium = asset.category === "Premium";
+  const isNew = isRecentlyAdded(asset);
   const isLockedPremium = isPremium && !isUploader && !hasPremium;
   const thumbnailSrc = asset.thumbnail_url
     ? buildFileUrl(asset.thumbnail_url, isPremium && hasPremium ? getAuthToken() : "", isPremium && isUploader ? getPass() : "")
@@ -75,23 +85,29 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
   };
 
   const download = async () => {
+    setDownloading(true);
+    toast.success("Starting download...");
     try {
-      await api.post(`/assets/${asset.id}/download`);
-    } catch {}
-    if (asset.file_url) {
-      const fname = deriveDownloadFilename(asset);
-      const a = document.createElement("a");
-      a.href = buildDownloadUrl(asset.file_url, fname);
-      a.download = fname;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-    } else if (asset.external_url) {
-      window.open(asset.external_url, "_blank", "noopener");
-    } else {
-      toast.error("No download available.");
+      try {
+        await api.post(`/assets/${asset.id}/download`);
+      } catch {}
+      if (asset.file_url) {
+        const fname = deriveDownloadFilename(asset);
+        const a = document.createElement("a");
+        a.href = buildDownloadUrl(asset.file_url, fname);
+        a.download = fname;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      } else if (asset.external_url) {
+        window.open(asset.external_url, "_blank", "noopener");
+      } else {
+        toast.error("No download available.");
+      }
+      onChanged?.();
+    } finally {
+      setTimeout(() => setDownloading(false), 700);
     }
-    onChanged?.();
   };
 
   const duplicate = async (event) => {
@@ -154,10 +170,11 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
         role={isLockedPremium ? "button" : undefined}
         tabIndex={isLockedPremium ? 0 : undefined}
         onKeyDown={isLockedPremium ? (e) => { if (e.key === "Enter" || e.key === " ") openPremium(e); } : undefined}
-        className={`tilt-card group rounded-2xl overflow-hidden bg-[var(--site-surface)] backdrop-blur-xl border border-white/5 hover:border-white/15 transition-colors fade-in ${isLockedPremium ? "cursor-pointer" : ""}`}
+        className={`tilt-card group rounded-2xl overflow-hidden bg-[var(--site-surface)] backdrop-blur-xl border transition-all duration-300 fade-in ${isPremium ? "border-purple-300/20 shadow-[0_0_32px_rgba(168,85,247,0.13)] hover:border-purple-300/40" : "border-white/5 hover:border-white/15 hover:shadow-[0_18px_50px_rgba(0,0,0,0.28)]"} ${isLockedPremium ? "cursor-pointer" : ""}`}
         data-testid={`asset-card-${asset.id}`}
       >
         <div className="aspect-video w-full bg-black/40 overflow-hidden relative">
+          {isPremium && <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-br from-purple-400/10 via-transparent to-transparent opacity-80" />}
           {thumbnailSrc ? (
             <button
               type="button"
@@ -177,11 +194,18 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
               No preview
             </div>
           )}
-          {isPremium && (
-            <div className="absolute top-3 left-3 bg-purple-500/90 text-white text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-lg shadow-purple-950/40">
-              <Crown className="w-3 h-3" /> PREMIUM
-            </div>
-          )}
+          <div className="absolute top-3 left-3 z-[2] flex flex-wrap gap-2">
+            {isPremium && (
+              <div className="bg-purple-500/90 text-white text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-lg shadow-purple-950/40">
+                <Crown className="w-3 h-3" /> PREMIUM
+              </div>
+            )}
+            {isNew && (
+              <div className="bg-emerald-400/90 text-black text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-1 shadow-lg shadow-emerald-950/30">
+                <Sparkles className="w-3 h-3" /> NEW
+              </div>
+            )}
+          </div>
           {asset.external_url && !asset.file_url && (
             <div className="absolute top-3 right-3 bg-black/60 text-[10px] font-mono px-2 py-1 rounded-full flex items-center gap-1 text-white border border-white/10">
               <LinkIcon className="w-3 h-3" />
@@ -243,6 +267,7 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
               src={fileSrc}
               title={asset.title}
               onDownload={async () => {
+                toast.success("Starting download...");
                 try {
                   await api.post(`/assets/${asset.id}/download`);
                   onChanged?.();
@@ -254,11 +279,12 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
           <div className="flex gap-2 pt-1">
             <button
               onClick={isLockedPremium ? openPremium : download}
-              className={`flex-1 ${isLockedPremium ? "bg-purple-500 hover:bg-purple-400" : "bg-neon hover:bg-neon/90"} text-white font-semibold rounded-lg py-2.5 text-sm flex items-center justify-center gap-2 btn-press`}
+              disabled={downloading}
+              className={`flex-1 ${isLockedPremium ? "bg-purple-500 hover:bg-purple-400" : "bg-neon hover:bg-neon/90"} text-white font-semibold rounded-lg py-2.5 text-sm flex items-center justify-center gap-2 btn-press disabled:opacity-70`}
               data-testid={`download-btn-${asset.id}`}
             >
               {isLockedPremium ? <LockKeyhole className="w-4 h-4" /> : <Download className="w-4 h-4" />}
-              {isLockedPremium ? "Unlock Premium" : "Download"}
+              {isLockedPremium ? "Unlock Premium" : downloading ? "Downloading..." : "Download"}
             </button>
             {isUploader && (
               <>
