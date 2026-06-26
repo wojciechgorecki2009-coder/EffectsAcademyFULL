@@ -574,39 +574,6 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
               )}
             </div>
 
-            {isAudio && (
-              <div className="col-span-2">
-                <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">
-                  Audio Preview (mp3/wav)
-                </label>
-                <div className="flex gap-2 mt-1">
-                  <Input
-                    value={form.audio_preview_url}
-                    onChange={(e) => set("audio_preview_url", e.target.value)}
-                    placeholder="Optional direct audio file"
-                    className="bg-white/5 border-white/10"
-                  />
-                  <label className="cursor-pointer bg-white/5 border border-white/10 px-3 rounded-md flex items-center hover:bg-white/10 btn-press">
-                    <Upload className="w-4 h-4" />
-                    <input
-                      type="file"
-                      accept="audio/*"
-                      hidden
-                      onChange={(e) =>
-                        e.target.files?.[0] &&
-                        uploadFile(e.target.files[0], "audio_preview_url")
-                      }
-                    />
-                  </label>
-                </div>
-                {uploadingField === "audio_preview_url" && (
-                  <p className="mt-1 text-xs text-zinc-400">
-                    {uploadProgress ? `Uploading preview ${uploadProgress}%...` : "Preparing preview upload..."}
-                  </p>
-                )}
-              </div>
-            )}
-
             <div className="col-span-2 grid grid-cols-2 gap-3 mt-2 pt-3 border-t border-white/5">
               <div>
                 <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">
