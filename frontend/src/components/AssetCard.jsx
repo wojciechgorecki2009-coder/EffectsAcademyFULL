@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Crown, Copy, Download, ImageIcon, Link as LinkIcon, LockKeyhole, Pencil, Sparkles, Trash2 } from "lucide-react";
 import { CATEGORY_COLORS, api, buildFileUrl, buildDownloadUrl, deriveDownloadFilename, getAuthToken, getPass } from "@/lib/api";
@@ -50,6 +50,31 @@ function PreviewMedia({ src, title, className = "", videoClassName = "", imageCl
   );
 }
 
+async function downloadUrlWithoutLeavingPage(url, filename) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error("Download request failed");
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = objectUrl;
+    link.download = filename || "download";
+    link.rel = "noopener";
+    link.style.display = "none";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
+  } catch (error) {
+    const iframe = document.createElement("iframe");
+    iframe.src = url;
+    iframe.title = "Download";
+    iframe.style.display = "none";
+    document.body.appendChild(iframe);
+    setTimeout(() => iframe.remove(), 60000);
+  }
+}
+
 export default function AssetCard({ asset, onChanged, allAssets = [] }) {
   const { isUploader } = useUploadAccess();
   const { hasPremium } = useAuth();
@@ -59,6 +84,7 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [downloadCount, setDownloadCount] = useState(asset.download_count || 0);
   const color = CATEGORY_COLORS[asset.category] || CATEGORY_COLORS.Overlays;
   const isAudio = asset.category === "Audios" || asset.category === "Sound FX";
   const isPremium = asset.category === "Premium";
@@ -72,6 +98,10 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
     : "";
   const displayGenre = asset.genre || (isAudio ? asset.bpm : "");
   const thumbnailIsVideo = isVideoPreview(thumbnailSrc);
+
+  useEffect(() => {
+    setDownloadCount(asset.download_count || 0);
+  }, [asset.download_count]);
 
   const relatedAssets = useMemo(() => {
     if (!allAssets?.length) return [];
@@ -101,6 +131,11 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
     navigate(`/premium?asset=${encodeURIComponent(asset.id)}`);
   };
 
+  const recordDownload = () => {
+    api.post(`/assets/${asset.id}/download`).catch(() => {});
+    setDownloadCount((count) => count + 1);
+  };
+
   const onMove = (e) => {
     if (!ref.current) return;
     const r = ref.current.getBoundingClientRect();
@@ -123,23 +158,16 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
     setDownloading(true);
     toast.success("Starting download...");
     try {
-      try {
-        await api.post(`/assets/${asset.id}/download`);
-      } catch {}
       if (asset.file_url) {
         const fname = deriveDownloadFilename(asset);
-        const a = document.createElement("a");
-        a.href = buildDownloadUrl(asset.file_url, fname);
-        a.download = fname;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
+        await downloadUrlWithoutLeavingPage(buildDownloadUrl(asset.file_url, fname), fname);
+        recordDownload();
       } else if (asset.external_url) {
         window.open(asset.external_url, "_blank", "noopener");
+        recordDownload();
       } else {
         toast.error("No download available.");
       }
-      onChanged?.();
     } finally {
       setTimeout(() => setDownloading(false), 700);
     }
@@ -271,7 +299,7 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
             </span>
             <div className="flex items-center gap-1.5 text-xs text-zinc-500 font-mono">
               <Download className="w-3.5 h-3.5" />
-              {asset.download_count}
+              {downloadCount}
             </div>
           </div>
 
@@ -308,16 +336,14 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
               title={asset.title}
               onDownload={async () => {
                 toast.success("Starting download...");
-                try {
-                  await api.post(`/assets/${asset.id}/download`);
-                  onChanged?.();
-                } catch {}
+                recordDownload();
               }}
             />
           )}
 
           <div className="flex gap-2 pt-1">
             <button
+              type="button"
               onClick={isLockedPremium ? openPremium : download}
               disabled={downloading}
               className={`flex-1 ${isLockedPremium ? "bg-purple-500 hover:bg-purple-400" : "bg-neon hover:bg-neon/90"} text-white font-semibold rounded-lg py-2.5 text-sm flex items-center justify-center gap-2 btn-press disabled:opacity-70`}
@@ -329,6 +355,7 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
             {isUploader && (
               <>
                 <button
+                  type="button"
                   onClick={duplicate}
                   disabled={duplicating}
                   className="bg-white/5 hover:bg-white/10 border border-white/10 px-3 rounded-lg btn-press text-zinc-300 disabled:opacity-50"
@@ -338,6 +365,7 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
                   <Copy className="w-4 h-4" />
                 </button>
                 <button
+                  type="button"
                   onClick={() => setEditOpen(true)}
                   className="bg-white/5 hover:bg-white/10 border border-white/10 px-3 rounded-lg btn-press text-zinc-300"
                   data-testid={`edit-btn-${asset.id}`}
@@ -346,6 +374,7 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
                   <Pencil className="w-4 h-4" />
                 </button>
                 <button
+                  type="button"
                   onClick={remove}
                   className="bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 px-3 rounded-lg btn-press text-red-400"
                   data-testid={`delete-btn-${asset.id}`}
