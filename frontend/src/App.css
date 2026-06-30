@@ -17,47 +17,45 @@
   transform-origin: center center;
   will-change: transform, box-shadow, border-color, filter;
   transition:
-    transform 340ms cubic-bezier(0.2, 1.35, 0.32, 1),
-    box-shadow 320ms cubic-bezier(0.16, 1, 0.3, 1),
-    border-color 260ms ease,
-    background-color 260ms ease,
-    filter 260ms ease;
+    transform 560ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 420ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 320ms ease,
+    background-color 320ms ease,
+    filter 320ms ease;
 }
 
 .tilt-card:hover {
-  animation: asset-container-bounce 620ms cubic-bezier(0.2, 1.35, 0.32, 1) both;
-  filter: saturate(1.06) brightness(1.02);
+  transform: translateY(-7px) scale(1.018);
+  filter: saturate(1.04) brightness(1.015);
   box-shadow:
-    0 28px 75px rgba(0, 0, 0, 0.42),
-    0 0 0 1px rgba(255, 255, 255, 0.07) inset,
-    0 0 38px rgba(82, 82, 255, 0.08);
+    0 24px 68px rgba(0, 0, 0, 0.38),
+    0 0 0 1px rgba(255, 255, 255, 0.065) inset,
+    0 0 32px rgba(82, 82, 255, 0.07);
 }
 
 .tilt-card:active {
-  animation: none;
-  transition-duration: 120ms;
-  transform: translateY(-3px) scale(0.99);
+  transform: translateY(-7px) scale(1.018);
 }
 
 .tilt-card img,
 .tilt-card video {
   transition:
-    transform 760ms cubic-bezier(0.16, 1, 0.3, 1),
-    filter 420ms ease,
-    opacity 280ms ease;
+    transform 860ms cubic-bezier(0.16, 1, 0.3, 1),
+    filter 520ms ease,
+    opacity 320ms ease;
   will-change: transform, filter;
 }
 
 .tilt-card:hover img,
 .tilt-card:hover video {
-  transform: scale(1.085);
-  filter: contrast(1.05) saturate(1.1) brightness(1.04);
+  transform: scale(1.065);
+  filter: contrast(1.04) saturate(1.08) brightness(1.025);
 }
 
 .tilt-card button,
 .tilt-card a {
   transition:
-    transform 190ms cubic-bezier(0.2, 1.35, 0.32, 1),
+    transform 220ms cubic-bezier(0.2, 1.15, 0.32, 1),
     border-color 220ms ease,
     background-color 220ms ease,
     color 220ms ease,
@@ -67,28 +65,28 @@
 
 .tilt-card button:hover,
 .tilt-card a:hover {
-  transform: translateY(-2px) scale(1.015);
+  transform: translateY(-1px) scale(1.01);
 }
 
 .tilt-card button:active,
 .tilt-card a:active {
-  transform: translateY(1px) scale(0.97);
+  transform: translateY(1px) scale(0.98);
 }
 
 .btn-press {
   transition:
-    transform 170ms cubic-bezier(0.2, 1.35, 0.32, 1),
+    transform 190ms cubic-bezier(0.2, 1.15, 0.32, 1),
     filter 180ms ease,
     box-shadow 220ms ease;
 }
 
 .btn-press:hover {
-  filter: brightness(1.08);
-  box-shadow: 0 10px 28px rgba(82, 82, 255, 0.12);
+  filter: brightness(1.06);
+  box-shadow: 0 10px 28px rgba(82, 82, 255, 0.1);
 }
 
 .btn-press:active {
-  transform: translateY(1px) scale(0.965);
+  transform: translateY(1px) scale(0.972);
 }
 
 @keyframes page-soft-enter {
@@ -122,25 +120,9 @@
   }
 }
 
-@keyframes asset-container-bounce {
-  0% {
-    transform: translateY(0) scale(1);
-  }
-  38% {
-    transform: translateY(-11px) scale(1.035);
-  }
-  62% {
-    transform: translateY(-7px) scale(1.025);
-  }
-  100% {
-    transform: translateY(-9px) scale(1.03);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .page-soft-enter,
-  .fade-in,
-  .tilt-card:hover {
+  .fade-in {
     animation: none !important;
   }
 
@@ -154,6 +136,7 @@
   }
 
   .tilt-card:hover,
+  .tilt-card:active,
   .tilt-card:hover img,
   .tilt-card:hover video,
   .tilt-card button:hover,
