@@ -1080,6 +1080,7 @@ async def ai_image_usage(request: Request):
 async def edit_ai_image(
     request: Request,
     image: UploadFile = File(...),
+    mask: Optional[UploadFile] = File(None),
     replacement_text: str = Form(...),
     style_notes: str = Form(""),
 ):
@@ -1105,6 +1106,16 @@ async def edit_ai_image(
     if len(image_bytes) > AI_IMAGE_MAX_BYTES:
         raise HTTPException(status_code=413, detail=f"Image must be under {AI_IMAGE_MAX_BYTES // (1024 * 1024)}MB")
 
+    mask_bytes = None
+    mask_content_type = None
+    if mask:
+        mask_content_type = (mask.content_type or "").lower()
+        if mask_content_type not in allowed_types:
+            raise HTTPException(status_code=400, detail="Mask must be a PNG, JPG, JPEG, or WEBP image")
+        mask_bytes = await mask.read(AI_IMAGE_MAX_BYTES + 1)
+        if len(mask_bytes) > AI_IMAGE_MAX_BYTES:
+            raise HTTPException(status_code=413, detail=f"Mask must be under {AI_IMAGE_MAX_BYTES // (1024 * 1024)}MB")
+
     replacement_text = replacement_text.strip()
     style_notes = style_notes.strip()
     if not replacement_text:
@@ -1125,8 +1136,20 @@ async def edit_ai_image(
     )
     if style_notes:
         prompt += f"\nAdditional style instructions: {style_notes}"
+    if mask_bytes:
+        prompt += "\nOnly regenerate the masked white area. Keep every unmasked black area unchanged."
 
     def call_openai_image_edit():
+        files = {
+            "image": (
+                Path(image.filename or "image.png").name,
+                image_bytes,
+                content_type,
+            )
+        }
+        if mask_bytes:
+            files["mask"] = ("mask.png", mask_bytes, mask_content_type or "image/png")
+
         response = requests.post(
             "https://api.openai.com/v1/images/edits",
             headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
@@ -1135,13 +1158,7 @@ async def edit_ai_image(
                 "prompt": prompt,
                 "size": "1024x1024",
             },
-            files={
-                "image": (
-                    Path(image.filename or "image.png").name,
-                    image_bytes,
-                    content_type,
-                )
-            },
+            files=files,
             timeout=120,
         )
         try:
@@ -1157,23 +1174,30 @@ async def edit_ai_image(
             raise HTTPException(status_code=502, detail="OpenAI did not return an edited image")
 
     def call_recraft_image_edit():
+        endpoint = "https://external.api.recraft.ai/v1/images/inpaint" if mask_bytes else "https://external.api.recraft.ai/v1/images/imageToImage"
+        data = {
+            "prompt": prompt,
+            "model": RECRAFT_IMAGE_MODEL,
+            "n": "1",
+            "response_format": "b64_json",
+        }
+        files = {
+            "image": (
+                Path(image.filename or "image.png").name,
+                image_bytes,
+                content_type,
+            )
+        }
+        if mask_bytes:
+            files["mask"] = ("mask.png", mask_bytes, mask_content_type or "image/png")
+        else:
+            data["strength"] = str(max(0.0, min(RECRAFT_IMAGE_STRENGTH, 1.0)))
+
         response = requests.post(
-            "https://external.api.recraft.ai/v1/images/imageToImage",
+            endpoint,
             headers={"Authorization": f"Bearer {RECRAFT_API_KEY}"},
-            data={
-                "prompt": prompt,
-                "strength": str(max(0.0, min(RECRAFT_IMAGE_STRENGTH, 1.0))),
-                "model": RECRAFT_IMAGE_MODEL,
-                "n": "1",
-                "response_format": "b64_json",
-            },
-            files={
-                "image": (
-                    Path(image.filename or "image.png").name,
-                    image_bytes,
-                    content_type,
-                )
-            },
+            data=data,
+            files=files,
             timeout=180,
         )
         try:
