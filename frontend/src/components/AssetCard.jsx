@@ -141,17 +141,13 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
     const r = ref.current.getBoundingClientRect();
     const pointerX = (e.clientX - r.left) / r.width;
     const pointerY = (e.clientY - r.top) / r.height;
-    const x = pointerX - 0.5;
-    const y = pointerY - 0.5;
     ref.current.style.setProperty("--asset-glow-x", `${Math.round(pointerX * 100)}%`);
     ref.current.style.setProperty("--asset-glow-y", `${Math.round(pointerY * 100)}%`);
-    ref.current.style.transform = `perspective(1000px) rotateY(${x * 7}deg) rotateX(${-y * 7}deg) translateY(-8px) scale(1.035)`;
   };
   const onLeave = () => {
     if (!ref.current) return;
     ref.current.style.setProperty("--asset-glow-x", "50%");
     ref.current.style.setProperty("--asset-glow-y", "18%");
-    ref.current.style.transform = "perspective(1000px) rotateY(0) rotateX(0) translateY(0) scale(1)";
   };
 
   const download = async () => {
