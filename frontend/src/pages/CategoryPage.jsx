@@ -517,8 +517,10 @@ function EmptyCategoryState({ category }) {
     <div className="relative overflow-hidden text-center py-24 border border-dashed border-white/10 rounded-2xl bg-white/[0.02]">
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-neon/50 to-transparent" />
       <Sparkles className="w-8 h-8 text-neon mx-auto mb-4 opacity-80" />
-      <h3 className="font-display text-2xl mb-2">Nothing found</h3>
-      <p className="text-zinc-500 max-w-md mx-auto">No {category?.toLowerCase() || "assets"} matched this view. Try a title, creator, genre, show, or category name.</p>
+      <h3 className="font-display text-2xl mb-2">No assets found</h3>
+      <p className="text-zinc-500 max-w-md mx-auto">
+        No {category?.toLowerCase() || "assets"} matched this view. Try another creator or category, or search by title, genre, show, or uploader.
+      </p>
     </div>
   );
 }
