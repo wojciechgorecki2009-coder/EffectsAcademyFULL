@@ -4,7 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
-import { Shield, CheckCircle2, Mail } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Mail, Shield } from "lucide-react";
 
 const DMCA_EMAIL = "EffectsAcademy2026@hotmail.com";
 
@@ -33,73 +33,56 @@ export default function DmcaPage() {
   };
 
   return (
-    <section className="max-w-3xl mx-auto px-6 pt-28 pb-16" data-testid="dmca-page">
-      <div className="w-12 h-12 rounded-xl bg-neon/10 border border-neon/30 flex items-center justify-center mb-4">
-        <Shield className="w-5 h-5 text-neon" />
+    <section className="max-w-4xl mx-auto px-6 pt-28 pb-16 page-soft-enter" data-testid="dmca-page">
+      <div className="rounded-3xl border border-white/10 bg-white/[0.025] p-6 md:p-10 mb-8 relative overflow-hidden">
+        <div className="absolute -top-32 right-0 w-80 h-80 bg-neon/10 blur-3xl rounded-full pointer-events-none" />
+        <div className="relative">
+          <div className="w-12 h-12 rounded-xl bg-neon/10 border border-neon/30 flex items-center justify-center mb-4">
+            <Shield className="w-5 h-5 text-neon" />
+          </div>
+          <p className="text-xs font-mono uppercase tracking-[0.28em] text-neon mb-3">Copyright support</p>
+          <h1 className="font-display text-4xl md:text-5xl font-black tracking-tighter mb-3">
+            DMCA Removal Requests
+          </h1>
+          <p className="text-zinc-400 leading-relaxed max-w-3xl">
+            Effects Academy respects intellectual property rights. If you are a rights holder or authorized representative and believe an asset should be removed, submit the notice below or email us directly at{" "}
+            <a className="text-zinc-200 hover:text-neon font-mono text-sm" href={`mailto:${DMCA_EMAIL}`}>{DMCA_EMAIL}</a>.
+          </p>
+        </div>
       </div>
-      <h1 className="font-display text-4xl md:text-5xl font-black tracking-tighter mb-3">
-        DMCA Policy
-      </h1>
-      <p className="text-zinc-400 leading-relaxed mb-8 max-w-2xl">
-        Effects Academy respects intellectual property rights. If you believe any
-        material hosted on this site infringes your copyright, please submit a notice
-        below. We review every submission and act in accordance with the Digital
-        Millennium Copyright Act. Submissions are routed to{" "}
-        <a className="text-zinc-200 hover:text-neon font-mono text-sm" href={`mailto:${DMCA_EMAIL}`}>{DMCA_EMAIL}</a>.
-      </p>
+
+      <div className="grid gap-4 mb-8 md:grid-cols-3">
+        <InfoCard title="What to include" text="Your name, contact email, asset link/name, and a clear explanation of the copyrighted work." />
+        <InfoCard title="What happens next" text="We review notices and may remove or restrict the reported asset while the issue is checked." />
+        <InfoCard title="Support email" text={DMCA_EMAIL} mono />
+      </div>
+
+      <div className="mb-8 rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4 flex gap-3 text-sm text-amber-100">
+        <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
+        <p>Only submit a DMCA notice if you believe you own the rights or are authorized to act for the rights holder. False or incomplete claims may delay review.</p>
+      </div>
 
       {sent ? (
         <div className="glass rounded-2xl p-10 text-center" data-testid="dmca-success">
           <CheckCircle2 className="w-10 h-10 text-neon mx-auto mb-3" />
           <h2 className="font-display text-2xl font-bold mb-2">Notice received</h2>
-          <p className="text-zinc-400">We&apos;ll review and respond at the address you provided.</p>
+          <p className="text-zinc-400">We&apos;ll review it and respond at the address you provided.</p>
         </div>
       ) : (
         <form onSubmit={submit} className="glass rounded-2xl p-6 md:p-8 space-y-5">
-          <FormField label="Full Name">
-            <Input
-              required
-              value={form.full_name}
-              onChange={(e) => set("full_name", e.target.value)}
-              className="bg-white/5 border-white/10 mt-1"
-              data-testid="dmca-fullname"
-            />
+          <FormField label="Full legal name">
+            <Input required value={form.full_name} onChange={(e) => set("full_name", e.target.value)} className="bg-white/5 border-white/10 mt-1" data-testid="dmca-fullname" />
           </FormField>
-          <FormField label="Email">
-            <Input
-              required
-              type="email"
-              value={form.email}
-              onChange={(e) => set("email", e.target.value)}
-              className="bg-white/5 border-white/10 mt-1"
-              data-testid="dmca-email"
-            />
+          <FormField label="Contact email">
+            <Input required type="email" value={form.email} onChange={(e) => set("email", e.target.value)} className="bg-white/5 border-white/10 mt-1" data-testid="dmca-email" />
           </FormField>
-          <FormField label="Content URL / Asset Name">
-            <Input
-              required
-              value={form.content_or_subject}
-              onChange={(e) => set("content_or_subject", e.target.value)}
-              className="bg-white/5 border-white/10 mt-1"
-              data-testid="dmca-content"
-            />
+          <FormField label="Asset URL / asset name">
+            <Input required value={form.content_or_subject} onChange={(e) => set("content_or_subject", e.target.value)} className="bg-white/5 border-white/10 mt-1" data-testid="dmca-content" />
           </FormField>
-          <FormField label="Description of the infringement">
-            <Textarea
-              required
-              rows={5}
-              value={form.description}
-              onChange={(e) => set("description", e.target.value)}
-              className="bg-white/5 border-white/10 mt-1 resize-none"
-              data-testid="dmca-description"
-            />
+          <FormField label="Describe the copyrighted work and issue">
+            <Textarea required rows={6} value={form.description} onChange={(e) => set("description", e.target.value)} className="bg-white/5 border-white/10 mt-1 resize-none" data-testid="dmca-description" />
           </FormField>
-          <Button
-            type="submit"
-            disabled={submitting}
-            className="w-full h-12 bg-neon text-[#05050A] hover:bg-neon/90 font-semibold btn-press"
-            data-testid="dmca-submit"
-          >
+          <Button type="submit" disabled={submitting} className="w-full h-12 bg-neon text-[#05050A] hover:bg-neon/90 font-semibold btn-press" data-testid="dmca-submit">
             {submitting ? "Submitting..." : "Submit DMCA Notice"}
           </Button>
           {deliveryError && (
@@ -118,6 +101,15 @@ export default function DmcaPage() {
         </form>
       )}
     </section>
+  );
+}
+
+function InfoCard({ title, text, mono = false }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+      <h2 className="font-display font-semibold mb-1">{title}</h2>
+      <p className={`${mono ? "font-mono text-neon" : "text-zinc-500"} text-sm leading-relaxed`}>{text}</p>
+    </div>
   );
 }
 
