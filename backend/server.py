@@ -68,12 +68,8 @@ S3_ACCESS_KEY_ID = os.environ.get("S3_ACCESS_KEY_ID", "")
 S3_SECRET_ACCESS_KEY = os.environ.get("S3_SECRET_ACCESS_KEY", "")
 S3_PUBLIC_BASE_URL = os.environ.get("S3_PUBLIC_BASE_URL", "").rstrip("/")
 USE_OBJECT_STORAGE = bool(S3_BUCKET and S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY)
-AI_IMAGE_PROVIDER = os.environ.get("AI_IMAGE_PROVIDER", "openai").strip().lower()
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 OPENAI_IMAGE_MODEL = os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-1")
-RECRAFT_API_KEY = os.environ.get("RECRAFT_API_KEY", "")
-RECRAFT_IMAGE_MODEL = os.environ.get("RECRAFT_IMAGE_MODEL", "recraftv3")
-RECRAFT_IMAGE_STRENGTH = float(os.environ.get("RECRAFT_IMAGE_STRENGTH", "0.12"))
 AI_IMAGE_MAX_BYTES = int(os.environ.get("AI_IMAGE_MAX_BYTES", str(8 * 1024 * 1024)))
 
 s3 = None
@@ -134,14 +130,6 @@ def enforce_rate_limit(request: Request, bucket: str, limit: int = 5, window_sec
     if len(hits) >= limit:
         raise HTTPException(status_code=429, detail="Too many attempts. Please wait a few minutes and try again.")
     hits.append(current)
-
-
-def ai_image_provider_configured() -> bool:
-    if AI_IMAGE_PROVIDER == "recraft":
-        return bool(RECRAFT_API_KEY)
-    if AI_IMAGE_PROVIDER == "openai":
-        return bool(OPENAI_API_KEY)
-    return bool(OPENAI_API_KEY or RECRAFT_API_KEY)
 
 
 def role_for_email(email: str, existing_role: str = "Viewer") -> str:
@@ -533,10 +521,8 @@ async def auth_config():
         "stripe_configured": bool(STRIPE_SECRET_KEY),
         "dev_login_enabled": USE_MOCK_DB,
         "object_storage_configured": USE_OBJECT_STORAGE,
-        "ai_image_provider": AI_IMAGE_PROVIDER,
-        "ai_image_configured": ai_image_provider_configured(),
+        "ai_image_configured": bool(OPENAI_API_KEY),
         "openai_image_configured": bool(OPENAI_API_KEY),
-        "recraft_image_configured": bool(RECRAFT_API_KEY),
     }
 
 
@@ -1080,15 +1066,13 @@ async def ai_image_usage(request: Request):
 async def edit_ai_image(
     request: Request,
     image: UploadFile = File(...),
-    mask: Optional[UploadFile] = File(None),
     replacement_text: str = Form(...),
     style_notes: str = Form(""),
 ):
     enforce_rate_limit(request, "ai-image", limit=20, window_seconds=300)
     user = await request_user(request, required=True)
-    if not ai_image_provider_configured():
-        provider_name = "Recraft" if AI_IMAGE_PROVIDER == "recraft" else "OpenAI"
-        raise HTTPException(status_code=503, detail=f"{provider_name} Image Generation is not configured yet")
+    if not OPENAI_API_KEY:
+        raise HTTPException(status_code=503, detail="OpenAI Image Generation is not configured yet")
 
     usage = await ai_usage_for_user(user)
     if usage["remaining"] <= 0:
@@ -1105,16 +1089,6 @@ async def edit_ai_image(
     image_bytes = await image.read(AI_IMAGE_MAX_BYTES + 1)
     if len(image_bytes) > AI_IMAGE_MAX_BYTES:
         raise HTTPException(status_code=413, detail=f"Image must be under {AI_IMAGE_MAX_BYTES // (1024 * 1024)}MB")
-
-    mask_bytes = None
-    mask_content_type = None
-    if mask:
-        mask_content_type = (mask.content_type or "").lower()
-        if mask_content_type not in allowed_types:
-            raise HTTPException(status_code=400, detail="Mask must be a PNG, JPG, JPEG, or WEBP image")
-        mask_bytes = await mask.read(AI_IMAGE_MAX_BYTES + 1)
-        if len(mask_bytes) > AI_IMAGE_MAX_BYTES:
-            raise HTTPException(status_code=413, detail=f"Mask must be under {AI_IMAGE_MAX_BYTES // (1024 * 1024)}MB")
 
     replacement_text = replacement_text.strip()
     style_notes = style_notes.strip()
@@ -1136,20 +1110,8 @@ async def edit_ai_image(
     )
     if style_notes:
         prompt += f"\nAdditional style instructions: {style_notes}"
-    if mask_bytes:
-        prompt += "\nOnly regenerate the masked white area. Keep every unmasked black area unchanged."
 
     def call_openai_image_edit():
-        files = {
-            "image": (
-                Path(image.filename or "image.png").name,
-                image_bytes,
-                content_type,
-            )
-        }
-        if mask_bytes:
-            files["mask"] = ("mask.png", mask_bytes, mask_content_type or "image/png")
-
         response = requests.post(
             "https://api.openai.com/v1/images/edits",
             headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
@@ -1158,7 +1120,13 @@ async def edit_ai_image(
                 "prompt": prompt,
                 "size": "1024x1024",
             },
-            files=files,
+            files={
+                "image": (
+                    Path(image.filename or "image.png").name,
+                    image_bytes,
+                    content_type,
+                )
+            },
             timeout=120,
         )
         try:
@@ -1173,68 +1141,7 @@ async def edit_ai_image(
         except (KeyError, IndexError, TypeError):
             raise HTTPException(status_code=502, detail="OpenAI did not return an edited image")
 
-    def call_recraft_image_edit():
-        endpoint = "https://external.api.recraft.ai/v1/images/inpaint" if mask_bytes else "https://external.api.recraft.ai/v1/images/imageToImage"
-        data = {
-            "prompt": prompt,
-            "model": RECRAFT_IMAGE_MODEL,
-            "n": "1",
-            "response_format": "b64_json",
-        }
-        files = {
-            "image": (
-                Path(image.filename or "image.png").name,
-                image_bytes,
-                content_type,
-            )
-        }
-        if mask_bytes:
-            files["mask"] = ("mask.png", mask_bytes, mask_content_type or "image/png")
-        else:
-            data["strength"] = str(max(0.0, min(RECRAFT_IMAGE_STRENGTH, 1.0)))
-
-        response = requests.post(
-            endpoint,
-            headers={"Authorization": f"Bearer {RECRAFT_API_KEY}"},
-            data=data,
-            files=files,
-            timeout=180,
-        )
-        try:
-            payload = response.json()
-        except ValueError:
-            payload = {}
-        if response.status_code >= 400:
-            error_payload = payload.get("error") or {}
-            message = error_payload.get("message") or payload.get("detail") or "Recraft image edit failed"
-            raise HTTPException(status_code=502, detail=message)
-
-        try:
-            result = payload["data"][0]
-        except (KeyError, IndexError, TypeError):
-            result = payload.get("image") or {}
-
-        image_base64 = result.get("b64_json") or result.get("base64")
-        if image_base64:
-            return image_base64
-
-        image_url = result.get("url")
-        if image_url:
-            image_response = requests.get(image_url, timeout=60)
-            if image_response.status_code >= 400:
-                raise HTTPException(status_code=502, detail="Recraft generated an image URL, but it could not be downloaded")
-            import base64
-
-            return base64.b64encode(image_response.content).decode("utf-8")
-
-        raise HTTPException(status_code=502, detail="Recraft did not return an edited image")
-
-    if AI_IMAGE_PROVIDER == "recraft":
-        image_base64 = await asyncio.to_thread(call_recraft_image_edit)
-    elif AI_IMAGE_PROVIDER == "openai":
-        image_base64 = await asyncio.to_thread(call_openai_image_edit)
-    else:
-        raise HTTPException(status_code=503, detail="AI_IMAGE_PROVIDER must be set to either openai or recraft")
+    image_base64 = await asyncio.to_thread(call_openai_image_edit)
 
     record_id = f"{user['id']}:{usage['date']}"
     await db.ai_image_usage.update_one(
@@ -1287,10 +1194,8 @@ async def health():
         "object_storage": USE_OBJECT_STORAGE,
         "stripe": bool(STRIPE_SECRET_KEY),
         "smtp": dmca_email_configured(),
-        "ai_image_provider": AI_IMAGE_PROVIDER,
-        "ai_image": ai_image_provider_configured(),
+        "ai_image": bool(OPENAI_API_KEY),
         "openai_image": bool(OPENAI_API_KEY),
-        "recraft_image": bool(RECRAFT_API_KEY),
     }
 
 

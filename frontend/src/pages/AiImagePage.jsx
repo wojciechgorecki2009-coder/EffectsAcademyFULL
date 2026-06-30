@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Wand2, UploadCloud, Image as ImageIcon, Download, Crown, ShieldCheck, Sparkles, AlertCircle, Paintbrush, RotateCcw } from "lucide-react";
+import { Wand2, UploadCloud, Image as ImageIcon, Download, Crown, ShieldCheck, Sparkles, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -24,14 +24,8 @@ export default function AiImagePage() {
   const [resultUrl, setResultUrl] = useState("");
   const [generating, setGenerating] = useState(false);
   const [usageLoading, setUsageLoading] = useState(false);
-  const [brushSize, setBrushSize] = useState(44);
-  const [hasMask, setHasMask] = useState(false);
-  const imageRef = useRef(null);
-  const maskCanvasRef = useRef(null);
-  const drawingRef = useRef(false);
 
-  const requiresMask = config?.ai_image_provider === "recraft";
-  const canGenerate = user && file && replacementText.trim() && (!requiresMask || hasMask) && !generating && (usage?.remaining ?? 0) > 0;
+  const canGenerate = user && file && replacementText.trim() && !generating && (usage?.remaining ?? 0) > 0;
 
   const planCopy = useMemo(() => {
     if (!usage) return "Checking your daily limit...";
@@ -45,70 +39,8 @@ export default function AiImagePage() {
     }
     const url = URL.createObjectURL(file);
     setPreviewUrl(url);
-    setHasMask(false);
     return () => URL.revokeObjectURL(url);
   }, [file]);
-
-  const prepareMaskCanvas = () => {
-    const img = imageRef.current;
-    const canvas = maskCanvasRef.current;
-    if (!img || !canvas || !img.naturalWidth || !img.naturalHeight) return;
-    canvas.width = img.naturalWidth;
-    canvas.height = img.naturalHeight;
-    const ctx = canvas.getContext("2d");
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    setHasMask(false);
-  };
-
-  const clearMask = () => {
-    const canvas = maskCanvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    setHasMask(false);
-  };
-
-  const pointerToCanvas = (e) => {
-    const canvas = maskCanvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    return {
-      x: (e.clientX - rect.left) * (canvas.width / rect.width),
-      y: (e.clientY - rect.top) * (canvas.height / rect.height),
-    };
-  };
-
-  const paintMask = (e) => {
-    const canvas = maskCanvasRef.current;
-    if (!canvas || !drawingRef.current) return;
-    const { x, y } = pointerToCanvas(e);
-    const ctx = canvas.getContext("2d");
-    ctx.fillStyle = "rgba(99, 102, 241, 0.62)";
-    ctx.beginPath();
-    ctx.arc(x, y, brushSize * (canvas.width / canvas.getBoundingClientRect().width), 0, Math.PI * 2);
-    ctx.fill();
-    setHasMask(true);
-  };
-
-  const createMaskBlob = async () => {
-    const source = maskCanvasRef.current;
-    if (!source || !hasMask) return null;
-    const sourceCtx = source.getContext("2d");
-    const pixels = sourceCtx.getImageData(0, 0, source.width, source.height);
-    const mask = document.createElement("canvas");
-    mask.width = source.width;
-    mask.height = source.height;
-    const maskCtx = mask.getContext("2d");
-    const maskPixels = maskCtx.createImageData(mask.width, mask.height);
-    for (let i = 0; i < pixels.data.length; i += 4) {
-      const painted = pixels.data[i + 3] > 8;
-      maskPixels.data[i] = painted ? 255 : 0;
-      maskPixels.data[i + 1] = painted ? 255 : 0;
-      maskPixels.data[i + 2] = painted ? 255 : 0;
-      maskPixels.data[i + 3] = 255;
-    }
-    maskCtx.putImageData(maskPixels, 0, 0);
-    return new Promise((resolve) => mask.toBlob(resolve, "image/png"));
-  };
 
   const loadUsage = async () => {
     if (!user) return;
@@ -150,10 +82,6 @@ export default function AiImagePage() {
     try {
       const form = new FormData();
       form.append("image", file);
-      const maskBlob = await createMaskBlob();
-      if (maskBlob) {
-        form.append("mask", maskBlob, "text-mask.png");
-      }
       form.append("replacement_text", replacementText.trim());
       form.append("style_notes", styleNotes.trim());
       const { data } = await api.post("/ai-image/edit", form, {
@@ -232,120 +160,41 @@ export default function AiImagePage() {
         </div>
       </div>
 
-      {!config?.ai_image_configured && (
+      {!config?.openai_image_configured && (
         <div className="mb-6 rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4 text-sm text-amber-100 flex gap-3">
           <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
           <p>
-            AI Image Generation is not configured on the backend yet. For Recraft, save <code>AI_IMAGE_PROVIDER=recraft</code> and <code>RECRAFT_API_KEY</code> on the Render API service, then redeploy the backend.
+            OpenAI Image Generation is not configured on the backend yet. Make sure <code>OPENAI_API_KEY</code> is saved on the Render API service and redeploy the backend.
           </p>
         </div>
       )}
 
       <form onSubmit={generate} className="grid lg:grid-cols-[0.95fr_1.05fr] gap-6">
         <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 md:p-6">
-          {previewUrl ? (
-            <div className="space-y-4">
-              <div className="relative rounded-2xl border border-white/10 bg-black/20 overflow-hidden">
-                <img
-                  ref={imageRef}
-                  src={previewUrl}
-                  alt="Upload preview"
-                  onLoad={prepareMaskCanvas}
-                  className="block max-h-[420px] w-full object-contain select-none"
-                  draggable={false}
-                />
-                <canvas
-                  ref={maskCanvasRef}
-                  className="absolute inset-0 h-full w-full cursor-crosshair touch-none"
-                  onPointerDown={(e) => {
-                    e.preventDefault();
-                    drawingRef.current = true;
-                    e.currentTarget.setPointerCapture(e.pointerId);
-                    paintMask(e);
-                  }}
-                  onPointerMove={(e) => {
-                    e.preventDefault();
-                    paintMask(e);
-                  }}
-                  onPointerUp={(e) => {
-                    drawingRef.current = false;
-                    e.currentTarget.releasePointerCapture(e.pointerId);
-                  }}
-                  onPointerCancel={() => {
-                    drawingRef.current = false;
-                  }}
-                />
-              </div>
-
-              <div className="rounded-2xl border border-white/10 bg-black/20 p-4 space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-white flex items-center gap-2">
-                      <Paintbrush className="w-4 h-4 text-neon" /> Brush over the old text
-                    </p>
-                    <p className="text-xs text-zinc-500 mt-1">
-                      The purple area is the only part Recraft should edit.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={clearMask}
-                    className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-white btn-press"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" /> Clear mask
-                  </button>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-xs font-mono uppercase tracking-widest text-zinc-500">Brush</span>
-                  <input
-                    type="range"
-                    min="18"
-                    max="90"
-                    value={brushSize}
-                    onChange={(e) => setBrushSize(Number(e.target.value))}
-                    className="w-full accent-neon"
-                  />
-                  <span className="text-xs text-zinc-500 w-10 text-right">{brushSize}px</span>
-                </div>
-                {!hasMask && (
-                  <p className="rounded-xl border border-amber-400/15 bg-amber-400/10 px-3 py-2 text-xs text-amber-100">
-                    Brush over the existing word/logo before generating so Recraft knows exactly what to replace.
-                  </p>
-                )}
-              </div>
-
-              <label className="inline-flex cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-zinc-200 hover:text-white transition-colors">
-                Change image
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg,image/jpg,image/webp"
-                  className="hidden"
-                  onChange={(e) => pickFile(e.target.files?.[0])}
-                />
-              </label>
-            </div>
-          ) : (
-            <label
-              className="group flex min-h-[360px] cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-white/15 bg-black/20 hover:bg-white/[0.035] transition-colors overflow-hidden"
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => {
-                e.preventDefault();
-                pickFile(e.dataTransfer.files?.[0]);
-              }}
-            >
+          <label
+            className="group flex min-h-[360px] cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-white/15 bg-black/20 hover:bg-white/[0.035] transition-colors overflow-hidden"
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault();
+              pickFile(e.dataTransfer.files?.[0]);
+            }}
+          >
+            {previewUrl ? (
+              <img src={previewUrl} alt="Upload preview" className="h-full max-h-[420px] w-full object-contain" />
+            ) : (
               <div className="text-center px-6">
                 <UploadCloud className="w-12 h-12 text-neon mx-auto mb-4" />
                 <p className="font-display text-2xl font-bold">Drop an image here</p>
                 <p className="text-sm text-zinc-500 mt-2">PNG, JPG, JPEG, or WEBP under 8MB</p>
               </div>
-              <input
-                type="file"
-                accept="image/png,image/jpeg,image/jpg,image/webp"
-                className="hidden"
-                onChange={(e) => pickFile(e.target.files?.[0])}
-              />
-            </label>
-          )}
+            )}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/jpg,image/webp"
+              className="hidden"
+              onChange={(e) => pickFile(e.target.files?.[0])}
+            />
+          </label>
         </div>
 
         <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 md:p-6 space-y-5">
