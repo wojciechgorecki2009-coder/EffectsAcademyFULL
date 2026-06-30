@@ -73,7 +73,7 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 OPENAI_IMAGE_MODEL = os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-1")
 RECRAFT_API_KEY = os.environ.get("RECRAFT_API_KEY", "")
 RECRAFT_IMAGE_MODEL = os.environ.get("RECRAFT_IMAGE_MODEL", "recraftv3")
-RECRAFT_IMAGE_STRENGTH = float(os.environ.get("RECRAFT_IMAGE_STRENGTH", "0.38"))
+RECRAFT_IMAGE_STRENGTH = float(os.environ.get("RECRAFT_IMAGE_STRENGTH", "0.12"))
 AI_IMAGE_MAX_BYTES = int(os.environ.get("AI_IMAGE_MAX_BYTES", str(8 * 1024 * 1024)))
 
 s3 = None
@@ -1115,10 +1115,13 @@ async def edit_ai_image(
         raise HTTPException(status_code=400, detail="Keep style notes under 700 characters")
 
     prompt = (
-        "Edit the uploaded image by changing the visible text to the user's requested wording. "
-        "Keep the original layout, lighting, background, font style, perspective, and overall design as close as possible. "
-        "Only change the text that needs to be changed. "
-        f"New text: {replacement_text}"
+        "Make a minimal text-only edit to the uploaded image. "
+        "Do not redesign the image. Do not add new objects, people, vehicles, scenery, landmarks, extra logos, or new background details. "
+        "Keep the exact same composition, crop, background, lighting, shadows, colors, camera angle, and graphic style. "
+        "Replace the existing visible text according to the user's request, matching the original font style, perspective, material, bevel, texture, and placement as closely as possible. "
+        "If the user request says something like 'change X to Y' or 'replace X with Y', only put Y in the image. Do not write the whole instruction sentence. "
+        "Remove the original text instead of keeping it. "
+        f"User text edit request: {replacement_text}"
     )
     if style_notes:
         prompt += f"\nAdditional style instructions: {style_notes}"
