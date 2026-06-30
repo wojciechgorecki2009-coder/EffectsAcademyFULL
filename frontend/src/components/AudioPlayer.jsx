@@ -64,7 +64,7 @@ function directUrlEndpoint(src) {
   return `/uploads/${encodeURIComponent(decodeURIComponent(match[1]))}/direct`;
 }
 
-export default function AudioPlayer({ src, title, onDownload }) {
+export default function AudioPlayer({ src, title, onDownload, allowSlowedDownloads = true }) {
   const globalAudio = useGlobalAudio();
   const [generatingRate, setGeneratingRate] = useState(null);
   const [resolvingAudio, setResolvingAudio] = useState(false);
@@ -130,7 +130,7 @@ export default function AudioPlayer({ src, title, onDownload }) {
   };
 
   const downloadSlowed = async (rate) => {
-    if (generatingRate) return;
+    if (generatingRate || !allowSlowedDownloads) return;
     setGeneratingRate(rate);
     try {
       const resolved = await resolvePlaybackSrc();
@@ -235,24 +235,26 @@ export default function AudioPlayer({ src, title, onDownload }) {
           <span>{fmt(duration)}</span>
         </div>
       </div>
-      <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between gap-3">
-        <span className="text-[10px] uppercase tracking-wider text-zinc-500">Download slowed</span>
-        <div className="flex items-center gap-2">
-          {[0.9, 0.8].map((rate) => (
-            <button
-              key={rate}
-              onClick={() => downloadSlowed(rate)}
-              disabled={Boolean(generatingRate)}
-              className="px-3 py-1.5 rounded-md border border-white/10 bg-white/5 hover:bg-white/10 disabled:opacity-50 text-xs font-mono font-semibold text-zinc-200 flex items-center gap-1.5 btn-press"
-              data-testid={`audio-slow-download-${rate}`}
-              title={`Download a ${rate}x slowed version`}
-            >
-              <Download className="w-3 h-3" />
-              {generatingRate === rate ? "Processing…" : rate}
-            </button>
-          ))}
+      {allowSlowedDownloads && (
+        <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between gap-3">
+          <span className="text-[10px] uppercase tracking-wider text-zinc-500">Download slowed</span>
+          <div className="flex items-center gap-2">
+            {[0.9, 0.8].map((rate) => (
+              <button
+                key={rate}
+                onClick={() => downloadSlowed(rate)}
+                disabled={Boolean(generatingRate)}
+                className="px-3 py-1.5 rounded-md border border-white/10 bg-white/5 hover:bg-white/10 disabled:opacity-50 text-xs font-mono font-semibold text-zinc-200 flex items-center gap-1.5 btn-press"
+                data-testid={`audio-slow-download-${rate}`}
+                title={`Download a ${rate}x slowed version`}
+              >
+                <Download className="w-3 h-3" />
+                {generatingRate === rate ? "Processing…" : rate}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
