@@ -36,6 +36,7 @@ const PRIMARY_TABS = [
   { to: "/category/project-files", label: "Project Files" },
   { to: "/category/overlays", label: "Overlays" },
   { to: "/category/audios", label: "Audios" },
+  { to: "/ai-image", label: "AI Tools" },
 ];
 
 const MORE_TABS = [

@@ -15,6 +15,7 @@ import LoginPage from "@/pages/LoginPage";
 import PremiumPage from "@/pages/PremiumPage";
 import GoogleCallbackPage from "@/pages/GoogleCallbackPage";
 import { PrivacyPage, TermsPage } from "@/pages/LegalPages";
+import AiImagePage from "@/pages/AiImagePage";
 import "@/App.css";
 
 const ASSETS_CHANGED_EVENT = "effectsacademy:assets-changed";
@@ -53,6 +54,7 @@ function RefreshableRoutes() {
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/premium" element={<PremiumPage />} />
+        <Route path="/ai-image" element={<AiImagePage />} />
         <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />
       </Routes>
     </main>

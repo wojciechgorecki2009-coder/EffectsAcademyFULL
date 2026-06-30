@@ -15,6 +15,7 @@ import asyncio
 import smtplib
 import ssl
 import time
+import requests
 from collections import defaultdict, deque
 from email.message import EmailMessage
 from pathlib import Path
@@ -67,6 +68,9 @@ S3_ACCESS_KEY_ID = os.environ.get("S3_ACCESS_KEY_ID", "")
 S3_SECRET_ACCESS_KEY = os.environ.get("S3_SECRET_ACCESS_KEY", "")
 S3_PUBLIC_BASE_URL = os.environ.get("S3_PUBLIC_BASE_URL", "").rstrip("/")
 USE_OBJECT_STORAGE = bool(S3_BUCKET and S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY)
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+OPENAI_IMAGE_MODEL = os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-1")
+AI_IMAGE_MAX_BYTES = int(os.environ.get("AI_IMAGE_MAX_BYTES", str(8 * 1024 * 1024)))
 
 s3 = None
 if USE_OBJECT_STORAGE:
@@ -219,6 +223,32 @@ def has_premium_access(user: Optional[dict]) -> bool:
     if not user:
         return False
     return user.get("role") in {"Admin", "Uploader"} or user.get("premium_status") in {"active", "trialing"}
+
+
+def ai_generation_limit(user: dict) -> int:
+    if user.get("premium_status") in {"active", "trialing"}:
+        return 10
+    if user.get("role") in {"Admin", "Uploader"}:
+        return 5
+    return 3
+
+
+def ai_usage_date() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+
+async def ai_usage_for_user(user: dict) -> dict:
+    usage_date = ai_usage_date()
+    limit = ai_generation_limit(user)
+    record_id = f"{user['id']}:{usage_date}"
+    record = await db.ai_image_usage.find_one({"id": record_id}, {"_id": 0}) or {}
+    used = int(record.get("used", 0))
+    return {
+        "date": usage_date,
+        "used": used,
+        "limit": limit,
+        "remaining": max(limit - used, 0),
+    }
 
 
 async def require_uploader(request: Request) -> dict:
@@ -464,6 +494,14 @@ class RoleUpdate(BaseModel):
     role: str
 
 
+class AiImageEditResponse(BaseModel):
+    image_base64: str
+    mime_type: str = "image/png"
+    used: int
+    limit: int
+    remaining: int
+
+
 # ---------- Routes ----------
 @api_router.get("/")
 async def root():
@@ -483,6 +521,7 @@ async def auth_config():
         "stripe_configured": bool(STRIPE_SECRET_KEY),
         "dev_login_enabled": USE_MOCK_DB,
         "object_storage_configured": USE_OBJECT_STORAGE,
+        "openai_image_configured": bool(OPENAI_API_KEY),
     }
 
 
@@ -1015,6 +1054,120 @@ async def submit_suggestion(payload: SuggestionCreate, request: Request):
     return sub
 
 
+# AI Image Editor -------------------------------------------------------
+@api_router.get("/ai-image/usage")
+async def ai_image_usage(request: Request):
+    user = await request_user(request, required=True)
+    return await ai_usage_for_user(user)
+
+
+@api_router.post("/ai-image/edit", response_model=AiImageEditResponse)
+async def edit_ai_image(
+    request: Request,
+    image: UploadFile = File(...),
+    replacement_text: str = Form(...),
+    style_notes: str = Form(""),
+):
+    enforce_rate_limit(request, "ai-image", limit=20, window_seconds=300)
+    user = await request_user(request, required=True)
+    if not OPENAI_API_KEY:
+        raise HTTPException(status_code=503, detail="OpenAI Image Generation is not configured yet")
+
+    usage = await ai_usage_for_user(user)
+    if usage["remaining"] <= 0:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Daily AI image limit reached. You can generate {usage['limit']} image edits per day.",
+        )
+
+    content_type = (image.content_type or "").lower()
+    allowed_types = {"image/png", "image/jpeg", "image/jpg", "image/webp"}
+    if content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="Upload a PNG, JPG, JPEG, or WEBP image")
+
+    image_bytes = await image.read(AI_IMAGE_MAX_BYTES + 1)
+    if len(image_bytes) > AI_IMAGE_MAX_BYTES:
+        raise HTTPException(status_code=413, detail=f"Image must be under {AI_IMAGE_MAX_BYTES // (1024 * 1024)}MB")
+
+    replacement_text = replacement_text.strip()
+    style_notes = style_notes.strip()
+    if not replacement_text:
+        raise HTTPException(status_code=400, detail="Tell the AI what the text should say")
+    if len(replacement_text) > 280:
+        raise HTTPException(status_code=400, detail="Keep replacement text under 280 characters")
+    if len(style_notes) > 700:
+        raise HTTPException(status_code=400, detail="Keep style notes under 700 characters")
+
+    prompt = (
+        "Edit the uploaded image by changing the visible text to the user's requested wording. "
+        "Keep the original layout, lighting, background, font style, perspective, and overall design as close as possible. "
+        "Only change the text that needs to be changed. "
+        f"New text: {replacement_text}"
+    )
+    if style_notes:
+        prompt += f"\nAdditional style instructions: {style_notes}"
+
+    def call_openai_image_edit():
+        response = requests.post(
+            "https://api.openai.com/v1/images/edits",
+            headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
+            data={
+                "model": OPENAI_IMAGE_MODEL,
+                "prompt": prompt,
+                "size": "1024x1024",
+            },
+            files={
+                "image": (
+                    Path(image.filename or "image.png").name,
+                    image_bytes,
+                    content_type,
+                )
+            },
+            timeout=120,
+        )
+        try:
+            payload = response.json()
+        except ValueError:
+            payload = {}
+        if response.status_code >= 400:
+            message = (payload.get("error") or {}).get("message") or "OpenAI image edit failed"
+            raise HTTPException(status_code=502, detail=message)
+        try:
+            return payload["data"][0]["b64_json"]
+        except (KeyError, IndexError, TypeError):
+            raise HTTPException(status_code=502, detail="OpenAI did not return an edited image")
+
+    image_base64 = await asyncio.to_thread(call_openai_image_edit)
+
+    record_id = f"{user['id']}:{usage['date']}"
+    await db.ai_image_usage.update_one(
+        {"id": record_id},
+        {
+            "$setOnInsert": {
+                "id": record_id,
+                "user_id": user["id"],
+                "date": usage["date"],
+                "created_at": now_iso(),
+            },
+            "$inc": {"used": 1},
+            "$set": {
+                "role": user.get("role", "Viewer"),
+                "premium_status": user.get("premium_status", "inactive"),
+                "updated_at": now_iso(),
+            },
+        },
+        upsert=True,
+    )
+    updated_usage = await ai_usage_for_user(user)
+    return {
+        "image_base64": image_base64,
+        "mime_type": "image/png",
+        "used": updated_usage["used"],
+        "limit": updated_usage["limit"],
+        "remaining": updated_usage["remaining"],
+    }
+
+
 @api_router.get("/submissions", response_model=List[ContactSubmission])
 async def list_submissions(
     request: Request, kind: Optional[str] = None
@@ -1037,6 +1190,7 @@ async def health():
         "object_storage": USE_OBJECT_STORAGE,
         "stripe": bool(STRIPE_SECRET_KEY),
         "smtp": dmca_email_configured(),
+        "openai_image": bool(OPENAI_API_KEY),
     }
 
 
