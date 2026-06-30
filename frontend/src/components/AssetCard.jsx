@@ -243,13 +243,13 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
               type="button"
               onClick={openPreview}
               disabled={isAudio}
-              className={`block w-full h-full text-left ${!isAudio ? "cursor-zoom-in" : "cursor-default"}`}
+              className={`block w-full h-full text-left bg-black/30 ${!isAudio ? "cursor-zoom-in" : "cursor-default"}`}
               title={!isAudio ? "Open larger preview" : undefined}
             >
               <PreviewMedia
                 src={thumbnailSrc}
                 title={asset.title}
-                className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.06]"
+                className="w-full h-full object-contain transition-opacity duration-500 ease-out group-hover:opacity-95"
               />
             </button>
           ) : (
@@ -444,7 +444,7 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
                       <div key={related.id} className="rounded-xl border border-white/10 bg-white/[0.03] overflow-hidden">
                         <div className="aspect-video bg-black/40">
                           {relatedThumb ? (
-                            <PreviewMedia src={relatedThumb} title={related.title} className="w-full h-full object-cover" />
+                            <PreviewMedia src={relatedThumb} title={related.title} className="w-full h-full object-contain bg-black/30" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-zinc-700 text-xs">No preview</div>
                           )}
