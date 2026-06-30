@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Wand2, UploadCloud, Image as ImageIcon, Download, Crown, ShieldCheck, Sparkles, AlertCircle } from "lucide-react";
+import { Wand2, UploadCloud, Image as ImageIcon, Download, Crown, ShieldCheck, Sparkles, AlertCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -24,13 +24,25 @@ export default function AiImagePage() {
   const [resultUrl, setResultUrl] = useState("");
   const [generating, setGenerating] = useState(false);
   const [usageLoading, setUsageLoading] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
-  const canGenerate = user && file && replacementText.trim() && !generating && (usage?.remaining ?? 0) > 0;
+  const hasGenerations = usage?.unlimited || (usage?.remaining ?? 0) > 0;
+  const canGenerate = user && file && replacementText.trim() && !generating && hasGenerations;
 
   const planCopy = useMemo(() => {
     if (!usage) return "Checking your daily limit...";
+    if (usage.unlimited) return "Unlimited generations for moderators";
     return `${usage.remaining} of ${usage.limit} generations left today`;
   }, [usage]);
+
+  useEffect(() => {
+    if (!generating) return;
+    setElapsedSeconds(0);
+    const timer = window.setInterval(() => {
+      setElapsedSeconds((seconds) => seconds + 1);
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [generating]);
 
   useEffect(() => {
     if (!file) {
@@ -87,7 +99,7 @@ export default function AiImagePage() {
       const { data } = await api.post("/ai-image/edit", form, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      setUsage({ used: data.used, limit: data.limit, remaining: data.remaining });
+      setUsage({ used: data.used, limit: data.limit, remaining: data.remaining, unlimited: data.unlimited });
       setResultUrl(`data:${data.mime_type || "image/png"};base64,${data.image_base64}`);
       toast.success("AI image edit generated.");
     } catch (err) {
@@ -228,13 +240,19 @@ export default function AiImagePage() {
           <button
             type="submit"
             disabled={!canGenerate}
-            className="w-full rounded-2xl bg-neon text-black py-4 font-display font-black text-lg btn-press disabled:opacity-40 disabled:cursor-not-allowed"
+            className="relative w-full overflow-hidden rounded-2xl bg-neon text-black py-4 font-display font-black text-lg btn-press disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {generating ? "Generating edit..." : "Generate AI Edit"}
+            {generating && (
+              <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent animate-pulse" />
+            )}
+            <span className="relative inline-flex items-center justify-center gap-2">
+              {generating && <Loader2 className="w-5 h-5 animate-spin" />}
+              {generating ? `Generating Ai Text... ${elapsedSeconds}s` : "Generate Ai Text"}
+            </span>
           </button>
 
           <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-zinc-400">
-            Free viewers get <span className="text-white">3</span> generations/day, moderators get <span className="text-white">5</span>, and Premium users get <span className="text-white">10</span>.
+            Free users get <span className="text-white">3</span> generations/day, Premium users get <span className="text-white">10</span>.
           </div>
         </div>
       </form>
@@ -252,7 +270,16 @@ export default function AiImagePage() {
             <Download className="w-4 h-4" /> Download
           </button>
         </div>
-        {resultUrl ? (
+        {generating ? (
+          <div className="min-h-72 rounded-2xl border border-dashed border-neon/20 bg-black/20 flex flex-col items-center justify-center text-center px-6 overflow-hidden relative">
+            <div className="absolute inset-x-10 top-1/2 h-px bg-gradient-to-r from-transparent via-neon/60 to-transparent animate-pulse" />
+            <Loader2 className="relative w-10 h-10 text-neon animate-spin mb-4" />
+            <p className="relative font-display text-xl font-black text-white">Generating your Ai text edit</p>
+            <p className="relative text-sm text-zinc-500 mt-2">
+              This usually takes around 20–60 seconds. Running for {elapsedSeconds}s.
+            </p>
+          </div>
+        ) : resultUrl ? (
           <img src={resultUrl} alt="Generated AI edit" className="w-full rounded-2xl border border-white/10 bg-black/30 object-contain max-h-[720px]" />
         ) : (
           <div className="min-h-72 rounded-2xl border border-dashed border-white/10 bg-black/20 flex items-center justify-center text-center px-6">

@@ -225,11 +225,11 @@ def has_premium_access(user: Optional[dict]) -> bool:
     return user.get("role") in {"Admin", "Uploader"} or user.get("premium_status") in {"active", "trialing"}
 
 
-def ai_generation_limit(user: dict) -> int:
+def ai_generation_limit(user: dict) -> Optional[int]:
+    if user.get("role") in {"Admin", "Uploader"}:
+        return None
     if user.get("premium_status") in {"active", "trialing"}:
         return 10
-    if user.get("role") in {"Admin", "Uploader"}:
-        return 5
     return 3
 
 
@@ -243,11 +243,13 @@ async def ai_usage_for_user(user: dict) -> dict:
     record_id = f"{user['id']}:{usage_date}"
     record = await db.ai_image_usage.find_one({"id": record_id}, {"_id": 0}) or {}
     used = int(record.get("used", 0))
+    unlimited = limit is None
     return {
         "date": usage_date,
         "used": used,
         "limit": limit,
-        "remaining": max(limit - used, 0),
+        "remaining": None if unlimited else max(limit - used, 0),
+        "unlimited": unlimited,
     }
 
 
@@ -498,8 +500,9 @@ class AiImageEditResponse(BaseModel):
     image_base64: str
     mime_type: str = "image/png"
     used: int
-    limit: int
-    remaining: int
+    limit: Optional[int] = None
+    remaining: Optional[int] = None
+    unlimited: bool = False
 
 
 # ---------- Routes ----------
@@ -1075,7 +1078,7 @@ async def edit_ai_image(
         raise HTTPException(status_code=503, detail="OpenAI Image Generation is not configured yet")
 
     usage = await ai_usage_for_user(user)
-    if usage["remaining"] <= 0:
+    if not usage.get("unlimited") and usage["remaining"] <= 0:
         raise HTTPException(
             status_code=429,
             detail=f"Daily AI image limit reached. You can generate {usage['limit']} image edits per day.",
@@ -1169,6 +1172,7 @@ async def edit_ai_image(
         "used": updated_usage["used"],
         "limit": updated_usage["limit"],
         "remaining": updated_usage["remaining"],
+        "unlimited": updated_usage["unlimited"],
     }
 
 
