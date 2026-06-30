@@ -145,13 +145,13 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
     const y = pointerY - 0.5;
     ref.current.style.setProperty("--asset-glow-x", `${Math.round(pointerX * 100)}%`);
     ref.current.style.setProperty("--asset-glow-y", `${Math.round(pointerY * 100)}%`);
-    ref.current.style.transform = `perspective(1000px) rotateY(${x * 5.5}deg) rotateX(${-y * 5.5}deg) scale(1.018)`;
+    ref.current.style.transform = `perspective(1000px) rotateY(${x * 7}deg) rotateX(${-y * 7}deg) translateY(-8px) scale(1.035)`;
   };
   const onLeave = () => {
     if (!ref.current) return;
     ref.current.style.setProperty("--asset-glow-x", "50%");
     ref.current.style.setProperty("--asset-glow-y", "18%");
-    ref.current.style.transform = "perspective(1000px) rotateY(0) rotateX(0) scale(1)";
+    ref.current.style.transform = "perspective(1000px) rotateY(0) rotateX(0) translateY(0) scale(1)";
   };
 
   const download = async () => {
@@ -243,13 +243,13 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
               type="button"
               onClick={openPreview}
               disabled={isAudio}
-              className={`block w-full h-full text-left bg-black/30 ${!isAudio ? "cursor-zoom-in" : "cursor-default"}`}
+              className={`block w-full h-full text-left ${!isAudio ? "cursor-zoom-in" : "cursor-default"}`}
               title={!isAudio ? "Open larger preview" : undefined}
             >
               <PreviewMedia
                 src={thumbnailSrc}
                 title={asset.title}
-                className="w-full h-full object-contain transition-opacity duration-500 ease-out group-hover:opacity-95"
+                className="w-full h-full object-cover"
               />
             </button>
           ) : (
@@ -444,7 +444,7 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
                       <div key={related.id} className="rounded-xl border border-white/10 bg-white/[0.03] overflow-hidden">
                         <div className="aspect-video bg-black/40">
                           {relatedThumb ? (
-                            <PreviewMedia src={relatedThumb} title={related.title} className="w-full h-full object-contain bg-black/30" />
+                            <PreviewMedia src={relatedThumb} title={related.title} className="w-full h-full object-cover" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-zinc-700 text-xs">No preview</div>
                           )}
