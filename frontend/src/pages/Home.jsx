@@ -188,6 +188,13 @@ export default function Home() {
                 </button>
               );
             })}
+            <Link
+              to="/ai-image"
+              className="px-4 py-2 rounded-lg text-sm font-semibold border btn-press transition-all text-white border-purple-300/30 bg-gradient-to-r from-purple-600/70 via-fuchsia-500/60 to-indigo-500/70 hover:from-purple-500 hover:via-fuchsia-400 hover:to-indigo-400 shadow-[0_0_28px_rgba(168,85,247,0.18)]"
+              data-testid="filter-tab-ai-tools"
+            >
+              AI Tools
+            </Link>
           </div>
           <p className="text-xs font-mono uppercase tracking-widest text-zinc-500">
             {isSearching
