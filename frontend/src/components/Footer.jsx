@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
 
+const SUPPORT_EMAIL = "EffectsAcademy2026@hotmail.com";
+
 export default function Footer() {
   return (
     <footer
@@ -20,8 +22,15 @@ export default function Footer() {
             </span>
           </div>
           <p className="text-sm text-zinc-500 leading-relaxed">
-            Free assets, curated for video editors. By the community, for the community.
+            Free and premium editing assets, curated for video editors. By the community, for the community.
           </p>
+          <a
+            href={`mailto:${SUPPORT_EMAIL}`}
+            className="mt-4 inline-flex text-xs font-mono text-zinc-400 hover:text-neon transition-colors"
+            data-testid="footer-support-email"
+          >
+            {SUPPORT_EMAIL}
+          </a>
         </div>
         <div>
           <h4 className="font-display font-semibold mb-3 text-sm">Browse</h4>
@@ -33,18 +42,11 @@ export default function Footer() {
           </ul>
         </div>
         <div>
-          <h4 className="font-display font-semibold mb-3 text-sm">More</h4>
+          <h4 className="font-display font-semibold mb-3 text-sm">Community</h4>
           <ul className="space-y-1.5 text-sm text-zinc-400">
             <li><Link to="/category/sound-fx" className="hover:text-neon transition-colors">Sound FX</Link></li>
             <li><Link to="/category/presets" className="hover:text-neon transition-colors">Presets</Link></li>
             <li><Link to="/category/premium" className="hover:text-neon transition-colors">Premium</Link></li>
-          </ul>
-        </div>
-        <div>
-          <h4 className="font-display font-semibold mb-3 text-sm">Legal</h4>
-          <ul className="space-y-1.5 text-sm text-zinc-400">
-            <li><Link to="/dmca" data-testid="footer-dmca" className="hover:text-neon transition-colors">DMCA</Link></li>
-            <li><Link to="/suggestions" data-testid="footer-suggestions" className="hover:text-neon transition-colors">Suggestions</Link></li>
             <li>
               <a
                 href="https://discord.gg/2VvMq3Pz85"
@@ -58,9 +60,19 @@ export default function Footer() {
             </li>
           </ul>
         </div>
+        <div>
+          <h4 className="font-display font-semibold mb-3 text-sm">Support & Legal</h4>
+          <ul className="space-y-1.5 text-sm text-zinc-400">
+            <li><Link to="/dmca" data-testid="footer-dmca" className="hover:text-neon transition-colors">DMCA</Link></li>
+            <li><Link to="/suggestions" data-testid="footer-suggestions" className="hover:text-neon transition-colors">Suggestions</Link></li>
+            <li><Link to="/terms" data-testid="footer-terms" className="hover:text-neon transition-colors">Terms of Use</Link></li>
+            <li><Link to="/privacy" data-testid="footer-privacy" className="hover:text-neon transition-colors">Privacy Policy</Link></li>
+            <li><a href={`mailto:${SUPPORT_EMAIL}`} className="hover:text-neon transition-colors">Contact support</a></li>
+          </ul>
+        </div>
       </div>
-      <div className="max-w-[1400px] mx-auto mt-10 pt-6 border-t border-white/5 text-xs text-zinc-600">
-        © {new Date().getFullYear()} Effects Academy. All trademarks belong to their respective owners.
+      <div className="max-w-[1400px] mx-auto mt-10 pt-6 border-t border-white/5 text-xs text-zinc-600 leading-relaxed">
+        © {new Date().getFullYear()} Effects Academy. All trademarks belong to their respective owners. Content may be removed if reported by a rights holder.
       </div>
     </footer>
   );
