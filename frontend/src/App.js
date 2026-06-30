@@ -14,6 +14,7 @@ import SuggestionsPage from "@/pages/SuggestionsPage";
 import LoginPage from "@/pages/LoginPage";
 import PremiumPage from "@/pages/PremiumPage";
 import GoogleCallbackPage from "@/pages/GoogleCallbackPage";
+import { PrivacyPage, TermsPage } from "@/pages/LegalPages";
 import "@/App.css";
 
 const ASSETS_CHANGED_EVENT = "effectsacademy:assets-changed";
@@ -48,6 +49,8 @@ function RefreshableRoutes() {
         <Route path="/category/:slug" element={<CategoryPage />} />
         <Route path="/dmca" element={<DmcaPage />} />
         <Route path="/suggestions" element={<SuggestionsPage />} />
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/premium" element={<PremiumPage />} />
         <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />
