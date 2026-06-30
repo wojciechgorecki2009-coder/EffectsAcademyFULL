@@ -87,6 +87,7 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
   const [downloadCount, setDownloadCount] = useState(asset.download_count || 0);
   const color = CATEGORY_COLORS[asset.category] || CATEGORY_COLORS.Overlays;
   const isAudio = asset.category === "Audios" || asset.category === "Sound FX";
+  const isSoundEffect = asset.category === "Sound FX";
   const isPremium = asset.category === "Premium";
   const isNew = isRecentlyAdded(asset);
   const isLockedPremium = isPremium && !isUploader && !hasPremium;
@@ -330,6 +331,7 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
             <AudioPlayer
               src={fileSrc}
               title={asset.title}
+              allowSlowedDownloads={!isSoundEffect}
               onDownload={async () => {
                 toast.success("Starting download...");
                 recordDownload();
