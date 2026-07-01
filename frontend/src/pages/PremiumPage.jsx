@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth";
 const BENEFITS = [
   "All premium assets included with membership",
   "Unlimited premium asset downloads",
+  "10 AI text generator credits every day",
   "New exclusive drops every month",
   "Subscription tied securely to your Google account",
   "Manage or cancel anytime through Stripe",
@@ -108,7 +109,7 @@ export default function PremiumPage() {
               </div>
               <h1 className="font-display text-4xl md:text-6xl font-black tracking-tighter mt-6">Unlock the whole vault.</h1>
               <p className="text-zinc-300 mt-5 max-w-xl text-lg leading-relaxed">
-                Premium packs, project files, presets, and curated resources included with your monthly membership.
+                Premium packs, project files, presets, curated resources, and more AI text generator credits included with your monthly membership.
               </p>
               <div className="mt-8 flex items-end gap-2">
                 <span className="font-display text-5xl font-black">$4.99</span>
@@ -129,7 +130,7 @@ export default function PremiumPage() {
             </div>
 
             <div className="mt-6 rounded-2xl border border-purple-300/20 bg-purple-300/10 px-4 py-3 text-sm text-purple-100 flex items-center gap-2">
-              <Crown className="w-4 h-4 flex-shrink-0" /> Included with membership: every Premium asset on the site.
+              <Crown className="w-4 h-4 flex-shrink-0" /> Included with membership: every Premium asset plus 10 AI text generations per day.
             </div>
 
             <ul className="space-y-4 mt-6 flex-1">
