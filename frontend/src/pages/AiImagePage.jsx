@@ -252,7 +252,7 @@ export default function AiImagePage() {
           </button>
 
           <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-zinc-400">
-            Free users get <span className="text-white">3</span> generations/day, Premium users get <span className="text-white">10</span>.
+            Free users get <span className="text-white">3</span> medium-quality generations/day. Premium users get <span className="text-white">10</span> higher-quality generations/day.
           </div>
         </div>
       </form>

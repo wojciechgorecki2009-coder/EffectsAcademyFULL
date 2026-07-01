@@ -74,6 +74,10 @@ USE_OBJECT_STORAGE = bool(S3_BUCKET and S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KE
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 OPENAI_IMAGE_MODEL = os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-1")
 OPENAI_IMAGE_QUALITY = os.environ.get("OPENAI_IMAGE_QUALITY", "medium").strip().lower()
+OPENAI_IMAGE_FREE_MODEL = os.environ.get("OPENAI_IMAGE_FREE_MODEL", OPENAI_IMAGE_MODEL)
+OPENAI_IMAGE_PREMIUM_MODEL = os.environ.get("OPENAI_IMAGE_PREMIUM_MODEL", OPENAI_IMAGE_MODEL)
+OPENAI_IMAGE_FREE_QUALITY = os.environ.get("OPENAI_IMAGE_FREE_QUALITY", OPENAI_IMAGE_QUALITY or "medium").strip().lower()
+OPENAI_IMAGE_PREMIUM_QUALITY = os.environ.get("OPENAI_IMAGE_PREMIUM_QUALITY", "high").strip().lower()
 OPENAI_IMAGE_MAX_DIMENSION = int(os.environ.get("OPENAI_IMAGE_MAX_DIMENSION", "1024"))
 OPENAI_IMAGE_JPEG_QUALITY = int(os.environ.get("OPENAI_IMAGE_JPEG_QUALITY", "85"))
 AI_IMAGE_MAX_BYTES = int(os.environ.get("AI_IMAGE_MAX_BYTES", str(8 * 1024 * 1024)))
@@ -244,6 +248,23 @@ def ai_generation_limit(user: dict) -> Optional[int]:
     return 3
 
 
+def normalized_openai_quality(value: str, fallback: str = "medium") -> str:
+    quality = (value or "").strip().lower()
+    return quality if quality in {"low", "medium", "high", "auto"} else fallback
+
+
+def ai_image_settings_for_user(user: dict) -> dict:
+    premium_tier = has_premium_access(user)
+    return {
+        "model": OPENAI_IMAGE_PREMIUM_MODEL if premium_tier else OPENAI_IMAGE_FREE_MODEL,
+        "quality": normalized_openai_quality(
+            OPENAI_IMAGE_PREMIUM_QUALITY if premium_tier else OPENAI_IMAGE_FREE_QUALITY,
+            "high" if premium_tier else "medium",
+        ),
+        "tier": "premium" if premium_tier else "free",
+    }
+
+
 def ai_usage_date() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
@@ -255,12 +276,15 @@ async def ai_usage_for_user(user: dict) -> dict:
     record = await db.ai_image_usage.find_one({"id": record_id}, {"_id": 0}) or {}
     used = int(record.get("used", 0))
     unlimited = limit is None
+    image_settings = ai_image_settings_for_user(user)
     return {
         "date": usage_date,
         "used": used,
         "limit": limit,
         "remaining": None if unlimited else max(limit - used, 0),
         "unlimited": unlimited,
+        "image_quality": image_settings["quality"],
+        "image_tier": image_settings["tier"],
     }
 
 
@@ -552,6 +576,8 @@ class AiImageEditResponse(BaseModel):
     limit: Optional[int] = None
     remaining: Optional[int] = None
     unlimited: bool = False
+    image_quality: Optional[str] = None
+    image_tier: Optional[str] = None
 
 
 # ---------- Routes ----------
@@ -577,6 +603,10 @@ async def auth_config():
         "openai_image_configured": bool(OPENAI_API_KEY),
         "openai_image_model": OPENAI_IMAGE_MODEL,
         "openai_image_quality": OPENAI_IMAGE_QUALITY,
+        "openai_image_free_model": OPENAI_IMAGE_FREE_MODEL,
+        "openai_image_premium_model": OPENAI_IMAGE_PREMIUM_MODEL,
+        "openai_image_free_quality": normalized_openai_quality(OPENAI_IMAGE_FREE_QUALITY, "medium"),
+        "openai_image_premium_quality": normalized_openai_quality(OPENAI_IMAGE_PREMIUM_QUALITY, "high"),
         "openai_image_max_dimension": OPENAI_IMAGE_MAX_DIMENSION,
     }
 
@@ -1233,17 +1263,17 @@ async def edit_ai_image(
     if style_notes:
         prompt += f"\nAdditional style instructions: {style_notes}"
 
-    image_quality = OPENAI_IMAGE_QUALITY if OPENAI_IMAGE_QUALITY in {"low", "medium", "high", "auto"} else "medium"
+    image_settings = ai_image_settings_for_user(user)
 
     def call_openai_image_edit():
         response = requests.post(
             "https://api.openai.com/v1/images/edits",
             headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
             data={
-                "model": OPENAI_IMAGE_MODEL,
+                "model": image_settings["model"],
                 "prompt": prompt,
                 "size": "1024x1024",
-                "quality": image_quality,
+                "quality": image_settings["quality"],
             },
             files={
                 "image": (
@@ -1295,6 +1325,8 @@ async def edit_ai_image(
         "limit": updated_usage["limit"],
         "remaining": updated_usage["remaining"],
         "unlimited": updated_usage["unlimited"],
+        "image_quality": image_settings["quality"],
+        "image_tier": image_settings["tier"],
     }
 
 
@@ -1324,6 +1356,10 @@ async def health():
         "openai_image": bool(OPENAI_API_KEY),
         "openai_image_model": OPENAI_IMAGE_MODEL,
         "openai_image_quality": OPENAI_IMAGE_QUALITY,
+        "openai_image_free_model": OPENAI_IMAGE_FREE_MODEL,
+        "openai_image_premium_model": OPENAI_IMAGE_PREMIUM_MODEL,
+        "openai_image_free_quality": normalized_openai_quality(OPENAI_IMAGE_FREE_QUALITY, "medium"),
+        "openai_image_premium_quality": normalized_openai_quality(OPENAI_IMAGE_PREMIUM_QUALITY, "high"),
         "openai_image_max_dimension": OPENAI_IMAGE_MAX_DIMENSION,
     }
 
