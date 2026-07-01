@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { Toaster } from "sonner";
 import { UploadAccessProvider } from "@/lib/uploadAccess";
 import { AuthProvider } from "@/lib/auth";
@@ -32,6 +32,16 @@ function MouseParallaxRoot({ children }) {
     return () => window.removeEventListener("mousemove", handler);
   }, []);
   return children;
+}
+
+function ScrollToTopOnRouteChange() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [pathname]);
+
+  return null;
 }
 
 function RefreshableRoutes() {
@@ -69,6 +79,7 @@ export default function App() {
         <BrowserRouter>
         <MouseParallaxRoot>
           <div className="App min-h-screen bg-[var(--site-bg)] text-white transition-colors duration-300">
+            <ScrollToTopOnRouteChange />
             <Nav />
             <RefreshableRoutes />
             <Footer />
