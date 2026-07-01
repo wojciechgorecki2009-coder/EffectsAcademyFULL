@@ -172,11 +172,11 @@ export default function AiImagePage() {
         </div>
       </div>
 
-      {!config?.openai_image_configured && (
+      {!config?.gemini_image_configured && (
         <div className="mb-6 rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4 text-sm text-amber-100 flex gap-3">
           <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
           <p>
-            OpenAI Image Generation is not configured on the backend yet. Make sure <code>OPENAI_API_KEY</code> is saved on the Render API service and redeploy the backend.
+            Google Gemini / Nano Banana image generation is not configured on the backend yet. Make sure <code>GEMINI_API_KEY</code> is saved on the Render API service and redeploy the backend.
           </p>
         </div>
       )}

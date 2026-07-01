@@ -8,6 +8,7 @@ This project is ready to run as:
 - S3-compatible object storage, such as Cloudflare R2, for uploaded assets
 - Stripe Checkout for Premium
 - Google OAuth for login
+- Google Gemini / Nano Banana for the AI text image editor
 - Brevo SMTP for DMCA and suggestions emails
 
 ## Important security cleanup before launch
@@ -90,6 +91,24 @@ Set:
 - `DMCA_TO_EMAIL`
 
 DMCA and Suggestions both send to `DMCA_TO_EMAIL`.
+
+## Gemini / Nano Banana AI image setup
+
+Create a Gemini API key in Google AI Studio and save it on the Render backend service as:
+
+- `GEMINI_API_KEY`
+
+The default models are:
+
+- Free users: `gemini-3.1-flash-image`
+- Premium users and moderators: `gemini-3-pro-image`
+
+Optional backend variables:
+
+- `GEMINI_IMAGE_FREE_MODEL`
+- `GEMINI_IMAGE_PREMIUM_MODEL`
+- `GEMINI_IMAGE_MAX_DIMENSION`
+- `GEMINI_IMAGE_JPEG_QUALITY`
 
 ## Object storage setup
 
