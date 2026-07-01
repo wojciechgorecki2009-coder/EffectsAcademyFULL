@@ -16,12 +16,14 @@ import smtplib
 import ssl
 import time
 import requests
+import io
 from collections import defaultdict, deque
 from email.message import EmailMessage
 from pathlib import Path
 from pydantic import BaseModel, Field, EmailStr
 from typing import List, Optional
 from datetime import datetime, timezone
+from PIL import Image, ImageOps, UnidentifiedImageError
 import jwt
 import stripe
 from google.oauth2 import id_token as google_id_token
@@ -70,6 +72,9 @@ S3_PUBLIC_BASE_URL = os.environ.get("S3_PUBLIC_BASE_URL", "").rstrip("/")
 USE_OBJECT_STORAGE = bool(S3_BUCKET and S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY)
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 OPENAI_IMAGE_MODEL = os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-1")
+OPENAI_IMAGE_QUALITY = os.environ.get("OPENAI_IMAGE_QUALITY", "medium").strip().lower()
+OPENAI_IMAGE_MAX_DIMENSION = int(os.environ.get("OPENAI_IMAGE_MAX_DIMENSION", "1024"))
+OPENAI_IMAGE_JPEG_QUALITY = int(os.environ.get("OPENAI_IMAGE_JPEG_QUALITY", "85"))
 AI_IMAGE_MAX_BYTES = int(os.environ.get("AI_IMAGE_MAX_BYTES", str(8 * 1024 * 1024)))
 
 s3 = None
@@ -251,6 +256,36 @@ async def ai_usage_for_user(user: dict) -> dict:
         "remaining": None if unlimited else max(limit - used, 0),
         "unlimited": unlimited,
     }
+
+
+def prepare_openai_image_upload(image_bytes: bytes, content_type: str, filename: str) -> tuple[str, bytes, str]:
+    """Resize and lightly compress uploaded images before OpenAI image edits.
+
+    Image edit pricing is affected by image inputs and output quality. Keeping
+    uploads to a sane max dimension avoids sending huge screenshots when the UI
+    only needs a 1024px edit result.
+    """
+    try:
+        image = Image.open(io.BytesIO(image_bytes))
+        image = ImageOps.exif_transpose(image)
+    except UnidentifiedImageError:
+        return (Path(filename or "image.png").name, image_bytes, content_type)
+
+    if image.width > OPENAI_IMAGE_MAX_DIMENSION or image.height > OPENAI_IMAGE_MAX_DIMENSION:
+        image.thumbnail((OPENAI_IMAGE_MAX_DIMENSION, OPENAI_IMAGE_MAX_DIMENSION), Image.Resampling.LANCZOS)
+
+    has_alpha = image.mode in {"RGBA", "LA"} or ("transparency" in image.info)
+    output = io.BytesIO()
+    safe_stem = Path(filename or "image").stem or "image"
+    if has_alpha:
+        image = image.convert("RGBA")
+        image.save(output, format="PNG", optimize=True)
+        return (f"{safe_stem}.png", output.getvalue(), "image/png")
+
+    image = image.convert("RGB")
+    jpeg_quality = max(50, min(OPENAI_IMAGE_JPEG_QUALITY, 95))
+    image.save(output, format="JPEG", quality=jpeg_quality, optimize=True, progressive=True)
+    return (f"{safe_stem}.jpg", output.getvalue(), "image/jpeg")
 
 
 async def require_uploader(request: Request) -> dict:
@@ -526,6 +561,9 @@ async def auth_config():
         "object_storage_configured": USE_OBJECT_STORAGE,
         "ai_image_configured": bool(OPENAI_API_KEY),
         "openai_image_configured": bool(OPENAI_API_KEY),
+        "openai_image_model": OPENAI_IMAGE_MODEL,
+        "openai_image_quality": OPENAI_IMAGE_QUALITY,
+        "openai_image_max_dimension": OPENAI_IMAGE_MAX_DIMENSION,
     }
 
 
@@ -1092,6 +1130,11 @@ async def edit_ai_image(
     image_bytes = await image.read(AI_IMAGE_MAX_BYTES + 1)
     if len(image_bytes) > AI_IMAGE_MAX_BYTES:
         raise HTTPException(status_code=413, detail=f"Image must be under {AI_IMAGE_MAX_BYTES // (1024 * 1024)}MB")
+    upload_filename, upload_bytes, upload_content_type = prepare_openai_image_upload(
+        image_bytes,
+        content_type,
+        image.filename or "image.png",
+    )
 
     replacement_text = replacement_text.strip()
     style_notes = style_notes.strip()
@@ -1114,6 +1157,8 @@ async def edit_ai_image(
     if style_notes:
         prompt += f"\nAdditional style instructions: {style_notes}"
 
+    image_quality = OPENAI_IMAGE_QUALITY if OPENAI_IMAGE_QUALITY in {"low", "medium", "high", "auto"} else "medium"
+
     def call_openai_image_edit():
         response = requests.post(
             "https://api.openai.com/v1/images/edits",
@@ -1122,12 +1167,13 @@ async def edit_ai_image(
                 "model": OPENAI_IMAGE_MODEL,
                 "prompt": prompt,
                 "size": "1024x1024",
+                "quality": image_quality,
             },
             files={
                 "image": (
-                    Path(image.filename or "image.png").name,
-                    image_bytes,
-                    content_type,
+                    upload_filename,
+                    upload_bytes,
+                    upload_content_type,
                 )
             },
             timeout=120,
@@ -1200,6 +1246,9 @@ async def health():
         "smtp": dmca_email_configured(),
         "ai_image": bool(OPENAI_API_KEY),
         "openai_image": bool(OPENAI_API_KEY),
+        "openai_image_model": OPENAI_IMAGE_MODEL,
+        "openai_image_quality": OPENAI_IMAGE_QUALITY,
+        "openai_image_max_dimension": OPENAI_IMAGE_MAX_DIMENSION,
     }
 
 
