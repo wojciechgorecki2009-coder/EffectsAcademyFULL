@@ -155,7 +155,11 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
     setDownloading(true);
     toast.success("Starting download...");
     try {
-      if (asset.file_url) {
+      if (isPremium && (asset.external_url || asset.has_external_url)) {
+        const { data } = await api.post(`/assets/${asset.id}/premium-download-link`);
+        toast.success("Temporary premium link created.");
+        window.location.assign(data.url);
+      } else if (asset.file_url) {
         const fname = deriveDownloadFilename(asset);
         await downloadUrlWithoutLeavingPage(buildDownloadUrl(asset.file_url, fname), fname);
         recordDownload();
@@ -271,7 +275,7 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
               </div>
             )}
           </div>
-          {asset.external_url && !asset.file_url && (
+          {(asset.external_url || asset.has_external_url) && !asset.file_url && (
             <div className="absolute top-3 right-3 bg-black/60 text-[10px] font-mono px-2 py-1 rounded-full flex items-center gap-1 text-white border border-white/10">
               <LinkIcon className="w-3 h-3" />
               EXTERNAL

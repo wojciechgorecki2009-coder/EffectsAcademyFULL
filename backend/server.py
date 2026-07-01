@@ -17,6 +17,7 @@ import ssl
 import time
 import requests
 import io
+import secrets
 from collections import defaultdict, deque
 from email.message import EmailMessage
 from pathlib import Path
@@ -76,6 +77,7 @@ OPENAI_IMAGE_QUALITY = os.environ.get("OPENAI_IMAGE_QUALITY", "medium").strip().
 OPENAI_IMAGE_MAX_DIMENSION = int(os.environ.get("OPENAI_IMAGE_MAX_DIMENSION", "1024"))
 OPENAI_IMAGE_JPEG_QUALITY = int(os.environ.get("OPENAI_IMAGE_JPEG_QUALITY", "85"))
 AI_IMAGE_MAX_BYTES = int(os.environ.get("AI_IMAGE_MAX_BYTES", str(8 * 1024 * 1024)))
+PREMIUM_DOWNLOAD_LINK_TTL_SECONDS = int(os.environ.get("PREMIUM_DOWNLOAD_LINK_TTL_SECONDS", str(10 * 60)))
 
 s3 = None
 if USE_OBJECT_STORAGE:
@@ -228,6 +230,10 @@ def has_premium_access(user: Optional[dict]) -> bool:
     if not user:
         return False
     return user.get("role") in {"Admin", "Uploader"} or user.get("premium_status") in {"active", "trialing"}
+
+
+def can_manage_assets(user: Optional[dict]) -> bool:
+    return bool(user and user.get("role") in {"Admin", "Uploader"})
 
 
 def ai_generation_limit(user: dict) -> Optional[int]:
@@ -394,6 +400,7 @@ class Asset(BaseModel):
     pack_id: Optional[str] = ""
     custom_category_id: Optional[str] = ""
     download_count: int = 0
+    has_external_url: Optional[bool] = False
     created_at: str = Field(default_factory=now_iso)
 
 
@@ -485,6 +492,13 @@ class ContactCreate(BaseModel):
 class SuggestionCreate(BaseModel):
     content_or_subject: str
     description: str
+
+
+class PremiumDownloadLink(BaseModel):
+    url: str
+    token: str
+    expires_at: int
+    expires_in_seconds: int
 
 
 class CategoryOverride(BaseModel):
@@ -949,10 +963,11 @@ async def list_assets(
         q["title"] = {"$regex": search, "$options": "i"}
     docs = await db.assets.find(q, {"_id": 0}).sort("created_at", -1).to_list(2000)
     user = await request_user(request)
-    if not has_premium_access(user):
-        for doc in docs:
-            if doc.get("category") == "Premium":
-                doc["external_url"] = ""
+    can_manage = can_manage_assets(user)
+    for doc in docs:
+        doc["has_external_url"] = bool(doc.get("external_url"))
+        if doc.get("category") == "Premium" and not can_manage:
+            doc["external_url"] = ""
     return docs
 
 
@@ -999,6 +1014,67 @@ async def increment_download(asset_id: str, request: Request):
         raise HTTPException(404, "Asset not found")
     doc = await db.assets.find_one({"id": asset_id}, {"_id": 0})
     return {"download_count": doc["download_count"]}
+
+
+@api_router.post("/assets/{asset_id}/premium-download-link", response_model=PremiumDownloadLink)
+async def create_premium_download_link(asset_id: str, request: Request):
+    user = await request_user(request, required=True)
+    asset = await db.assets.find_one({"id": asset_id}, {"_id": 0})
+    if not asset:
+        raise HTTPException(404, "Asset not found")
+    await require_asset_access(request, asset)
+    if asset.get("category") != "Premium":
+        raise HTTPException(400, "Temporary links are only required for Premium assets")
+    if not asset.get("external_url"):
+        raise HTTPException(404, "This Premium asset does not have an external link")
+
+    now_ts = int(time.time())
+    expires_at = now_ts + PREMIUM_DOWNLOAD_LINK_TTL_SECONDS
+    token = secrets.token_urlsafe(32)
+    await db.premium_download_links.delete_many({"expires_at": {"$lte": now_ts}})
+    await db.premium_download_links.insert_one({
+        "id": token,
+        "token": token,
+        "asset_id": asset["id"],
+        "user_id": user["id"],
+        "title": asset.get("title", "Premium download"),
+        "external_url": asset["external_url"],
+        "created_at": now_ts,
+        "expires_at": expires_at,
+    })
+    await db.assets.update_one({"id": asset_id}, {"$inc": {"download_count": 1}})
+    return {
+        "url": f"{FRONTEND_URL}/download/{token}",
+        "token": token,
+        "expires_at": expires_at,
+        "expires_in_seconds": PREMIUM_DOWNLOAD_LINK_TTL_SECONDS,
+    }
+
+
+@api_router.get("/premium-downloads/{token}")
+async def get_premium_download(token: str, request: Request):
+    user = await request_user(request, required=True)
+    link = await db.premium_download_links.find_one({"token": token}, {"_id": 0})
+    if not link:
+        raise HTTPException(404, "Temporary link not found")
+    now_ts = int(time.time())
+    if int(link.get("expires_at", 0)) <= now_ts:
+        await db.premium_download_links.delete_one({"token": token})
+        raise HTTPException(410, "Temporary link expired")
+    if link.get("user_id") != user.get("id"):
+        raise HTTPException(403, "This temporary link belongs to another signed-in account")
+    if not has_premium_access(user):
+        raise HTTPException(status_code=402, detail="Premium subscription required")
+
+    return {
+        "title": link.get("title", "Premium download"),
+        "asset_id": link.get("asset_id", ""),
+        "download_url": link.get("external_url", ""),
+        "expires_at": link.get("expires_at"),
+        "seconds_remaining": max(0, int(link.get("expires_at", 0)) - now_ts),
+        "single_use": False,
+        "encrypted": True,
+    }
 
 
 # Packs -----------------------------------------------------------------
