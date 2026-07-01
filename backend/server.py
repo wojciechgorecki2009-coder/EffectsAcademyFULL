@@ -1058,6 +1058,7 @@ async def create_premium_download_link(asset_id: str, request: Request):
     if not asset.get("external_url"):
         raise HTTPException(404, "This Premium asset does not have an external link")
 
+    access_mode = "moderator" if can_manage_assets(user) else "premium"
     now_ts = int(time.time())
     expires_at = now_ts + PREMIUM_DOWNLOAD_LINK_TTL_SECONDS
     token = secrets.token_urlsafe(32)
@@ -1069,6 +1070,8 @@ async def create_premium_download_link(asset_id: str, request: Request):
         "user_id": user["id"],
         "title": asset.get("title", "Premium download"),
         "external_url": asset["external_url"],
+        "access_mode": access_mode,
+        "user_role": user.get("role", "Viewer"),
         "created_at": now_ts,
         "expires_at": expires_at,
     })
@@ -1100,6 +1103,8 @@ async def get_premium_download(token: str, request: Request):
         "title": link.get("title", "Premium download"),
         "asset_id": link.get("asset_id", ""),
         "download_url": link.get("external_url", ""),
+        "access_mode": link.get("access_mode", "premium"),
+        "access_label": "Moderator access" if link.get("access_mode") == "moderator" else "Premium checked",
         "expires_at": link.get("expires_at"),
         "seconds_remaining": max(0, int(link.get("expires_at", 0)) - now_ts),
         "single_use": False,

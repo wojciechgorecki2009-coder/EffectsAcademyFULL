@@ -97,7 +97,7 @@ export default function DownloadAccessPage() {
             {access?.title || "Temporary premium link"}
           </h1>
           <p className="text-zinc-400 mt-4 max-w-xl mx-auto">
-            This link is generated only after your Premium access is checked. It expires automatically to help protect premium drops.
+            This link is generated only after your Premium or moderator access is checked. It expires automatically to help protect premium drops.
           </p>
         </div>
 
@@ -105,7 +105,7 @@ export default function DownloadAccessPage() {
           {loadingAccess ? (
             <div className="min-h-72 flex flex-col items-center justify-center text-center">
               <div className="w-12 h-12 rounded-full border-2 border-purple-300/20 border-t-purple-300 animate-spin mb-5" />
-              <h2 className="font-display text-2xl">Checking Premium access...</h2>
+              <h2 className="font-display text-2xl">Checking access...</h2>
               <p className="text-zinc-500 mt-2">One moment while we prepare your temporary link.</p>
             </div>
           ) : error ? (
@@ -126,7 +126,7 @@ export default function DownloadAccessPage() {
                   <Clock3 className="w-4 h-4 text-yellow-300" /> {formatRemaining(remaining)} remaining
                 </span>
                 <span className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-sm text-emerald-200">
-                  <ShieldCheck className="w-4 h-4" /> Premium checked
+                  <ShieldCheck className="w-4 h-4" /> {access.access_label || "Access checked"}
                 </span>
                 <span className="inline-flex items-center gap-2 rounded-xl border border-purple-300/20 bg-purple-400/10 px-4 py-2 text-sm text-purple-200">
                   <LockKeyhole className="w-4 h-4" /> Temporary access
