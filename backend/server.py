@@ -18,7 +18,6 @@ import time
 import requests
 import io
 import secrets
-import base64
 from collections import defaultdict, deque
 from email.message import EmailMessage
 from pathlib import Path
@@ -72,11 +71,14 @@ S3_ACCESS_KEY_ID = os.environ.get("S3_ACCESS_KEY_ID", "")
 S3_SECRET_ACCESS_KEY = os.environ.get("S3_SECRET_ACCESS_KEY", "")
 S3_PUBLIC_BASE_URL = os.environ.get("S3_PUBLIC_BASE_URL", "").rstrip("/")
 USE_OBJECT_STORAGE = bool(S3_BUCKET and S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY)
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-GEMINI_IMAGE_FREE_MODEL = os.environ.get("GEMINI_IMAGE_FREE_MODEL", "gemini-3.1-flash-image")
-GEMINI_IMAGE_PREMIUM_MODEL = os.environ.get("GEMINI_IMAGE_PREMIUM_MODEL", "gemini-3-pro-image")
-GEMINI_IMAGE_MAX_DIMENSION = int(os.environ.get("GEMINI_IMAGE_MAX_DIMENSION", "1024"))
-GEMINI_IMAGE_JPEG_QUALITY = int(os.environ.get("GEMINI_IMAGE_JPEG_QUALITY", "85"))
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+OPENAI_IMAGE_FREE_MODEL = os.environ.get("OPENAI_IMAGE_FREE_MODEL", "gpt-image-1")
+OPENAI_IMAGE_PREMIUM_MODEL = os.environ.get("OPENAI_IMAGE_PREMIUM_MODEL", "gpt-image-1")
+OPENAI_IMAGE_FREE_QUALITY = os.environ.get("OPENAI_IMAGE_FREE_QUALITY", "medium")
+OPENAI_IMAGE_PREMIUM_QUALITY = os.environ.get("OPENAI_IMAGE_PREMIUM_QUALITY", "high")
+OPENAI_IMAGE_SIZE = os.environ.get("OPENAI_IMAGE_SIZE", "1024x1024")
+OPENAI_IMAGE_MAX_DIMENSION = int(os.environ.get("OPENAI_IMAGE_MAX_DIMENSION", "1024"))
+OPENAI_IMAGE_JPEG_QUALITY = int(os.environ.get("OPENAI_IMAGE_JPEG_QUALITY", "85"))
 AI_IMAGE_MAX_BYTES = int(os.environ.get("AI_IMAGE_MAX_BYTES", str(8 * 1024 * 1024)))
 PREMIUM_DOWNLOAD_LINK_TTL_SECONDS = int(os.environ.get("PREMIUM_DOWNLOAD_LINK_TTL_SECONDS", str(10 * 60)))
 
@@ -248,8 +250,9 @@ def ai_generation_limit(user: dict) -> Optional[int]:
 def ai_image_settings_for_user(user: dict) -> dict:
     premium_tier = has_premium_access(user)
     return {
-        "provider": "gemini",
-        "model": GEMINI_IMAGE_PREMIUM_MODEL if premium_tier else GEMINI_IMAGE_FREE_MODEL,
+        "provider": "openai",
+        "model": OPENAI_IMAGE_PREMIUM_MODEL if premium_tier else OPENAI_IMAGE_FREE_MODEL,
+        "quality": OPENAI_IMAGE_PREMIUM_QUALITY if premium_tier else OPENAI_IMAGE_FREE_QUALITY,
         "tier": "premium" if premium_tier else "free",
     }
 
@@ -278,8 +281,8 @@ async def ai_usage_for_user(user: dict) -> dict:
     }
 
 
-def prepare_gemini_image_upload(image_bytes: bytes, content_type: str, filename: str) -> tuple[str, bytes, str]:
-    """Resize and lightly compress uploaded images before Gemini image edits.
+def prepare_openai_image_upload(image_bytes: bytes, content_type: str, filename: str) -> tuple[str, bytes, str]:
+    """Resize and lightly compress uploaded images before OpenAI image edits.
 
     Image edit pricing is affected by image inputs and output settings. Keeping
     uploads to a sane max dimension avoids sending huge screenshots when the UI
@@ -291,8 +294,8 @@ def prepare_gemini_image_upload(image_bytes: bytes, content_type: str, filename:
     except UnidentifiedImageError:
         return (Path(filename or "image.png").name, image_bytes, content_type)
 
-    if image.width > GEMINI_IMAGE_MAX_DIMENSION or image.height > GEMINI_IMAGE_MAX_DIMENSION:
-        image.thumbnail((GEMINI_IMAGE_MAX_DIMENSION, GEMINI_IMAGE_MAX_DIMENSION), Image.Resampling.LANCZOS)
+    if image.width > OPENAI_IMAGE_MAX_DIMENSION or image.height > OPENAI_IMAGE_MAX_DIMENSION:
+        image.thumbnail((OPENAI_IMAGE_MAX_DIMENSION, OPENAI_IMAGE_MAX_DIMENSION), Image.Resampling.LANCZOS)
 
     has_alpha = image.mode in {"RGBA", "LA"} or ("transparency" in image.info)
     output = io.BytesIO()
@@ -303,48 +306,16 @@ def prepare_gemini_image_upload(image_bytes: bytes, content_type: str, filename:
         return (f"{safe_stem}.png", output.getvalue(), "image/png")
 
     image = image.convert("RGB")
-    jpeg_quality = max(50, min(GEMINI_IMAGE_JPEG_QUALITY, 95))
+    jpeg_quality = max(50, min(OPENAI_IMAGE_JPEG_QUALITY, 95))
     image.save(output, format="JPEG", quality=jpeg_quality, optimize=True, progressive=True)
     return (f"{safe_stem}.jpg", output.getvalue(), "image/jpeg")
 
 
-def extract_gemini_image_data(payload) -> tuple[str, str]:
-    """Find the first base64 image returned by Gemini's Interactions API.
-
-    Google may nest the image block differently as the API evolves, so this
-    parser accepts common keys from the SDK convenience object and raw REST
-    response instead of depending on one exact response shape.
-    """
-    candidates = []
-
-    def walk(value):
-        if isinstance(value, dict):
-            mime_type = (
-                value.get("mime_type")
-                or value.get("mimeType")
-                or value.get("media_type")
-                or value.get("mediaType")
-                or ""
-            )
-            data = value.get("data") or value.get("b64_json") or value.get("base64")
-            block_type = (value.get("type") or "").lower()
-            if isinstance(data, str) and (
-                mime_type.startswith("image/")
-                or block_type == "image"
-                or value.get("image")
-                or value.get("output_image")
-            ):
-                candidates.append((data, mime_type or "image/png"))
-            for item in value.values():
-                walk(item)
-        elif isinstance(value, list):
-            for item in value:
-                walk(item)
-
-    walk(payload)
-    if candidates:
-        return candidates[0]
-    raise HTTPException(status_code=502, detail="Gemini did not return an edited image")
+def extract_openai_image_data(payload) -> tuple[str, str]:
+    data = payload.get("data") or []
+    if data and isinstance(data[0], dict) and data[0].get("b64_json"):
+        return data[0]["b64_json"], "image/png"
+    raise HTTPException(status_code=502, detail="OpenAI did not return an edited image")
 
 
 async def require_uploader(request: Request) -> dict:
@@ -629,11 +600,13 @@ async def auth_config():
         "stripe_configured": bool(STRIPE_SECRET_KEY),
         "dev_login_enabled": USE_MOCK_DB,
         "object_storage_configured": USE_OBJECT_STORAGE,
-        "ai_image_configured": bool(GEMINI_API_KEY),
-        "gemini_image_configured": bool(GEMINI_API_KEY),
-        "gemini_image_free_model": GEMINI_IMAGE_FREE_MODEL,
-        "gemini_image_premium_model": GEMINI_IMAGE_PREMIUM_MODEL,
-        "gemini_image_max_dimension": GEMINI_IMAGE_MAX_DIMENSION,
+        "ai_image_configured": bool(OPENAI_API_KEY),
+        "openai_image_configured": bool(OPENAI_API_KEY),
+        "openai_image_free_model": OPENAI_IMAGE_FREE_MODEL,
+        "openai_image_premium_model": OPENAI_IMAGE_PREMIUM_MODEL,
+        "openai_image_free_quality": OPENAI_IMAGE_FREE_QUALITY,
+        "openai_image_premium_quality": OPENAI_IMAGE_PREMIUM_QUALITY,
+        "openai_image_max_dimension": OPENAI_IMAGE_MAX_DIMENSION,
     }
 
 
@@ -1249,8 +1222,8 @@ async def edit_ai_image(
 ):
     enforce_rate_limit(request, "ai-image", limit=20, window_seconds=300)
     user = await request_user(request, required=True)
-    if not GEMINI_API_KEY:
-        raise HTTPException(status_code=503, detail="Google Gemini Image Generation is not configured yet")
+    if not OPENAI_API_KEY:
+        raise HTTPException(status_code=503, detail="OpenAI Image Generation is not configured yet")
 
     usage = await ai_usage_for_user(user)
     if not usage.get("unlimited") and usage["remaining"] <= 0:
@@ -1267,7 +1240,7 @@ async def edit_ai_image(
     image_bytes = await image.read(AI_IMAGE_MAX_BYTES + 1)
     if len(image_bytes) > AI_IMAGE_MAX_BYTES:
         raise HTTPException(status_code=413, detail=f"Image must be under {AI_IMAGE_MAX_BYTES // (1024 * 1024)}MB")
-    upload_filename, upload_bytes, upload_content_type = prepare_gemini_image_upload(
+    upload_filename, upload_bytes, upload_content_type = prepare_openai_image_upload(
         image_bytes,
         content_type,
         image.filename or "image.png",
@@ -1296,29 +1269,19 @@ async def edit_ai_image(
 
     image_settings = ai_image_settings_for_user(user)
 
-    def call_gemini_image_edit():
+    def call_openai_image_edit():
         response = requests.post(
-            "https://generativelanguage.googleapis.com/v1beta/interactions",
+            "https://api.openai.com/v1/images/edits",
             headers={
-                "x-goog-api-key": GEMINI_API_KEY,
-                "Content-Type": "application/json",
+                "Authorization": f"Bearer {OPENAI_API_KEY}",
             },
-            json={
+            data={
                 "model": image_settings["model"],
-                "input": [
-                    {"type": "text", "text": prompt},
-                    {
-                        "type": "image",
-                        "mime_type": upload_content_type,
-                        "data": base64.b64encode(upload_bytes).decode("utf-8"),
-                    },
-                ],
-                "response_format": {
-                    "type": "image",
-                    "mime_type": "image/jpeg",
-                    "image_size": "1K",
-                },
+                "prompt": prompt,
+                "quality": image_settings["quality"],
+                "size": OPENAI_IMAGE_SIZE,
             },
+            files={"image": (upload_filename, upload_bytes, upload_content_type)},
             timeout=120,
         )
         try:
@@ -1326,11 +1289,11 @@ async def edit_ai_image(
         except ValueError:
             payload = {}
         if response.status_code >= 400:
-            message = (payload.get("error") or {}).get("message") or "Gemini image edit failed"
+            message = (payload.get("error") or {}).get("message") or "OpenAI image edit failed"
             raise HTTPException(status_code=502, detail=message)
-        return extract_gemini_image_data(payload)
+        return extract_openai_image_data(payload)
 
-    image_base64, output_mime_type = await asyncio.to_thread(call_gemini_image_edit)
+    image_base64, output_mime_type = await asyncio.to_thread(call_openai_image_edit)
 
     record_id = f"{user['id']}:{usage['date']}"
     await db.ai_image_usage.update_one(
@@ -1387,11 +1350,13 @@ async def health():
         "object_storage": USE_OBJECT_STORAGE,
         "stripe": bool(STRIPE_SECRET_KEY),
         "smtp": dmca_email_configured(),
-        "ai_image": bool(GEMINI_API_KEY),
-        "gemini_image": bool(GEMINI_API_KEY),
-        "gemini_image_free_model": GEMINI_IMAGE_FREE_MODEL,
-        "gemini_image_premium_model": GEMINI_IMAGE_PREMIUM_MODEL,
-        "gemini_image_max_dimension": GEMINI_IMAGE_MAX_DIMENSION,
+        "ai_image": bool(OPENAI_API_KEY),
+        "openai_image": bool(OPENAI_API_KEY),
+        "openai_image_free_model": OPENAI_IMAGE_FREE_MODEL,
+        "openai_image_premium_model": OPENAI_IMAGE_PREMIUM_MODEL,
+        "openai_image_free_quality": OPENAI_IMAGE_FREE_QUALITY,
+        "openai_image_premium_quality": OPENAI_IMAGE_PREMIUM_QUALITY,
+        "openai_image_max_dimension": OPENAI_IMAGE_MAX_DIMENSION,
     }
 
 
