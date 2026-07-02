@@ -176,7 +176,7 @@ export default function AiImagePage() {
         <div className="mb-6 rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4 text-sm text-amber-100 flex gap-3">
           <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
           <p>
-            OpenAI image generation is not configured on the backend yet. Make sure <code>OPENAI_API_KEY</code> is saved on the Render API service and redeploy the backend.
+            Fal Nano Banana image generation is not configured on the backend yet. Make sure <code>FAL_KEY</code> is saved on the Render API service and redeploy the backend.
           </p>
         </div>
       )}
@@ -252,7 +252,7 @@ export default function AiImagePage() {
           </button>
 
           <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-zinc-400">
-            Free users get <span className="text-white">3</span> medium-quality generations/day. Premium users get <span className="text-white">10</span> higher-quality generations/day.
+            Free users get <span className="text-white">3</span> Nano Banana generations/day. Premium users get <span className="text-white">10</span> generations/day.
           </div>
         </div>
       </form>

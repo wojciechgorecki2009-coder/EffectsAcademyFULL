@@ -18,6 +18,7 @@ import time
 import requests
 import io
 import secrets
+import base64
 from collections import defaultdict, deque
 from email.message import EmailMessage
 from pathlib import Path
@@ -71,14 +72,17 @@ S3_ACCESS_KEY_ID = os.environ.get("S3_ACCESS_KEY_ID", "")
 S3_SECRET_ACCESS_KEY = os.environ.get("S3_SECRET_ACCESS_KEY", "")
 S3_PUBLIC_BASE_URL = os.environ.get("S3_PUBLIC_BASE_URL", "").rstrip("/")
 USE_OBJECT_STORAGE = bool(S3_BUCKET and S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY)
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
-OPENAI_IMAGE_FREE_MODEL = os.environ.get("OPENAI_IMAGE_FREE_MODEL", "gpt-image-1")
-OPENAI_IMAGE_PREMIUM_MODEL = os.environ.get("OPENAI_IMAGE_PREMIUM_MODEL", "gpt-image-1")
-OPENAI_IMAGE_FREE_QUALITY = os.environ.get("OPENAI_IMAGE_FREE_QUALITY", "medium")
-OPENAI_IMAGE_PREMIUM_QUALITY = os.environ.get("OPENAI_IMAGE_PREMIUM_QUALITY", "high")
-OPENAI_IMAGE_SIZE = os.environ.get("OPENAI_IMAGE_SIZE", "1024x1024")
-OPENAI_IMAGE_MAX_DIMENSION = int(os.environ.get("OPENAI_IMAGE_MAX_DIMENSION", "1024"))
-OPENAI_IMAGE_JPEG_QUALITY = int(os.environ.get("OPENAI_IMAGE_JPEG_QUALITY", "85"))
+FAL_KEY = os.environ.get("FAL_KEY", "")
+FAL_IMAGE_FREE_MODEL = os.environ.get("FAL_IMAGE_FREE_MODEL", "fal-ai/nano-banana/edit")
+FAL_IMAGE_PREMIUM_MODEL = os.environ.get("FAL_IMAGE_PREMIUM_MODEL", "fal-ai/nano-banana/edit")
+FAL_IMAGE_OUTPUT_FORMAT = os.environ.get("FAL_IMAGE_OUTPUT_FORMAT", "png").lower()
+FAL_IMAGE_ASPECT_RATIO = os.environ.get("FAL_IMAGE_ASPECT_RATIO", "auto")
+FAL_IMAGE_SAFETY_TOLERANCE = os.environ.get("FAL_IMAGE_SAFETY_TOLERANCE", "4")
+FAL_IMAGE_MAX_DIMENSION = int(os.environ.get("FAL_IMAGE_MAX_DIMENSION", "1024"))
+FAL_IMAGE_JPEG_QUALITY = int(os.environ.get("FAL_IMAGE_JPEG_QUALITY", "85"))
+FAL_QUEUE_BASE_URL = os.environ.get("FAL_QUEUE_BASE_URL", "https://queue.fal.run").rstrip("/")
+FAL_STATUS_POLL_SECONDS = float(os.environ.get("FAL_STATUS_POLL_SECONDS", "1.5"))
+FAL_STATUS_MAX_POLLS = int(os.environ.get("FAL_STATUS_MAX_POLLS", "80"))
 AI_IMAGE_MAX_BYTES = int(os.environ.get("AI_IMAGE_MAX_BYTES", str(8 * 1024 * 1024)))
 PREMIUM_DOWNLOAD_LINK_TTL_SECONDS = int(os.environ.get("PREMIUM_DOWNLOAD_LINK_TTL_SECONDS", str(10 * 60)))
 
@@ -250,9 +254,8 @@ def ai_generation_limit(user: dict) -> Optional[int]:
 def ai_image_settings_for_user(user: dict) -> dict:
     premium_tier = has_premium_access(user)
     return {
-        "provider": "openai",
-        "model": OPENAI_IMAGE_PREMIUM_MODEL if premium_tier else OPENAI_IMAGE_FREE_MODEL,
-        "quality": OPENAI_IMAGE_PREMIUM_QUALITY if premium_tier else OPENAI_IMAGE_FREE_QUALITY,
+        "provider": "fal",
+        "model": FAL_IMAGE_PREMIUM_MODEL if premium_tier else FAL_IMAGE_FREE_MODEL,
         "tier": "premium" if premium_tier else "free",
     }
 
@@ -281,12 +284,11 @@ async def ai_usage_for_user(user: dict) -> dict:
     }
 
 
-def prepare_openai_image_upload(image_bytes: bytes, content_type: str, filename: str) -> tuple[str, bytes, str]:
-    """Resize and lightly compress uploaded images before OpenAI image edits.
+def prepare_fal_image_upload(image_bytes: bytes, content_type: str, filename: str) -> tuple[str, bytes, str]:
+    """Resize and lightly compress uploaded images before Fal image edits.
 
-    Image edit pricing is affected by image inputs and output settings. Keeping
-    uploads to a sane max dimension avoids sending huge screenshots when the UI
-    only needs a web-friendly edit result.
+    Fal accepts image URLs, including data URLs. Keeping uploads to a sane max
+    dimension makes queue submissions faster and cheaper to process.
     """
     try:
         image = Image.open(io.BytesIO(image_bytes))
@@ -294,8 +296,8 @@ def prepare_openai_image_upload(image_bytes: bytes, content_type: str, filename:
     except UnidentifiedImageError:
         return (Path(filename or "image.png").name, image_bytes, content_type)
 
-    if image.width > OPENAI_IMAGE_MAX_DIMENSION or image.height > OPENAI_IMAGE_MAX_DIMENSION:
-        image.thumbnail((OPENAI_IMAGE_MAX_DIMENSION, OPENAI_IMAGE_MAX_DIMENSION), Image.Resampling.LANCZOS)
+    if image.width > FAL_IMAGE_MAX_DIMENSION or image.height > FAL_IMAGE_MAX_DIMENSION:
+        image.thumbnail((FAL_IMAGE_MAX_DIMENSION, FAL_IMAGE_MAX_DIMENSION), Image.Resampling.LANCZOS)
 
     has_alpha = image.mode in {"RGBA", "LA"} or ("transparency" in image.info)
     output = io.BytesIO()
@@ -306,16 +308,46 @@ def prepare_openai_image_upload(image_bytes: bytes, content_type: str, filename:
         return (f"{safe_stem}.png", output.getvalue(), "image/png")
 
     image = image.convert("RGB")
-    jpeg_quality = max(50, min(OPENAI_IMAGE_JPEG_QUALITY, 95))
+    jpeg_quality = max(50, min(FAL_IMAGE_JPEG_QUALITY, 95))
     image.save(output, format="JPEG", quality=jpeg_quality, optimize=True, progressive=True)
     return (f"{safe_stem}.jpg", output.getvalue(), "image/jpeg")
 
 
-def extract_openai_image_data(payload) -> tuple[str, str]:
-    data = payload.get("data") or []
-    if data and isinstance(data[0], dict) and data[0].get("b64_json"):
-        return data[0]["b64_json"], "image/png"
-    raise HTTPException(status_code=502, detail="OpenAI did not return an edited image")
+def fal_error_message(payload, fallback: str = "Fal image edit failed") -> str:
+    if isinstance(payload, dict):
+        detail = payload.get("detail") or payload.get("error") or payload.get("message")
+        if isinstance(detail, str):
+            return detail
+        if isinstance(detail, dict):
+            return detail.get("message") or detail.get("detail") or fallback
+        if isinstance(detail, list) and detail:
+            first = detail[0]
+            if isinstance(first, str):
+                return first
+            if isinstance(first, dict):
+                return first.get("msg") or first.get("message") or fallback
+    return fallback
+
+
+def extract_fal_image_data(payload) -> tuple[str, str]:
+    images = payload.get("images") or []
+    if not images or not isinstance(images[0], dict):
+        raise HTTPException(status_code=502, detail="Fal did not return an edited image")
+
+    image_result = images[0]
+    image_url = image_result.get("url", "")
+    content_type = image_result.get("content_type") or f"image/{FAL_IMAGE_OUTPUT_FORMAT}"
+    if image_url.startswith("data:"):
+        header, encoded = image_url.split(",", 1)
+        mime_match = re.match(r"data:([^;]+);base64", header)
+        return encoded, mime_match.group(1) if mime_match else content_type
+    if image_url.startswith(("http://", "https://")):
+        response = requests.get(image_url, timeout=90)
+        if response.status_code >= 400:
+            raise HTTPException(status_code=502, detail="Fal returned an image URL that could not be downloaded")
+        return base64.b64encode(response.content).decode("utf-8"), response.headers.get("content-type", content_type)
+
+    raise HTTPException(status_code=502, detail="Fal did not return a usable image URL")
 
 
 async def require_uploader(request: Request) -> dict:
@@ -600,13 +632,12 @@ async def auth_config():
         "stripe_configured": bool(STRIPE_SECRET_KEY),
         "dev_login_enabled": USE_MOCK_DB,
         "object_storage_configured": USE_OBJECT_STORAGE,
-        "ai_image_configured": bool(OPENAI_API_KEY),
-        "openai_image_configured": bool(OPENAI_API_KEY),
-        "openai_image_free_model": OPENAI_IMAGE_FREE_MODEL,
-        "openai_image_premium_model": OPENAI_IMAGE_PREMIUM_MODEL,
-        "openai_image_free_quality": OPENAI_IMAGE_FREE_QUALITY,
-        "openai_image_premium_quality": OPENAI_IMAGE_PREMIUM_QUALITY,
-        "openai_image_max_dimension": OPENAI_IMAGE_MAX_DIMENSION,
+        "ai_image_configured": bool(FAL_KEY),
+        "fal_image_configured": bool(FAL_KEY),
+        "fal_image_free_model": FAL_IMAGE_FREE_MODEL,
+        "fal_image_premium_model": FAL_IMAGE_PREMIUM_MODEL,
+        "fal_image_output_format": FAL_IMAGE_OUTPUT_FORMAT,
+        "fal_image_max_dimension": FAL_IMAGE_MAX_DIMENSION,
     }
 
 
@@ -1222,8 +1253,8 @@ async def edit_ai_image(
 ):
     enforce_rate_limit(request, "ai-image", limit=20, window_seconds=300)
     user = await request_user(request, required=True)
-    if not OPENAI_API_KEY:
-        raise HTTPException(status_code=503, detail="OpenAI Image Generation is not configured yet")
+    if not FAL_KEY:
+        raise HTTPException(status_code=503, detail="Fal Nano Banana image generation is not configured yet")
 
     usage = await ai_usage_for_user(user)
     if not usage.get("unlimited") and usage["remaining"] <= 0:
@@ -1240,7 +1271,7 @@ async def edit_ai_image(
     image_bytes = await image.read(AI_IMAGE_MAX_BYTES + 1)
     if len(image_bytes) > AI_IMAGE_MAX_BYTES:
         raise HTTPException(status_code=413, detail=f"Image must be under {AI_IMAGE_MAX_BYTES // (1024 * 1024)}MB")
-    upload_filename, upload_bytes, upload_content_type = prepare_openai_image_upload(
+    _, upload_bytes, upload_content_type = prepare_fal_image_upload(
         image_bytes,
         content_type,
         image.filename or "image.png",
@@ -1269,31 +1300,70 @@ async def edit_ai_image(
 
     image_settings = ai_image_settings_for_user(user)
 
-    def call_openai_image_edit():
+    def call_fal_image_edit():
+        encoded_image = base64.b64encode(upload_bytes).decode("utf-8")
+        image_data_url = f"data:{upload_content_type};base64,{encoded_image}"
+        headers = {
+            "Authorization": f"Key {FAL_KEY}",
+            "Content-Type": "application/json",
+        }
+        fal_payload = {
+            "prompt": prompt,
+            "image_urls": [image_data_url],
+            "num_images": 1,
+            "aspect_ratio": FAL_IMAGE_ASPECT_RATIO,
+            "output_format": FAL_IMAGE_OUTPUT_FORMAT,
+            "safety_tolerance": str(FAL_IMAGE_SAFETY_TOLERANCE),
+            "sync_mode": False,
+        }
+
         response = requests.post(
-            "https://api.openai.com/v1/images/edits",
-            headers={
-                "Authorization": f"Bearer {OPENAI_API_KEY}",
-            },
-            data={
-                "model": image_settings["model"],
-                "prompt": prompt,
-                "quality": image_settings["quality"],
-                "size": OPENAI_IMAGE_SIZE,
-            },
-            files={"image": (upload_filename, upload_bytes, upload_content_type)},
-            timeout=120,
+            f"{FAL_QUEUE_BASE_URL}/{image_settings['model']}",
+            headers=headers,
+            json=fal_payload,
+            timeout=60,
         )
         try:
             payload = response.json()
         except ValueError:
             payload = {}
         if response.status_code >= 400:
-            message = (payload.get("error") or {}).get("message") or "OpenAI image edit failed"
-            raise HTTPException(status_code=502, detail=message)
-        return extract_openai_image_data(payload)
+            raise HTTPException(status_code=502, detail=fal_error_message(payload))
+        if payload.get("images"):
+            return extract_fal_image_data(payload)
 
-    image_base64, output_mime_type = await asyncio.to_thread(call_openai_image_edit)
+        status_url = payload.get("status_url")
+        response_url = payload.get("response_url")
+        if not status_url or not response_url:
+            raise HTTPException(status_code=502, detail="Fal did not return a queue status URL")
+
+        for _ in range(FAL_STATUS_MAX_POLLS):
+            status_response = requests.get(status_url, headers=headers, timeout=30)
+            try:
+                status_payload = status_response.json()
+            except ValueError:
+                status_payload = {}
+            if status_response.status_code >= 400:
+                raise HTTPException(status_code=502, detail=fal_error_message(status_payload, "Fal status check failed"))
+            status = status_payload.get("status", "")
+            if status == "COMPLETED":
+                break
+            if status in {"FAILED", "ERROR"} or status_payload.get("error"):
+                raise HTTPException(status_code=502, detail=fal_error_message(status_payload))
+            time.sleep(FAL_STATUS_POLL_SECONDS)
+        else:
+            raise HTTPException(status_code=504, detail="Fal image edit is taking too long. Please try again.")
+
+        result_response = requests.get(response_url, headers=headers, timeout=90)
+        try:
+            result_payload = result_response.json()
+        except ValueError:
+            result_payload = {}
+        if result_response.status_code >= 400:
+            raise HTTPException(status_code=502, detail=fal_error_message(result_payload, "Fal result fetch failed"))
+        return extract_fal_image_data(result_payload)
+
+    image_base64, output_mime_type = await asyncio.to_thread(call_fal_image_edit)
 
     record_id = f"{user['id']}:{usage['date']}"
     await db.ai_image_usage.update_one(
@@ -1350,13 +1420,12 @@ async def health():
         "object_storage": USE_OBJECT_STORAGE,
         "stripe": bool(STRIPE_SECRET_KEY),
         "smtp": dmca_email_configured(),
-        "ai_image": bool(OPENAI_API_KEY),
-        "openai_image": bool(OPENAI_API_KEY),
-        "openai_image_free_model": OPENAI_IMAGE_FREE_MODEL,
-        "openai_image_premium_model": OPENAI_IMAGE_PREMIUM_MODEL,
-        "openai_image_free_quality": OPENAI_IMAGE_FREE_QUALITY,
-        "openai_image_premium_quality": OPENAI_IMAGE_PREMIUM_QUALITY,
-        "openai_image_max_dimension": OPENAI_IMAGE_MAX_DIMENSION,
+        "ai_image": bool(FAL_KEY),
+        "fal_image": bool(FAL_KEY),
+        "fal_image_free_model": FAL_IMAGE_FREE_MODEL,
+        "fal_image_premium_model": FAL_IMAGE_PREMIUM_MODEL,
+        "fal_image_output_format": FAL_IMAGE_OUTPUT_FORMAT,
+        "fal_image_max_dimension": FAL_IMAGE_MAX_DIMENSION,
     }
 
 

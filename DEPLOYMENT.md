@@ -8,7 +8,7 @@ This project is ready to run as:
 - S3-compatible object storage, such as Cloudflare R2, for uploaded assets
 - Stripe Checkout for Premium
 - Google OAuth for login
-- OpenAI image generation for the AI text image editor
+- Fal.ai Nano Banana image generation for the AI text image editor
 - Brevo SMTP for DMCA and suggestions emails
 
 ## Important security cleanup before launch
@@ -92,26 +92,30 @@ Set:
 
 DMCA and Suggestions both send to `DMCA_TO_EMAIL`.
 
-## OpenAI AI image setup
+## Fal.ai Nano Banana AI image setup
 
-Create an OpenAI API key and save it on the Render backend service as:
+Create a Fal.ai API key and save it on the Render backend service as:
 
-- `OPENAI_API_KEY`
+- `FAL_KEY`
 
 The default setup is:
 
-- Free users: `gpt-image-1` at `medium` quality
-- Premium users and moderators: `gpt-image-1` at `high` quality
+- Free users: `fal-ai/nano-banana/edit`
+- Premium users and moderators: `fal-ai/nano-banana/edit`
 
 Optional backend variables:
 
-- `OPENAI_IMAGE_FREE_MODEL`
-- `OPENAI_IMAGE_PREMIUM_MODEL`
-- `OPENAI_IMAGE_FREE_QUALITY`
-- `OPENAI_IMAGE_PREMIUM_QUALITY`
-- `OPENAI_IMAGE_SIZE`
-- `OPENAI_IMAGE_MAX_DIMENSION`
-- `OPENAI_IMAGE_JPEG_QUALITY`
+- `FAL_IMAGE_FREE_MODEL`
+- `FAL_IMAGE_PREMIUM_MODEL`
+- `FAL_IMAGE_OUTPUT_FORMAT`
+- `FAL_IMAGE_ASPECT_RATIO`
+- `FAL_IMAGE_SAFETY_TOLERANCE`
+- `FAL_IMAGE_MAX_DIMENSION`
+- `FAL_IMAGE_JPEG_QUALITY`
+- `FAL_STATUS_POLL_SECONDS`
+- `FAL_STATUS_MAX_POLLS`
+
+The site uses Fal's queue-backed `fal-ai/nano-banana/edit` endpoint so uploaded images can be edited server-side without exposing your API key in the browser. If Fal later offers a better premium image-edit model, set `FAL_IMAGE_PREMIUM_MODEL` to that model ID in Render.
 
 ## Object storage setup
 
