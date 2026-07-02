@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Wand2, UploadCloud, Image as ImageIcon, Download, Crown, ShieldCheck, Sparkles, AlertCircle, Loader2 } from "lucide-react";
+import { Wand2, UploadCloud, Image as ImageIcon, Download, Crown, ShieldCheck, Sparkles, AlertCircle, Loader2, Database, HardDrive, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -14,6 +14,25 @@ function limitLabel(user, usage) {
   return "Free viewer";
 }
 
+function formatBytes(bytes = 0) {
+  if (!bytes) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  let value = bytes;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  return `${value >= 10 || unit === 0 ? value.toFixed(0) : value.toFixed(1)} ${units[unit]}`;
+}
+
+function formatStorageDate(stamp) {
+  if (!stamp) return "";
+  const date = new Date(stamp);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
 export default function AiImagePage() {
   const { user, config, loading: authLoading } = useAuth();
   const [usage, setUsage] = useState(null);
@@ -25,9 +44,13 @@ export default function AiImagePage() {
   const [generating, setGenerating] = useState(false);
   const [usageLoading, setUsageLoading] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [storageOpen, setStorageOpen] = useState(false);
+  const [storageLoading, setStorageLoading] = useState(false);
+  const [storage, setStorage] = useState(null);
 
   const hasGenerations = usage?.unlimited || (usage?.remaining ?? 0) > 0;
   const canGenerate = user && file && replacementText.trim() && !generating && hasGenerations;
+  const canUseStorage = user && (["active", "trialing"].includes(user.premium_status) || ["Admin", "Uploader"].includes(user.role));
 
   const planCopy = useMemo(() => {
     if (!usage) return "Checking your daily limit...";
@@ -72,6 +95,24 @@ export default function AiImagePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
+  const loadStorage = async () => {
+    if (!canUseStorage) return;
+    setStorageLoading(true);
+    try {
+      const { data } = await api.get("/ai-image/storage");
+      setStorage(data);
+    } catch {
+      toast.error("Unable to load AI storage.");
+    } finally {
+      setStorageLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (storageOpen) loadStorage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storageOpen, user?.id]);
+
   const pickFile = (nextFile) => {
     if (!nextFile) return;
     if (!ACCEPTED_TYPES.includes(nextFile.type)) {
@@ -101,6 +142,9 @@ export default function AiImagePage() {
       });
       setUsage({ used: data.used, limit: data.limit, remaining: data.remaining, unlimited: data.unlimited });
       setResultUrl(`data:${data.mime_type || "image/png"};base64,${data.image_base64}`);
+      if (data.storage_saved && storageOpen) {
+        loadStorage();
+      }
       toast.success("AI image edit generated.");
     } catch (err) {
       const message = err?.response?.data?.detail || "Unable to generate image edit.";
@@ -115,6 +159,16 @@ export default function AiImagePage() {
     const a = document.createElement("a");
     a.href = resultUrl;
     a.download = "effects-academy-ai-edit.png";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+
+  const downloadStoredItem = (item) => {
+    if (!item?.image_base64) return;
+    const a = document.createElement("a");
+    a.href = `data:${item.mime_type || "image/png"};base64,${item.image_base64}`;
+    a.download = `effects-academy-ai-storage-${item.id || "image"}.png`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -157,18 +211,30 @@ export default function AiImagePage() {
             Upload an image with text, tell the AI what it should say, and download an edited version.
           </p>
         </div>
-        <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 min-w-56">
-          <div className="flex items-center gap-2 text-sm text-white">
-            {["active", "trialing"].includes(user?.premium_status) ? (
-              <Crown className="w-4 h-4 text-purple-300" />
-            ) : (
-              <Sparkles className="w-4 h-4 text-neon" />
-            )}
-            {limitLabel(user, usage)}
+        <div className="flex flex-wrap items-center gap-3">
+          {canUseStorage && (
+            <button
+              type="button"
+              onClick={() => setStorageOpen((open) => !open)}
+              className="inline-flex items-center gap-2 rounded-2xl border border-purple-300/20 bg-purple-300/10 px-4 py-3 text-sm text-purple-100 btn-press hover:bg-purple-300/15"
+            >
+              <Database className="w-4 h-4" />
+              {storageOpen ? "Close storage" : "Open storage"}
+            </button>
+          )}
+          <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 min-w-56">
+            <div className="flex items-center gap-2 text-sm text-white">
+              {["active", "trialing"].includes(user?.premium_status) ? (
+                <Crown className="w-4 h-4 text-purple-300" />
+              ) : (
+                <Sparkles className="w-4 h-4 text-neon" />
+              )}
+              {limitLabel(user, usage)}
+            </div>
+            <p className="text-xs text-zinc-500 mt-1">
+              {usageLoading ? "Checking usage..." : planCopy}
+            </p>
           </div>
-          <p className="text-xs text-zinc-500 mt-1">
-            {usageLoading ? "Checking usage..." : planCopy}
-          </p>
         </div>
       </div>
 
@@ -289,6 +355,84 @@ export default function AiImagePage() {
           </div>
         )}
       </div>
+
+      {canUseStorage && storageOpen && (
+        <div className="mt-8 rounded-3xl border border-purple-300/15 bg-gradient-to-br from-purple-950/20 via-white/[0.03] to-black/30 p-5 md:p-6 page-soft-enter">
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
+            <div>
+              <h2 className="font-display text-2xl md:text-3xl font-black tracking-tight flex items-center gap-2">
+                <Database className="w-5 h-5 text-purple-300" /> Storage
+              </h2>
+              <p className="text-sm text-zinc-500 mt-1">
+                Your previous AI text generations are saved here. Full cloud folders will come later.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="rounded-2xl border border-white/10 bg-black/25 px-4 py-3">
+                <p className="text-[10px] uppercase tracking-widest text-zinc-500">Saved data</p>
+                <p className="text-sm font-semibold text-white flex items-center gap-2 mt-1">
+                  <HardDrive className="w-4 h-4 text-purple-300" />
+                  {formatBytes(storage?.total_bytes || 0)}
+                  <span className="text-zinc-500 font-normal">/ {storage?.count || 0} items</span>
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={loadStorage}
+                disabled={storageLoading}
+                className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] px-4 py-3 text-sm text-white btn-press disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 ${storageLoading ? "animate-spin" : ""}`} />
+                Refresh
+              </button>
+            </div>
+          </div>
+
+          {storageLoading && !storage ? (
+            <div className="min-h-44 rounded-2xl border border-dashed border-white/10 bg-black/20 flex items-center justify-center text-zinc-500">
+              <Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading storage...
+            </div>
+          ) : storage?.items?.length ? (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {storage.items.map((item) => {
+                const imageSrc = `data:${item.mime_type || "image/png"};base64,${item.image_base64}`;
+                return (
+                  <div key={item.id} className="rounded-2xl border border-white/10 bg-black/30 overflow-hidden group">
+                    <div className="aspect-video bg-black/40 overflow-hidden">
+                      <img src={imageSrc} alt={item.replacement_text || "Stored AI generation"} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
+                    </div>
+                    <div className="p-4">
+                      <p className="text-sm font-semibold text-white line-clamp-2">{item.replacement_text || "AI text edit"}</p>
+                      {item.style_notes && (
+                        <p className="text-xs text-zinc-500 mt-1 line-clamp-2">{item.style_notes}</p>
+                      )}
+                      <div className="flex items-center justify-between gap-3 mt-4">
+                        <div className="text-[11px] text-zinc-600">
+                          <p>{formatStorageDate(item.created_at)}</p>
+                          <p>{formatBytes(item.size_bytes || 0)}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => downloadStoredItem(item)}
+                          className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2 text-xs text-white btn-press"
+                        >
+                          <Download className="w-3.5 h-3.5" /> Download
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="min-h-44 rounded-2xl border border-dashed border-white/10 bg-black/20 flex flex-col items-center justify-center text-center px-6">
+              <Database className="w-8 h-8 text-zinc-600 mb-3" />
+              <p className="font-display text-xl font-black text-white">No saved generations yet</p>
+              <p className="text-sm text-zinc-500 mt-1">Generate an AI text edit and it will appear in your storage automatically.</p>
+            </div>
+          )}
+        </div>
+      )}
     </section>
   );
 }

@@ -353,6 +353,14 @@ def extract_fal_image_data(payload) -> tuple[str, str]:
     raise HTTPException(status_code=502, detail="Fal did not return a usable image URL")
 
 
+def base64_size_bytes(encoded: str) -> int:
+    clean = re.sub(r"\s+", "", encoded or "")
+    if not clean:
+        return 0
+    padding = len(clean) - len(clean.rstrip("="))
+    return max(0, (len(clean) * 3) // 4 - padding)
+
+
 async def require_uploader(request: Request) -> dict:
     user = await request_user(request)
     if user and user.get("role") in {"Admin", "Uploader"}:
@@ -614,6 +622,28 @@ class AiImageEditResponse(BaseModel):
     image_provider: Optional[str] = None
     image_model: Optional[str] = None
     image_tier: Optional[str] = None
+    storage_saved: Optional[bool] = False
+    storage_item_id: Optional[str] = None
+
+
+class AiImageStorageItem(BaseModel):
+    id: str
+    image_base64: str
+    mime_type: str = "image/png"
+    replacement_text: str
+    style_notes: Optional[str] = ""
+    image_provider: Optional[str] = None
+    image_model: Optional[str] = None
+    image_tier: Optional[str] = None
+    size_bytes: int = 0
+    created_at: str
+
+
+class AiImageStorageResponse(BaseModel):
+    available: bool
+    total_bytes: int = 0
+    count: int = 0
+    items: List[AiImageStorageItem] = []
 
 
 # ---------- Routes ----------
@@ -1248,6 +1278,29 @@ async def ai_image_usage(request: Request):
     return await ai_usage_for_user(user)
 
 
+@api_router.get("/ai-image/storage", response_model=AiImageStorageResponse)
+async def ai_image_storage(request: Request):
+    user = await request_user(request, required=True)
+    if not has_premium_access(user):
+        return {"available": False, "total_bytes": 0, "count": 0, "items": []}
+
+    summary = await db.ai_image_generations.aggregate([
+        {"$match": {"user_id": user["id"]}},
+        {"$group": {"_id": "$user_id", "total_bytes": {"$sum": "$size_bytes"}, "count": {"$sum": 1}}},
+    ]).to_list(1)
+    stats = summary[0] if summary else {"total_bytes": 0, "count": 0}
+    items = await db.ai_image_generations.find(
+        {"user_id": user["id"]},
+        {"_id": 0},
+    ).sort("created_at", -1).to_list(30)
+    return {
+        "available": True,
+        "total_bytes": int(stats.get("total_bytes", 0)),
+        "count": int(stats.get("count", 0)),
+        "items": items,
+    }
+
+
 @api_router.post("/ai-image/edit", response_model=AiImageEditResponse)
 async def edit_ai_image(
     request: Request,
@@ -1398,6 +1451,26 @@ async def edit_ai_image(
         upsert=True,
     )
     updated_usage = await ai_usage_for_user(user)
+    storage_saved = False
+    storage_item_id = None
+    if has_premium_access(user):
+        storage_item_id = str(uuid.uuid4())
+        await db.ai_image_generations.insert_one({
+            "id": storage_item_id,
+            "user_id": user["id"],
+            "user_email": user.get("email", ""),
+            "image_base64": image_base64,
+            "mime_type": output_mime_type,
+            "replacement_text": replacement_text,
+            "style_notes": style_notes,
+            "image_provider": image_settings["provider"],
+            "image_model": image_settings["model"],
+            "image_tier": image_settings["tier"],
+            "size_bytes": base64_size_bytes(image_base64),
+            "created_at": now_iso(),
+        })
+        storage_saved = True
+
     return {
         "image_base64": image_base64,
         "mime_type": output_mime_type,
@@ -1408,6 +1481,8 @@ async def edit_ai_image(
         "image_provider": image_settings["provider"],
         "image_model": image_settings["model"],
         "image_tier": image_settings["tier"],
+        "storage_saved": storage_saved,
+        "storage_item_id": storage_item_id,
     }
 
 
