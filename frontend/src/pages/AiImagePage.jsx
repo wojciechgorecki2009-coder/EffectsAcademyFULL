@@ -197,6 +197,117 @@ export default function AiImagePage() {
     );
   }
 
+  if (canUseStorage && storageOpen) {
+    return (
+      <section className="max-w-[1200px] mx-auto px-6 md:px-12 pt-28 pb-24 page-soft-enter">
+        <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
+          <div>
+            <span className="inline-flex items-center gap-2 text-xs font-mono uppercase tracking-widest px-2.5 py-1 rounded-md border text-purple-200 bg-purple-300/10 border-purple-300/20">
+              <Database className="w-3.5 h-3.5" /> AI Storage
+            </span>
+            <h1 className="font-display text-4xl md:text-5xl font-black tracking-tighter mt-3">
+              Storage
+            </h1>
+            <p className="text-zinc-400 max-w-2xl mt-2">
+              Your previous AI text generations are saved here. Full cloud folders will come later.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setStorageOpen(false)}
+              className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-3 text-sm text-white btn-press hover:bg-white/[0.08]"
+            >
+              <Wand2 className="w-4 h-4" />
+              Back to generator
+            </button>
+            <div className="rounded-2xl border border-white/10 bg-black/25 px-4 py-3">
+              <p className="text-[10px] uppercase tracking-widest text-zinc-500">Saved data</p>
+              <p className="text-sm font-semibold text-white flex items-center gap-2 mt-1">
+                <HardDrive className="w-4 h-4 text-purple-300" />
+                {formatBytes(storage?.total_bytes || 0)}
+                <span className="text-zinc-500 font-normal">/ {storage?.count || 0} items</span>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-purple-300/15 bg-gradient-to-br from-purple-950/20 via-white/[0.03] to-black/30 p-5 md:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
+            <div>
+              <h2 className="font-display text-2xl md:text-3xl font-black tracking-tight flex items-center gap-2">
+                <Database className="w-5 h-5 text-purple-300" /> Previous generations
+              </h2>
+              <p className="text-sm text-zinc-500 mt-1">
+                Saved automatically for Premium users and moderators.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={loadStorage}
+              disabled={storageLoading}
+              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] px-4 py-3 text-sm text-white btn-press disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${storageLoading ? "animate-spin" : ""}`} />
+              Refresh
+            </button>
+          </div>
+
+          {storageLoading && !storage ? (
+            <div className="min-h-80 rounded-2xl border border-dashed border-white/10 bg-black/20 flex items-center justify-center text-zinc-500">
+              <Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading storage...
+            </div>
+          ) : storage?.items?.length ? (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {storage.items.map((item) => {
+                const imageSrc = `data:${item.mime_type || "image/png"};base64,${item.image_base64}`;
+                return (
+                  <div key={item.id} className="rounded-2xl border border-white/10 bg-black/30 overflow-hidden group">
+                    <div className="aspect-video bg-black/40 overflow-hidden">
+                      <img src={imageSrc} alt={item.replacement_text || "Stored AI generation"} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
+                    </div>
+                    <div className="p-4">
+                      <p className="text-sm font-semibold text-white line-clamp-2">{item.replacement_text || "AI text edit"}</p>
+                      {item.style_notes && (
+                        <p className="text-xs text-zinc-500 mt-1 line-clamp-2">{item.style_notes}</p>
+                      )}
+                      <div className="flex items-center justify-between gap-3 mt-4">
+                        <div className="text-[11px] text-zinc-600">
+                          <p>{formatStorageDate(item.created_at)}</p>
+                          <p>{formatBytes(item.size_bytes || 0)}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => downloadStoredItem(item)}
+                          className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2 text-xs text-white btn-press"
+                        >
+                          <Download className="w-3.5 h-3.5" /> Download
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="min-h-80 rounded-2xl border border-dashed border-white/10 bg-black/20 flex flex-col items-center justify-center text-center px-6">
+              <Database className="w-10 h-10 text-zinc-600 mb-4" />
+              <p className="font-display text-2xl font-black text-white">No saved generations yet</p>
+              <p className="text-sm text-zinc-500 mt-1">Generate an AI text edit and it will appear in your storage automatically.</p>
+              <button
+                type="button"
+                onClick={() => setStorageOpen(false)}
+                className="mt-5 inline-flex items-center gap-2 rounded-xl bg-neon text-black px-4 py-3 text-sm font-semibold btn-press"
+              >
+                <Wand2 className="w-4 h-4" /> Create first generation
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="max-w-[1200px] mx-auto px-6 md:px-12 pt-28 pb-24 page-soft-enter">
       <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
@@ -219,7 +330,7 @@ export default function AiImagePage() {
               className="inline-flex items-center gap-2 rounded-2xl border border-purple-300/20 bg-purple-300/10 px-4 py-3 text-sm text-purple-100 btn-press hover:bg-purple-300/15"
             >
               <Database className="w-4 h-4" />
-              {storageOpen ? "Close storage" : "Open storage"}
+              Open storage
             </button>
           )}
           <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 min-w-56">
@@ -355,84 +466,6 @@ export default function AiImagePage() {
           </div>
         )}
       </div>
-
-      {canUseStorage && storageOpen && (
-        <div className="mt-8 rounded-3xl border border-purple-300/15 bg-gradient-to-br from-purple-950/20 via-white/[0.03] to-black/30 p-5 md:p-6 page-soft-enter">
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
-            <div>
-              <h2 className="font-display text-2xl md:text-3xl font-black tracking-tight flex items-center gap-2">
-                <Database className="w-5 h-5 text-purple-300" /> Storage
-              </h2>
-              <p className="text-sm text-zinc-500 mt-1">
-                Your previous AI text generations are saved here. Full cloud folders will come later.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="rounded-2xl border border-white/10 bg-black/25 px-4 py-3">
-                <p className="text-[10px] uppercase tracking-widest text-zinc-500">Saved data</p>
-                <p className="text-sm font-semibold text-white flex items-center gap-2 mt-1">
-                  <HardDrive className="w-4 h-4 text-purple-300" />
-                  {formatBytes(storage?.total_bytes || 0)}
-                  <span className="text-zinc-500 font-normal">/ {storage?.count || 0} items</span>
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={loadStorage}
-                disabled={storageLoading}
-                className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] px-4 py-3 text-sm text-white btn-press disabled:opacity-50"
-              >
-                <RefreshCw className={`w-4 h-4 ${storageLoading ? "animate-spin" : ""}`} />
-                Refresh
-              </button>
-            </div>
-          </div>
-
-          {storageLoading && !storage ? (
-            <div className="min-h-44 rounded-2xl border border-dashed border-white/10 bg-black/20 flex items-center justify-center text-zinc-500">
-              <Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading storage...
-            </div>
-          ) : storage?.items?.length ? (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {storage.items.map((item) => {
-                const imageSrc = `data:${item.mime_type || "image/png"};base64,${item.image_base64}`;
-                return (
-                  <div key={item.id} className="rounded-2xl border border-white/10 bg-black/30 overflow-hidden group">
-                    <div className="aspect-video bg-black/40 overflow-hidden">
-                      <img src={imageSrc} alt={item.replacement_text || "Stored AI generation"} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
-                    </div>
-                    <div className="p-4">
-                      <p className="text-sm font-semibold text-white line-clamp-2">{item.replacement_text || "AI text edit"}</p>
-                      {item.style_notes && (
-                        <p className="text-xs text-zinc-500 mt-1 line-clamp-2">{item.style_notes}</p>
-                      )}
-                      <div className="flex items-center justify-between gap-3 mt-4">
-                        <div className="text-[11px] text-zinc-600">
-                          <p>{formatStorageDate(item.created_at)}</p>
-                          <p>{formatBytes(item.size_bytes || 0)}</p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => downloadStoredItem(item)}
-                          className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2 text-xs text-white btn-press"
-                        >
-                          <Download className="w-3.5 h-3.5" /> Download
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="min-h-44 rounded-2xl border border-dashed border-white/10 bg-black/20 flex flex-col items-center justify-center text-center px-6">
-              <Database className="w-8 h-8 text-zinc-600 mb-3" />
-              <p className="font-display text-xl font-black text-white">No saved generations yet</p>
-              <p className="text-sm text-zinc-500 mt-1">Generate an AI text edit and it will appear in your storage automatically.</p>
-            </div>
-          )}
-        </div>
-      )}
     </section>
   );
 }
