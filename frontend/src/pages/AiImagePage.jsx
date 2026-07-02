@@ -201,7 +201,7 @@ export default function AiImagePage() {
 
   if (canUseStorage && storageOpen) {
     return (
-      <section className="max-w-[1200px] mx-auto px-6 md:px-12 pt-28 pb-24 ai-view-pop">
+      <section className="max-w-[1200px] mx-auto px-6 md:px-12 pt-28 pb-24 ai-view-fade-up">
         <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
           <div>
             <span className="inline-flex items-center gap-2 text-xs font-mono uppercase tracking-widest px-2.5 py-1 rounded-md border text-purple-200 bg-purple-300/10 border-purple-300/20">
@@ -326,7 +326,7 @@ export default function AiImagePage() {
 
         {selectedStorageItem && (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md px-4 py-8 ai-storage-modal-enter"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md px-4 py-8"
             onClick={() => setSelectedStorageItem(null)}
           >
             <div
@@ -407,7 +407,7 @@ export default function AiImagePage() {
   }
 
   return (
-    <section className="max-w-[1200px] mx-auto px-6 md:px-12 pt-28 pb-24 ai-view-pop">
+    <section className="max-w-[1200px] mx-auto px-6 md:px-12 pt-28 pb-24 ai-view-fade-up">
       <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
         <div>
           <span className="inline-flex items-center gap-2 text-xs font-mono uppercase tracking-widest px-2.5 py-1 rounded-md border text-neon bg-neon/10 border-neon/20">
