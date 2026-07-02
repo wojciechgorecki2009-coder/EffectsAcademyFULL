@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Wand2, UploadCloud, Image as ImageIcon, Download, Crown, ShieldCheck, Sparkles, AlertCircle, Loader2, Database, HardDrive, RefreshCw } from "lucide-react";
+import { Wand2, UploadCloud, Image as ImageIcon, Download, Crown, ShieldCheck, Sparkles, AlertCircle, Loader2, Database, HardDrive, RefreshCw, X, MessageSquareText, Palette } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -47,6 +47,7 @@ export default function AiImagePage() {
   const [storageOpen, setStorageOpen] = useState(false);
   const [storageLoading, setStorageLoading] = useState(false);
   const [storage, setStorage] = useState(null);
+  const [selectedStorageItem, setSelectedStorageItem] = useState(null);
 
   const hasGenerations = usage?.unlimited || (usage?.remaining ?? 0) > 0;
   const canGenerate = user && file && replacementText.trim() && !generating && hasGenerations;
@@ -110,6 +111,7 @@ export default function AiImagePage() {
 
   useEffect(() => {
     if (storageOpen) loadStorage();
+    if (!storageOpen) setSelectedStorageItem(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storageOpen, user?.id]);
 
@@ -199,7 +201,7 @@ export default function AiImagePage() {
 
   if (canUseStorage && storageOpen) {
     return (
-      <section className="max-w-[1200px] mx-auto px-6 md:px-12 pt-28 pb-24 page-soft-enter">
+      <section className="max-w-[1200px] mx-auto px-6 md:px-12 pt-28 pb-24 ai-view-pop">
         <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
           <div>
             <span className="inline-flex items-center gap-2 text-xs font-mono uppercase tracking-widest px-2.5 py-1 rounded-md border text-purple-200 bg-purple-300/10 border-purple-300/20">
@@ -262,7 +264,20 @@ export default function AiImagePage() {
               {storage.items.map((item) => {
                 const imageSrc = `data:${item.mime_type || "image/png"};base64,${item.image_base64}`;
                 return (
-                  <div key={item.id} className="rounded-2xl border border-white/10 bg-black/30 overflow-hidden group">
+                  <div
+                    key={item.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setSelectedStorageItem(item)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setSelectedStorageItem(item);
+                      }
+                    }}
+                    className="rounded-2xl border border-white/10 bg-black/30 overflow-hidden group cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:border-purple-300/35 hover:bg-white/[0.035] hover:shadow-[0_22px_70px_rgba(88,28,135,0.18)] focus:outline-none focus:border-purple-300/50"
+                    aria-label={`Open generation details for ${item.replacement_text || "AI text edit"}`}
+                  >
                     <div className="aspect-video bg-black/40 overflow-hidden">
                       <img src={imageSrc} alt={item.replacement_text || "Stored AI generation"} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
                     </div>
@@ -278,12 +293,16 @@ export default function AiImagePage() {
                         </div>
                         <button
                           type="button"
-                          onClick={() => downloadStoredItem(item)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            downloadStoredItem(item);
+                          }}
                           className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2 text-xs text-white btn-press"
                         >
                           <Download className="w-3.5 h-3.5" /> Download
                         </button>
                       </div>
+                      <p className="mt-3 text-[11px] uppercase tracking-[0.18em] text-purple-200/60">Click to view prompt</p>
                     </div>
                   </div>
                 );
@@ -304,12 +323,91 @@ export default function AiImagePage() {
             </div>
           )}
         </div>
+
+        {selectedStorageItem && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md px-4 py-8 ai-storage-modal-enter"
+            onClick={() => setSelectedStorageItem(null)}
+          >
+            <div
+              className="w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-3xl border border-purple-300/20 bg-[#07070c] shadow-[0_30px_120px_rgba(0,0,0,0.65)]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between gap-4 border-b border-white/10 p-5 md:p-6">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.22em] text-purple-200/70">Saved generation</p>
+                  <h3 className="font-display text-2xl md:text-3xl font-black text-white mt-1">Generation details</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedStorageItem(null)}
+                  className="rounded-2xl border border-white/10 bg-white/[0.05] p-3 text-zinc-300 btn-press hover:text-white"
+                  aria-label="Close generation details"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-5 p-5 md:p-6">
+                <div className="rounded-2xl border border-white/10 bg-black/35 overflow-hidden">
+                  <img
+                    src={`data:${selectedStorageItem.mime_type || "image/png"};base64,${selectedStorageItem.image_base64}`}
+                    alt={selectedStorageItem.replacement_text || "Stored AI generation"}
+                    className="w-full max-h-[620px] object-contain bg-black"
+                  />
+                </div>
+
+                <div className="space-y-4">
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-white mb-3">
+                      <MessageSquareText className="w-4 h-4 text-purple-300" />
+                      Prompt used
+                    </div>
+                    <p className="text-sm leading-6 text-zinc-300 whitespace-pre-wrap">
+                      {selectedStorageItem.replacement_text || "No prompt was saved for this generation."}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-white mb-3">
+                      <Palette className="w-4 h-4 text-purple-300" />
+                      Style notes
+                    </div>
+                    <p className="text-sm leading-6 text-zinc-300 whitespace-pre-wrap">
+                      {selectedStorageItem.style_notes || "No style notes were added."}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+                      <p className="text-[10px] uppercase tracking-widest text-zinc-500">Created</p>
+                      <p className="text-sm text-white mt-1">{formatStorageDate(selectedStorageItem.created_at) || "Unknown"}</p>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+                      <p className="text-[10px] uppercase tracking-widest text-zinc-500">Size</p>
+                      <p className="text-sm text-white mt-1">{formatBytes(selectedStorageItem.size_bytes || 0)}</p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => downloadStoredItem(selectedStorageItem)}
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-neon text-black px-5 py-4 font-display font-black btn-press"
+                  >
+                    <Download className="w-5 h-5" />
+                    Download generation
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </section>
     );
   }
 
   return (
-    <section className="max-w-[1200px] mx-auto px-6 md:px-12 pt-28 pb-24 page-soft-enter">
+    <section className="max-w-[1200px] mx-auto px-6 md:px-12 pt-28 pb-24 ai-view-pop">
       <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
         <div>
           <span className="inline-flex items-center gap-2 text-xs font-mono uppercase tracking-widest px-2.5 py-1 rounded-md border text-neon bg-neon/10 border-neon/20">
