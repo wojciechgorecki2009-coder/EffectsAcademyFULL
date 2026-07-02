@@ -1315,7 +1315,7 @@ async def edit_ai_image(
                 ],
                 "response_format": {
                     "type": "image",
-                    "mime_type": "image/png",
+                    "mime_type": "image/jpeg",
                     "image_size": "1K",
                 },
             },
