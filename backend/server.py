@@ -74,9 +74,10 @@ S3_PUBLIC_BASE_URL = os.environ.get("S3_PUBLIC_BASE_URL", "").rstrip("/")
 USE_OBJECT_STORAGE = bool(S3_BUCKET and S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY)
 FAL_KEY = os.environ.get("FAL_KEY", "")
 FAL_IMAGE_FREE_MODEL = os.environ.get("FAL_IMAGE_FREE_MODEL", "fal-ai/nano-banana/edit")
-FAL_IMAGE_PREMIUM_MODEL = os.environ.get("FAL_IMAGE_PREMIUM_MODEL", "fal-ai/nano-banana/edit")
+FAL_IMAGE_PREMIUM_MODEL = os.environ.get("FAL_IMAGE_PREMIUM_MODEL", "fal-ai/nano-banana-pro")
 FAL_IMAGE_OUTPUT_FORMAT = os.environ.get("FAL_IMAGE_OUTPUT_FORMAT", "png").lower()
 FAL_IMAGE_ASPECT_RATIO = os.environ.get("FAL_IMAGE_ASPECT_RATIO", "auto")
+FAL_IMAGE_PREMIUM_RESOLUTION = os.environ.get("FAL_IMAGE_PREMIUM_RESOLUTION", "1K")
 FAL_IMAGE_SAFETY_TOLERANCE = os.environ.get("FAL_IMAGE_SAFETY_TOLERANCE", "4")
 FAL_IMAGE_MAX_DIMENSION = int(os.environ.get("FAL_IMAGE_MAX_DIMENSION", "1024"))
 FAL_IMAGE_JPEG_QUALITY = int(os.environ.get("FAL_IMAGE_JPEG_QUALITY", "85"))
@@ -256,6 +257,7 @@ def ai_image_settings_for_user(user: dict) -> dict:
     return {
         "provider": "fal",
         "model": FAL_IMAGE_PREMIUM_MODEL if premium_tier else FAL_IMAGE_FREE_MODEL,
+        "resolution": FAL_IMAGE_PREMIUM_RESOLUTION if premium_tier else "",
         "tier": "premium" if premium_tier else "free",
     }
 
@@ -637,6 +639,7 @@ async def auth_config():
         "fal_image_free_model": FAL_IMAGE_FREE_MODEL,
         "fal_image_premium_model": FAL_IMAGE_PREMIUM_MODEL,
         "fal_image_output_format": FAL_IMAGE_OUTPUT_FORMAT,
+        "fal_image_premium_resolution": FAL_IMAGE_PREMIUM_RESOLUTION,
         "fal_image_max_dimension": FAL_IMAGE_MAX_DIMENSION,
     }
 
@@ -1315,7 +1318,14 @@ async def edit_ai_image(
             "output_format": FAL_IMAGE_OUTPUT_FORMAT,
             "safety_tolerance": str(FAL_IMAGE_SAFETY_TOLERANCE),
             "sync_mode": False,
+            "limit_generations": True,
         }
+        if image_settings.get("resolution"):
+            fal_payload["resolution"] = image_settings["resolution"]
+            fal_payload["system_prompt"] = (
+                "You are an image text editing model. Preserve the uploaded reference image as closely as possible. "
+                "Only change the requested visible text and keep the original design, layout, materials, lighting, and background."
+            )
 
         response = requests.post(
             f"{FAL_QUEUE_BASE_URL}/{image_settings['model']}",
@@ -1425,6 +1435,7 @@ async def health():
         "fal_image_free_model": FAL_IMAGE_FREE_MODEL,
         "fal_image_premium_model": FAL_IMAGE_PREMIUM_MODEL,
         "fal_image_output_format": FAL_IMAGE_OUTPUT_FORMAT,
+        "fal_image_premium_resolution": FAL_IMAGE_PREMIUM_RESOLUTION,
         "fal_image_max_dimension": FAL_IMAGE_MAX_DIMENSION,
     }
 
