@@ -101,7 +101,7 @@ Create a Fal.ai API key and save it on the Render backend service as:
 The default setup is:
 
 - Free users: `fal-ai/nano-banana/edit`
-- Premium users and moderators: `fal-ai/nano-banana-pro`
+- Premium users and moderators: `fal-ai/nano-banana/edit`
 
 Optional backend variables:
 
@@ -116,7 +116,7 @@ Optional backend variables:
 - `FAL_STATUS_POLL_SECONDS`
 - `FAL_STATUS_MAX_POLLS`
 
-The site uses Fal's queue-backed API so uploaded images can be edited server-side without exposing your API key in the browser. Free users use the regular Nano Banana edit model, while Premium users and moderators default to Fal's Nano Banana 2 model.
+The site uses Fal's queue-backed API so uploaded images can be edited server-side without exposing your API key in the browser. The default uses Fal's dedicated Nano Banana edit endpoint for both free and premium users because it preserves uploaded images better than the prompt-only Nano Banana Pro endpoint. Premium users still get a higher daily generation limit.
 
 ## Object storage setup
 

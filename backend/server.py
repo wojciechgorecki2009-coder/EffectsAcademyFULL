@@ -74,7 +74,7 @@ S3_PUBLIC_BASE_URL = os.environ.get("S3_PUBLIC_BASE_URL", "").rstrip("/")
 USE_OBJECT_STORAGE = bool(S3_BUCKET and S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY)
 FAL_KEY = os.environ.get("FAL_KEY", "")
 FAL_IMAGE_FREE_MODEL = os.environ.get("FAL_IMAGE_FREE_MODEL", "fal-ai/nano-banana/edit")
-FAL_IMAGE_PREMIUM_MODEL = os.environ.get("FAL_IMAGE_PREMIUM_MODEL", "fal-ai/nano-banana-pro")
+FAL_IMAGE_PREMIUM_MODEL = os.environ.get("FAL_IMAGE_PREMIUM_MODEL", "fal-ai/nano-banana/edit")
 FAL_IMAGE_OUTPUT_FORMAT = os.environ.get("FAL_IMAGE_OUTPUT_FORMAT", "png").lower()
 FAL_IMAGE_ASPECT_RATIO = os.environ.get("FAL_IMAGE_ASPECT_RATIO", "auto")
 FAL_IMAGE_PREMIUM_RESOLUTION = os.environ.get("FAL_IMAGE_PREMIUM_RESOLUTION", "1K")
@@ -254,10 +254,11 @@ def ai_generation_limit(user: dict) -> Optional[int]:
 
 def ai_image_settings_for_user(user: dict) -> dict:
     premium_tier = has_premium_access(user)
+    model = FAL_IMAGE_PREMIUM_MODEL if premium_tier else FAL_IMAGE_FREE_MODEL
     return {
         "provider": "fal",
-        "model": FAL_IMAGE_PREMIUM_MODEL if premium_tier else FAL_IMAGE_FREE_MODEL,
-        "resolution": FAL_IMAGE_PREMIUM_RESOLUTION if premium_tier else "",
+        "model": model,
+        "resolution": FAL_IMAGE_PREMIUM_RESOLUTION if "nano-banana-pro" in model else "",
         "tier": "premium" if premium_tier else "free",
     }
 
@@ -1290,10 +1291,12 @@ async def edit_ai_image(
         raise HTTPException(status_code=400, detail="Keep style notes under 700 characters")
 
     prompt = (
-        "Make a minimal text-only edit to the uploaded image. "
-        "Do not redesign the image. Do not add new objects, people, vehicles, scenery, landmarks, extra logos, or new background details. "
-        "Keep the exact same composition, crop, background, lighting, shadows, colors, camera angle, and graphic style. "
-        "Replace the existing visible text according to the user's request, matching the original font style, perspective, material, bevel, texture, and placement as closely as possible. "
+        "Edit the uploaded image itself. Treat the uploaded image as the exact source design, not as inspiration for a new design. "
+        "Make a minimal text-only edit unless the style notes explicitly require a tiny supporting color adjustment. "
+        "Do not redesign the image. Do not change the canvas, crop, text size, text position, camera angle, layout, or composition. "
+        "Do not add new objects, people, vehicles, scenery, landmarks, extra logos, or decorative elements. "
+        "Keep the original background, lighting, shadows, colors, reflections, texture, glow, bevels, metallic finish, and graphic style as closely as possible. "
+        "Replace the existing visible text according to the user's request, matching the original font style, letter thickness, perspective, material, bevel, texture, glow, and placement as closely as possible. "
         "If the user request says something like 'change X to Y' or 'replace X with Y', only put Y in the image. Do not write the whole instruction sentence. "
         "Remove the original text instead of keeping it. "
         f"User text edit request: {replacement_text}"
