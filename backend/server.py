@@ -761,7 +761,7 @@ async def create_checkout_session(request: Request):
     line_item = {"price": STRIPE_PRICE_ID, "quantity": 1} if STRIPE_PRICE_ID else {
         "price_data": {
             "currency": "usd",
-            "unit_amount": 499,
+            "unit_amount": 599,
             "recurring": {"interval": "month"},
             "product_data": {"name": "Effects Academy Premium"},
         },

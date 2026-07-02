@@ -113,7 +113,7 @@ export default function PremiumPage() {
                 Premium packs, project files, presets, curated resources, higher quality AI text images, and more AI text generator credits included with your monthly membership.
               </p>
               <div className="mt-8 flex items-end gap-2">
-                <span className="font-display text-5xl font-black">$4.99</span>
+                <span className="font-display text-5xl font-black">$5.99</span>
                 <span className="text-zinc-400 pb-1">USD / month</span>
               </div>
             </div>

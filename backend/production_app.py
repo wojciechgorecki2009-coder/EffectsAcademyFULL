@@ -45,7 +45,7 @@ def premium_line_item(use_configured_price: bool = True) -> dict:
     return {
         "price_data": {
             "currency": "usd",
-            "unit_amount": 499,
+            "unit_amount": 599,
             "recurring": {"interval": "month"},
             "product_data": {"name": "Effects Academy Premium"},
         },
