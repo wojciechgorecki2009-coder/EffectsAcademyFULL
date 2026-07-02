@@ -86,7 +86,7 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
   const [downloading, setDownloading] = useState(false);
   const [downloadCount, setDownloadCount] = useState(asset.download_count || 0);
   const color = CATEGORY_COLORS[asset.category] || CATEGORY_COLORS.Overlays;
-  const isAudio = asset.category === "Audios" || asset.category === "Sound FX";
+  const isAudio = asset.category === "Audios";
   const isSoundEffect = asset.category === "Sound FX";
   const isPremium = asset.category === "Premium";
   const isNew = isRecentlyAdded(asset);
