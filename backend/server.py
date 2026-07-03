@@ -264,7 +264,9 @@ def ai_image_settings_for_user(user: dict) -> dict:
 
 
 def ai_usage_date() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    now = datetime.now(timezone.utc)
+    iso_year, iso_week, _ = now.isocalendar()
+    return f"{iso_year}-W{iso_week:02d}"
 
 
 async def ai_usage_for_user(user: dict) -> dict:
@@ -1317,7 +1319,7 @@ async def edit_ai_image(
     if not usage.get("unlimited") and usage["remaining"] <= 0:
         raise HTTPException(
             status_code=429,
-            detail=f"Daily AI image limit reached. You can generate {usage['limit']} image edits per day.",
+            detail=f"Weekly AI image limit reached. You can generate {usage['limit']} image edits per week.",
         )
 
     content_type = (image.content_type or "").lower()

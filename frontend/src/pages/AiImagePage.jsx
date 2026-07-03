@@ -54,9 +54,9 @@ export default function AiImagePage() {
   const canUseStorage = user && (["active", "trialing"].includes(user.premium_status) || ["Admin", "Uploader"].includes(user.role));
 
   const planCopy = useMemo(() => {
-    if (!usage) return "Checking your daily limit...";
+    if (!usage) return "Checking your weekly limit...";
     if (usage.unlimited) return "Unlimited generations for moderators";
-    return `${usage.remaining} of ${usage.limit} generations left today`;
+    return `${usage.remaining} of ${usage.limit} generations left this week`;
   }, [usage]);
 
   useEffect(() => {
@@ -186,7 +186,7 @@ export default function AiImagePage() {
             Sign in to use AI Tools
           </h1>
           <p className="relative text-zinc-400 mb-6">
-            We use your Google account to track your daily AI image generation limit.
+            We use your Google account to track your weekly AI image generation limit.
           </p>
           <Link
             to="/login?returnTo=/ai-image"
@@ -527,7 +527,7 @@ export default function AiImagePage() {
           </button>
 
           <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-zinc-400">
-            Free users get <span className="text-white">3</span> Nano Banana generations/day. Premium users get <span className="text-white">10</span> faithful text-edit generations/day.
+            Free users get <span className="text-white">3</span> Nano Banana generations/week. Premium users get <span className="text-white">10</span> faithful text-edit generations/week.
           </div>
         </div>
       </form>
