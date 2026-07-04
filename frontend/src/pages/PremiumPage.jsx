@@ -8,7 +8,6 @@ const BENEFITS = [
   "All premium assets included with membership",
   "Unlimited premium asset downloads",
   "30 AI text generator credits every month",
-  "No sponsored ads needed for AI text generations",
   "Higher quality AI text image generations",
   "New exclusive drops every month",
   "Subscription tied securely to your Google account",
@@ -132,7 +131,7 @@ export default function PremiumPage() {
             </div>
 
             <div className="mt-6 rounded-2xl border border-purple-300/20 bg-purple-300/10 px-4 py-3 text-sm text-purple-100 flex items-center gap-2">
-              <Crown className="w-4 h-4 flex-shrink-0" /> Included with membership: every Premium asset plus 30 higher-quality AI text generations per month with no ads.
+              <Crown className="w-4 h-4 flex-shrink-0" /> Included with membership: every Premium asset plus 30 higher-quality AI text generations per month.
             </div>
 
             <ul className="space-y-4 mt-6 flex-1">

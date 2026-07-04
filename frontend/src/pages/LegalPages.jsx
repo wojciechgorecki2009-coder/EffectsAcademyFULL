@@ -70,9 +70,6 @@ export function TermsPage() {
         <p>Effects Academy may offer AI-assisted tools for editing images or text previews. Free accounts may have limited monthly generations, while premium accounts may receive a higher generation allowance.</p>
         <p>Do not use AI tools to create illegal, harmful, deceptive, or rights-infringing content. Generated results may vary and should be reviewed before use in public projects.</p>
       </Card>
-      <Card title="Advertising">
-        <p>Effects Academy may display advertising to support free tools and free asset access. Ads should not be confused with site navigation, downloads, or official Effects Academy assets.</p>
-      </Card>
       <Card title="Copyright and takedowns">
         <p>If you believe your copyrighted work appears on Effects Academy without permission, use the DMCA page or email <a className="text-neon" href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>.</p>
       </Card>
@@ -101,10 +98,9 @@ export function PrivacyPage() {
       <Card title="Payments" icon={LockKeyhole}>
         <p>Payments are processed by Stripe. Effects Academy does not store full card details. Stripe provides subscription and checkout status so premium access can be enabled or managed.</p>
       </Card>
-      <Card title="Cookies, analytics, and advertising">
+      <Card title="Cookies and analytics">
         <p>Effects Academy may use cookies or similar technologies to keep users signed in, protect premium access, remember preferences, measure site performance, and understand how the site is used.</p>
-        <p>If advertising is enabled, third-party vendors including Google may use cookies to serve ads based on visits to Effects Academy or other websites. Google&apos;s use of advertising cookies helps it and its partners serve ads to users based on their visits to this site and other sites on the internet.</p>
-        <p>Users can manage Google ad personalization through their Google account ad settings. Browser settings may also allow you to block or delete cookies, although some site features may stop working properly.</p>
+        <p>Browser settings may allow you to block or delete cookies, although some site features may stop working properly if sign-in or preference cookies are disabled.</p>
       </Card>
       <Card title="AI generation usage">
         <p>AI text image generations are linked to your signed-in account so Effects Academy can enforce free and premium usage limits, prevent abuse, and show saved generations to eligible users.</p>

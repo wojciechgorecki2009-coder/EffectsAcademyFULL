@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Wand2, UploadCloud, Image as ImageIcon, Download, Crown, ShieldCheck, Sparkles, AlertCircle, Loader2, Database, HardDrive, RefreshCw, X, MessageSquareText, Palette, Gift, ExternalLink } from "lucide-react";
+import { Wand2, UploadCloud, Image as ImageIcon, Download, Crown, ShieldCheck, Sparkles, AlertCircle, Loader2, Database, HardDrive, RefreshCw, X, MessageSquareText, Palette } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -48,20 +48,10 @@ export default function AiImagePage() {
   const [storageLoading, setStorageLoading] = useState(false);
   const [storage, setStorage] = useState(null);
   const [selectedStorageItem, setSelectedStorageItem] = useState(null);
-  const [moderatorAdsEnabled, setModeratorAdsEnabled] = useState(false);
-  const [offerwallBusy, setOfferwallBusy] = useState(false);
 
   const hasGenerations = usage?.unlimited || (usage?.remaining ?? 0) > 0;
   const canGenerate = user && file && replacementText.trim() && !generating && hasGenerations;
   const canUseStorage = user && (["active", "trialing"].includes(user.premium_status) || ["Admin", "Uploader"].includes(user.role));
-  const isModerator = user && ["Admin", "Uploader"].includes(user.role);
-  const isPremiumUser = user && ["active", "trialing"].includes(user.premium_status);
-  const shouldShowAdUnlock = Boolean(
-    usage?.adgem_configured &&
-    user &&
-    !isPremiumUser &&
-    (!isModerator || moderatorAdsEnabled)
-  );
 
   const planCopy = useMemo(() => {
     if (!usage) return "Checking your monthly limit...";
@@ -156,13 +146,9 @@ export default function AiImagePage() {
         used: data.used,
         limit: data.limit,
         base_limit: data.base_limit,
-        earned_credits: data.earned_credits,
         remaining: data.remaining,
         unlimited: data.unlimited,
         period: data.period,
-        adgem_configured: data.adgem_configured,
-        can_earn_adgem: data.can_earn_adgem,
-        adgem_reward_credits: data.adgem_reward_credits,
       });
       setResultUrl(`data:${data.mime_type || "image/png"};base64,${data.image_base64}`);
       if (data.storage_saved && storageOpen) {
@@ -174,23 +160,6 @@ export default function AiImagePage() {
       toast.error(message);
     } finally {
       setGenerating(false);
-    }
-  };
-
-  const openOfferwall = async () => {
-    if (!user || offerwallBusy) return;
-    setOfferwallBusy(true);
-    try {
-      const { data } = await api.get("/ai-image/adgem-link", {
-        params: isModerator && moderatorAdsEnabled ? { test: "true" } : {},
-      });
-      if (!data?.url) throw new Error("No offerwall URL returned");
-      window.open(data.url, "_blank", "noopener,noreferrer");
-      toast.info("Offerwall opened. After completing an offer, come back and refresh your credits.");
-    } catch (err) {
-      toast.error(err?.response?.data?.detail || "Unable to open sponsored offers.");
-    } finally {
-      setOfferwallBusy(false);
     }
   };
 
@@ -482,20 +451,6 @@ export default function AiImagePage() {
               {usageLoading ? "Checking usage..." : planCopy}
             </p>
           </div>
-          {isModerator && usage?.adgem_configured && (
-            <button
-              type="button"
-              onClick={() => setModeratorAdsEnabled((enabled) => !enabled)}
-              className={`inline-flex items-center gap-2 rounded-2xl border px-4 py-3 text-sm btn-press transition-colors ${
-                moderatorAdsEnabled
-                  ? "border-emerald-300/25 bg-emerald-300/10 text-emerald-100"
-                  : "border-white/10 bg-white/[0.035] text-zinc-300"
-              }`}
-            >
-              <Gift className="w-4 h-4" />
-              {moderatorAdsEnabled ? "Ad testing on" : "Test ads"}
-            </button>
-          )}
         </div>
       </div>
 
@@ -508,59 +463,11 @@ export default function AiImagePage() {
         </div>
       )}
 
-      {shouldShowAdUnlock && (
-        <div className="mb-6 rounded-2xl border border-purple-300/20 bg-purple-300/10 p-4 md:p-5">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex gap-3">
-              <div className="w-10 h-10 rounded-xl border border-purple-300/25 bg-purple-300/10 flex items-center justify-center flex-shrink-0">
-                <Gift className="w-5 h-5 text-purple-200" />
-              </div>
-              <div>
-                <p className="font-semibold text-white">
-                  {isModerator && moderatorAdsEnabled
-                    ? "Moderator ad test mode"
-                    : hasGenerations
-                      ? "Want an extra AI generation?"
-                      : "Out of free generations?"}
-                </p>
-                <p className="text-sm text-zinc-400 mt-1">
-                  Watch or complete a sponsored offer to earn <span className="text-white font-semibold">+{usage?.adgem_reward_credits || 1}</span> extra AI generation.
-                  Come back afterwards and refresh your credits.
-                </p>
-                <p className="text-xs text-amber-200/90 mt-2">
-                  Please turn off adblock for Effects Academy and AdGem, otherwise the offerwall may not open or credit correctly.
-                </p>
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={openOfferwall}
-                disabled={offerwallBusy}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-neon text-black px-4 py-3 text-sm font-semibold btn-press disabled:opacity-50"
-              >
-                {offerwallBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />}
-                Open offers
-              </button>
-              <button
-                type="button"
-                onClick={loadUsage}
-                disabled={usageLoading}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] px-4 py-3 text-sm text-white btn-press disabled:opacity-50"
-              >
-                <RefreshCw className={`w-4 h-4 ${usageLoading ? "animate-spin" : ""}`} />
-                Refresh credits
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {user && usage && !hasGenerations && !usage.adgem_configured && !usage.unlimited && (
+      {user && usage && !hasGenerations && !usage.unlimited && (
         <div className="mb-6 rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4 text-sm text-amber-100 flex gap-3">
           <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
           <p>
-            You have used your monthly AI generations. Sponsored offer credits are not configured yet, so please try again next month or upgrade to Premium.
+            You have used your monthly AI generations. Please try again next month or upgrade to Premium for 30 monthly generations.
           </p>
         </div>
       )}
@@ -636,7 +543,7 @@ export default function AiImagePage() {
           </button>
 
           <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-zinc-400">
-            Free users get <span className="text-white font-bold">5</span> generations/month. Premium users get <span className="text-white font-bold">30</span> generations/month with no ads.
+            Free users get <span className="text-white font-bold">5</span> generations/month. Premium users get <span className="text-white font-bold">30</span> generations/month.
           </div>
         </div>
       </form>
