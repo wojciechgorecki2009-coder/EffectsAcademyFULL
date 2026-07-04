@@ -22,7 +22,8 @@ export default function Footer() {
             </span>
           </div>
           <p className="text-sm text-zinc-500 leading-relaxed">
-            Free and premium editing assets, curated for video editors. By the community, for the community.
+            A curated library of free and premium editing assets for video editors, including project files,
+            overlays, presets, audios, sound effects, torrents, and AI tools.
           </p>
           <a
             href={`mailto:${SUPPORT_EMAIL}`}

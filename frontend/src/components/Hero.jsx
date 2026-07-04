@@ -81,7 +81,8 @@ export default function Hero({ query, setQuery, totalAssets }) {
         data-testid="hero-description"
         style={{ textShadow: "0 2px 20px rgba(0,0,0,0.6)" }}
       >
-        Shows, project files, overlays, and audios — curated by Effects Academy, free to download.
+        Effects Academy is a curated vault for video editors: project files, overlays, presets, audios,
+        sound effects, torrents, premium packs, and AI tools in one clean library.
       </p>
 
       <div className="relative w-full max-w-2xl hero-bounce hero-bounce-delay">
