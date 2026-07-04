@@ -68,7 +68,7 @@ export default function Footer() {
             <li><Link to="/suggestions" data-testid="footer-suggestions" className="hover:text-neon transition-colors">Suggestions</Link></li>
             <li><Link to="/terms" data-testid="footer-terms" className="hover:text-neon transition-colors">Terms of Use</Link></li>
             <li><Link to="/privacy" data-testid="footer-privacy" className="hover:text-neon transition-colors">Privacy Policy</Link></li>
-            <li><a href={`mailto:${SUPPORT_EMAIL}`} className="hover:text-neon transition-colors">Contact support</a></li>
+            <li><Link to="/support" className="hover:text-neon transition-colors">Contact support</Link></li>
           </ul>
         </div>
       </div>

@@ -14,7 +14,7 @@ import SuggestionsPage from "@/pages/SuggestionsPage";
 import LoginPage from "@/pages/LoginPage";
 import PremiumPage from "@/pages/PremiumPage";
 import GoogleCallbackPage from "@/pages/GoogleCallbackPage";
-import { PrivacyPage, TermsPage } from "@/pages/LegalPages";
+import { PrivacyPage, SupportPage, TermsPage } from "@/pages/LegalPages";
 import AiImagePage from "@/pages/AiImagePage";
 import DownloadAccessPage from "@/pages/DownloadAccessPage";
 import "@/App.css";
@@ -63,6 +63,7 @@ function RefreshableRoutes() {
         <Route path="/suggestions" element={<SuggestionsPage />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/support" element={<SupportPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/premium" element={<PremiumPage />} />
         <Route path="/ai-image" element={<AiImagePage />} />

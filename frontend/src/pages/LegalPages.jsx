@@ -118,3 +118,47 @@ export function PrivacyPage() {
     </LegalShell>
   );
 }
+
+export function SupportPage() {
+  const supportSubject = encodeURIComponent("Effects Academy support request");
+
+  return (
+    <LegalShell
+      eyebrow="Support"
+      title="Contact Support"
+      icon={Mail}
+      description="Need help with downloads, premium access, uploads, AI tools, or copyright questions? This page gives you the safest way to reach Effects Academy support."
+    >
+      <Card title="Support email" icon={Mail}>
+        <p>The main support email for Effects Academy is:</p>
+        <a
+          className="inline-flex w-fit rounded-xl border border-neon/30 bg-neon/10 px-4 py-2 font-semibold text-neon hover:bg-neon/15 transition-colors"
+          href={`mailto:${SUPPORT_EMAIL}?subject=${supportSubject}`}
+        >
+          {SUPPORT_EMAIL}
+        </a>
+        <p>
+          If clicking the email button does not open anything, copy and paste the address into Outlook,
+          Gmail, or your preferred email app.
+        </p>
+      </Card>
+
+      <Card title="What to include">
+        <p>To help us fix your issue faster, include:</p>
+        <ul className="list-disc pl-5 space-y-1">
+          <li>Your Google account email if the issue is about premium, login, or AI credits.</li>
+          <li>The asset title or page link if the issue is about a download.</li>
+          <li>A short description of what went wrong and any screenshots if useful.</li>
+        </ul>
+      </Card>
+
+      <Card title="Copyright or takedown requests" icon={ShieldCheck}>
+        <p>
+          For copyright removal requests, please use the dedicated{" "}
+          <Link to="/dmca" className="text-neon hover:underline">DMCA page</Link>{" "}
+          so the notice includes all the required information.
+        </p>
+      </Card>
+    </LegalShell>
+  );
+}
