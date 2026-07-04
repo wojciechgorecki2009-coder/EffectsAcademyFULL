@@ -19,6 +19,9 @@ import requests
 import io
 import secrets
 import base64
+import hmac
+import hashlib
+from urllib.parse import urlencode
 from collections import defaultdict, deque
 from email.message import EmailMessage
 from pathlib import Path
@@ -86,6 +89,11 @@ FAL_STATUS_POLL_SECONDS = float(os.environ.get("FAL_STATUS_POLL_SECONDS", "1.5")
 FAL_STATUS_MAX_POLLS = int(os.environ.get("FAL_STATUS_MAX_POLLS", "80"))
 AI_IMAGE_MAX_BYTES = int(os.environ.get("AI_IMAGE_MAX_BYTES", str(8 * 1024 * 1024)))
 PREMIUM_DOWNLOAD_LINK_TTL_SECONDS = int(os.environ.get("PREMIUM_DOWNLOAD_LINK_TTL_SECONDS", str(10 * 60)))
+ADGEM_ENABLED = os.environ.get("ADGEM_ENABLED", "0") == "1"
+ADGEM_APP_ID = os.environ.get("ADGEM_APP_ID", "")
+ADGEM_OFFERWALL_URL = os.environ.get("ADGEM_OFFERWALL_URL", "").strip()
+ADGEM_POSTBACK_KEY = os.environ.get("ADGEM_POSTBACK_KEY", "")
+ADGEM_REWARD_CREDITS = max(1, int(os.environ.get("ADGEM_REWARD_CREDITS", "1")))
 
 s3 = None
 if USE_OBJECT_STORAGE:
@@ -248,8 +256,8 @@ def ai_generation_limit(user: dict) -> Optional[int]:
     if user.get("role") in {"Admin", "Uploader"}:
         return None
     if user.get("premium_status") in {"active", "trialing"}:
-        return 10
-    return 3
+        return 30
+    return 5
 
 
 def ai_image_settings_for_user(user: dict) -> dict:
@@ -264,25 +272,77 @@ def ai_image_settings_for_user(user: dict) -> dict:
 
 
 def ai_usage_date() -> str:
-    now = datetime.now(timezone.utc)
-    iso_year, iso_week, _ = now.isocalendar()
-    return f"{iso_year}-W{iso_week:02d}"
+    return datetime.now(timezone.utc).strftime("%Y-%m")
+
+
+def adgem_configured() -> bool:
+    return bool(ADGEM_ENABLED and (ADGEM_OFFERWALL_URL or ADGEM_APP_ID))
+
+
+def adgem_player_id_for_user(user: dict) -> str:
+    existing = user.get("adgem_player_id", "")
+    raw = existing or f"ea-{user.get('id', '')}"
+    safe = re.sub(r"[^a-z0-9_-]+", "-", raw.lower()).strip("-_")
+    return (safe[:120] or f"ea-{uuid.uuid4().hex}")
+
+
+def adgem_offerwall_url_for_player(player_id: str) -> str:
+    base = ADGEM_OFFERWALL_URL or f"https://adunits.adgem.com/wall?appid={ADGEM_APP_ID}"
+    separator = "&" if "?" in base else "?"
+    return f"{base}{separator}{urlencode({'playerid': player_id})}"
+
+
+def adgem_verifier_is_valid(request: Request) -> bool:
+    if not ADGEM_POSTBACK_KEY:
+        return True
+    raw_query = request.scope.get("query_string", b"").decode("latin-1")
+    pairs = raw_query.split("&") if raw_query else []
+    verifier = ""
+    unsigned_pairs = []
+    for pair in pairs:
+        if pair.startswith("verifier="):
+            verifier = pair.split("=", 1)[1]
+        else:
+            unsigned_pairs.append(pair)
+    if not verifier:
+        return False
+    unsigned_query = "&".join(unsigned_pairs)
+    forwarded_proto = request.headers.get("x-forwarded-proto", "https").split(",", 1)[0].strip() or "https"
+    host = request.headers.get("host", "")
+    unsigned_url = f"{forwarded_proto}://{host}{request.url.path}"
+    if unsigned_query:
+        unsigned_url += f"?{unsigned_query}"
+    expected = hmac.new(
+        ADGEM_POSTBACK_KEY.encode("utf-8"),
+        unsigned_url.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    return hmac.compare_digest(expected, verifier)
 
 
 async def ai_usage_for_user(user: dict) -> dict:
     usage_date = ai_usage_date()
-    limit = ai_generation_limit(user)
+    base_limit = ai_generation_limit(user)
     record_id = f"{user['id']}:{usage_date}"
     record = await db.ai_image_usage.find_one({"id": record_id}, {"_id": 0}) or {}
     used = int(record.get("used", 0))
-    unlimited = limit is None
+    earned_credits = max(0, int(record.get("earned_credits", 0)))
+    unlimited = base_limit is None
+    limit = None if unlimited else base_limit + earned_credits
     image_settings = ai_image_settings_for_user(user)
+    remaining = None if unlimited else max(limit - used, 0)
     return {
         "date": usage_date,
+        "period": usage_date,
         "used": used,
         "limit": limit,
-        "remaining": None if unlimited else max(limit - used, 0),
+        "base_limit": base_limit,
+        "earned_credits": earned_credits,
+        "remaining": remaining,
         "unlimited": unlimited,
+        "adgem_configured": adgem_configured(),
+        "can_earn_adgem": bool(adgem_configured() and not unlimited and not has_premium_access(user) and remaining <= 0),
+        "adgem_reward_credits": ADGEM_REWARD_CREDITS,
         "image_provider": image_settings["provider"],
         "image_model": image_settings["model"],
         "image_tier": image_settings["tier"],
@@ -619,8 +679,14 @@ class AiImageEditResponse(BaseModel):
     mime_type: str = "image/png"
     used: int
     limit: Optional[int] = None
+    base_limit: Optional[int] = None
+    earned_credits: Optional[int] = 0
     remaining: Optional[int] = None
     unlimited: bool = False
+    period: Optional[str] = None
+    adgem_configured: Optional[bool] = False
+    can_earn_adgem: Optional[bool] = False
+    adgem_reward_credits: Optional[int] = 1
     image_provider: Optional[str] = None
     image_model: Optional[str] = None
     image_tier: Optional[str] = None
@@ -674,6 +740,7 @@ async def auth_config():
         "fal_image_output_format": FAL_IMAGE_OUTPUT_FORMAT,
         "fal_image_premium_resolution": FAL_IMAGE_PREMIUM_RESOLUTION,
         "fal_image_max_dimension": FAL_IMAGE_MAX_DIMENSION,
+        "adgem_configured": adgem_configured(),
     }
 
 
@@ -1274,6 +1341,99 @@ async def submit_suggestion(payload: SuggestionCreate, request: Request):
 
 
 # AI Image Editor -------------------------------------------------------
+@api_router.get("/ai-image/adgem-link")
+async def ai_image_adgem_link(request: Request, test: bool = False):
+    user = await request_user(request, required=True)
+    if not adgem_configured():
+        raise HTTPException(status_code=503, detail="AdGem offerwall is not configured yet")
+
+    is_moderator = user.get("role") in {"Admin", "Uploader"}
+    usage = await ai_usage_for_user(user)
+    if has_premium_access(user) and not (is_moderator and test):
+        raise HTTPException(status_code=403, detail="Premium users do not need sponsored offers")
+    if not is_moderator and usage.get("remaining", 0) > 0:
+        raise HTTPException(status_code=403, detail="Sponsored offers unlock after your free monthly credits are used")
+
+    player_id = adgem_player_id_for_user(user)
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$set": {"adgem_player_id": player_id, "updated_at": now_iso()}},
+    )
+    return {
+        "url": adgem_offerwall_url_for_player(player_id),
+        "player_id": player_id,
+        "reward_credits": ADGEM_REWARD_CREDITS,
+        "test_mode": bool(is_moderator and test),
+    }
+
+
+@api_router.get("/adgem/postback")
+async def adgem_postback(request: Request):
+    if not ADGEM_ENABLED:
+        raise HTTPException(status_code=404, detail="AdGem postback is disabled")
+    if not adgem_verifier_is_valid(request):
+        raise HTTPException(status_code=403, detail="Invalid AdGem verifier")
+
+    params = request.query_params
+    app_id = params.get("app_id") or params.get("appid") or ""
+    player_id = params.get("player_id") or params.get("playerid") or ""
+    transaction_id = params.get("transaction_id") or params.get("transactionid") or params.get("request_id") or ""
+    amount = params.get("amount") or "0"
+    payout = params.get("payout") or "0"
+
+    if ADGEM_APP_ID and app_id and str(app_id) != str(ADGEM_APP_ID):
+        raise HTTPException(status_code=403, detail="Invalid AdGem app id")
+    if not player_id or not transaction_id:
+        raise HTTPException(status_code=400, detail="Missing AdGem player or transaction id")
+
+    existing = await db.adgem_transactions.find_one({"transaction_id": transaction_id}, {"_id": 0})
+    if existing:
+        return {"ok": True, "duplicate": True}
+
+    user = await db.users.find_one({"adgem_player_id": player_id}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="AdGem player was not found")
+    if has_premium_access(user) and user.get("role") not in {"Admin", "Uploader"}:
+        return {"ok": True, "ignored": True, "reason": "premium_user"}
+
+    period = ai_usage_date()
+    record_id = f"{user['id']}:{period}"
+    credits = ADGEM_REWARD_CREDITS
+    now = now_iso()
+    await db.adgem_transactions.insert_one({
+        "id": str(uuid.uuid4()),
+        "transaction_id": transaction_id,
+        "player_id": player_id,
+        "user_id": user["id"],
+        "amount": amount,
+        "payout": payout,
+        "credits": credits,
+        "period": period,
+        "raw_query": request.scope.get("query_string", b"").decode("latin-1"),
+        "created_at": now,
+    })
+    await db.ai_image_usage.update_one(
+        {"id": record_id},
+        {
+            "$setOnInsert": {
+                "id": record_id,
+                "user_id": user["id"],
+                "date": period,
+                "period": period,
+                "created_at": now,
+            },
+            "$inc": {"earned_credits": credits},
+            "$set": {
+                "role": user.get("role", "Viewer"),
+                "premium_status": user.get("premium_status", "inactive"),
+                "updated_at": now,
+            },
+        },
+        upsert=True,
+    )
+    return {"ok": True, "credits": credits}
+
+
 @api_router.get("/ai-image/usage")
 async def ai_image_usage(request: Request):
     user = await request_user(request, required=True)
@@ -1319,7 +1479,7 @@ async def edit_ai_image(
     if not usage.get("unlimited") and usage["remaining"] <= 0:
         raise HTTPException(
             status_code=429,
-            detail=f"Weekly AI image limit reached. You can generate {usage['limit']} image edits per week.",
+            detail=f"Monthly AI image limit reached. You can generate {usage['base_limit']} image edits per month, or earn extra credits with sponsored offers.",
         )
 
     content_type = (image.content_type or "").lower()
@@ -1441,6 +1601,7 @@ async def edit_ai_image(
                 "id": record_id,
                 "user_id": user["id"],
                 "date": usage["date"],
+                "period": usage["period"],
                 "created_at": now_iso(),
             },
             "$inc": {"used": 1},
@@ -1478,8 +1639,14 @@ async def edit_ai_image(
         "mime_type": output_mime_type,
         "used": updated_usage["used"],
         "limit": updated_usage["limit"],
+        "base_limit": updated_usage["base_limit"],
+        "earned_credits": updated_usage["earned_credits"],
         "remaining": updated_usage["remaining"],
         "unlimited": updated_usage["unlimited"],
+        "period": updated_usage["period"],
+        "adgem_configured": updated_usage["adgem_configured"],
+        "can_earn_adgem": updated_usage["can_earn_adgem"],
+        "adgem_reward_credits": updated_usage["adgem_reward_credits"],
         "image_provider": image_settings["provider"],
         "image_model": image_settings["model"],
         "image_tier": image_settings["tier"],
