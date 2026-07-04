@@ -60,7 +60,7 @@ export default function AiImagePage() {
     usage?.adgem_configured &&
     user &&
     !isPremiumUser &&
-    (!hasGenerations || (isModerator && moderatorAdsEnabled))
+    (!isModerator || moderatorAdsEnabled)
   );
 
   const planCopy = useMemo(() => {
@@ -517,7 +517,11 @@ export default function AiImagePage() {
               </div>
               <div>
                 <p className="font-semibold text-white">
-                  {isModerator && moderatorAdsEnabled ? "Moderator ad test mode" : "Out of free generations?"}
+                  {isModerator && moderatorAdsEnabled
+                    ? "Moderator ad test mode"
+                    : hasGenerations
+                      ? "Want an extra AI generation?"
+                      : "Out of free generations?"}
                 </p>
                 <p className="text-sm text-zinc-400 mt-1">
                   Watch or complete a sponsored offer to earn <span className="text-white font-semibold">+{usage?.adgem_reward_credits || 1}</span> extra AI generation.

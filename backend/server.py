@@ -1351,8 +1351,6 @@ async def ai_image_adgem_link(request: Request, test: bool = False):
     usage = await ai_usage_for_user(user)
     if has_premium_access(user) and not (is_moderator and test):
         raise HTTPException(status_code=403, detail="Premium users do not need sponsored offers")
-    if not is_moderator and usage.get("remaining", 0) > 0:
-        raise HTTPException(status_code=403, detail="Sponsored offers unlock after your free monthly credits are used")
 
     player_id = adgem_player_id_for_user(user)
     await db.users.update_one(
