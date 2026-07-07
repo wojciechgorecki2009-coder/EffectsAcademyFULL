@@ -12,7 +12,7 @@ export default function Footer() {
         <div>
           <div className="flex items-center gap-2 mb-3">
             <img
-              src="https://customer-assets.emergentagent.com/job_video-editor-vault/artifacts/aomhogzn_image.png"
+              src="/apple-touch-icon.png"
               alt="Effects Academy"
               className="h-10 w-10 rounded-full object-cover flex-shrink-0"
               style={{ filter: "drop-shadow(0 0 10px rgba(82,87,255,0.5))" }}

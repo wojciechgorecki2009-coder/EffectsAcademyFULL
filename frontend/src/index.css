@@ -126,6 +126,22 @@ body {
   background: linear-gradient(to bottom, color-mix(in srgb, var(--site-hero-end) 55%, transparent), transparent 48%, var(--site-hero-end));
 }
 
+.hero-animated-backdrop {
+  background:
+    radial-gradient(circle at 18% 28%, rgba(82, 87, 255, 0.42), transparent 30%),
+    radial-gradient(circle at 78% 18%, rgba(168, 85, 247, 0.34), transparent 28%),
+    radial-gradient(circle at 50% 78%, rgba(34, 211, 238, 0.18), transparent 34%),
+    linear-gradient(135deg, #04040a 0%, #09091a 45%, #020206 100%);
+  filter: blur(10px) saturate(1.25);
+  opacity: 0.95;
+  animation: heroBackdropDrift 16s ease-in-out infinite alternate;
+}
+
+@keyframes heroBackdropDrift {
+  0% { background-position: 0% 0%, 100% 0%, 50% 100%, 0% 0%; }
+  100% { background-position: 14% 8%, 84% 18%, 58% 82%, 100% 100%; }
+}
+
 /* Premium button system */
 .btn-press {
   transition: transform .2s cubic-bezier(.4,0,.2,1), background-color .2s ease, border-color .2s ease, box-shadow .2s ease;

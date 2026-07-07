@@ -79,7 +79,7 @@ export default function Nav() {
           data-testid="nav-logo"
         >
           <img
-            src="https://customer-assets.emergentagent.com/job_video-editor-vault/artifacts/aomhogzn_image.png"
+            src="/apple-touch-icon.png"
             alt="Effects Academy"
             className="h-11 w-11 rounded-full object-cover flex-shrink-0"
             style={{ filter: "drop-shadow(0 0 14px rgba(82,87,255,0.5))" }}
