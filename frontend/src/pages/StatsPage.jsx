@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Area,
@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Activity, ArrowLeft, Crown, Download, Eye, Radio, RefreshCw, ShieldCheck } from "lucide-react";
+import { Activity, ArrowLeft, Crown, Download, Eye, Radio, ShieldCheck } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
@@ -19,6 +19,47 @@ const RANGES = [7, 28, 90, 365];
 
 function compactNumber(value = 0) {
   return new Intl.NumberFormat(undefined, { notation: value >= 10000 ? "compact" : "standard" }).format(value);
+}
+
+function AnimatedNumber({ value = 0 }) {
+  const nextValue = Number(value) || 0;
+  const [displayValue, setDisplayValue] = useState(nextValue);
+  const displayRef = useRef(nextValue);
+
+  useEffect(() => {
+    const from = displayRef.current;
+    const to = nextValue;
+
+    if (from === to) {
+      setDisplayValue(to);
+      return undefined;
+    }
+
+    const duration = 750;
+    const startedAt = performance.now();
+    let frameId;
+
+    const tick = (now) => {
+      const progress = Math.min(1, (now - startedAt) / duration);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const current = Math.round(from + (to - from) * eased);
+
+      displayRef.current = current;
+      setDisplayValue(current);
+
+      if (progress < 1) {
+        frameId = requestAnimationFrame(tick);
+      } else {
+        displayRef.current = to;
+        setDisplayValue(to);
+      }
+    };
+
+    frameId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frameId);
+  }, [nextValue]);
+
+  return <>{compactNumber(displayValue)}</>;
 }
 
 function formatDate(value, includeYear = false) {
@@ -46,7 +87,9 @@ function StatCard({ icon: Icon, label, value, note, tone = "blue" }) {
           <Icon className="w-5 h-5" />
         </span>
       </div>
-      <p className="font-display text-3xl font-black mt-4 text-white">{compactNumber(value)}</p>
+      <p className="font-display text-3xl font-black mt-4 text-white">
+        <AnimatedNumber value={value} />
+      </p>
       {note && <p className="text-xs text-zinc-500 mt-1">{note}</p>}
     </div>
   );
@@ -72,24 +115,30 @@ export default function StatsPage() {
   const [error, setError] = useState("");
   const canView = ["Admin", "Uploader"].includes(user?.role);
 
-  const load = async (selectedRange = range) => {
+  const load = useCallback(async (selectedRange = range, options = {}) => {
     if (!canView) return;
-    setBusy(true);
-    setError("");
+    const silent = options.silent === true;
+    if (!silent) setBusy(true);
+    if (!silent) setError("");
     try {
       const { data: next } = await api.get(`/moderator/stats?days=${selectedRange}`);
       setData(next);
+      setError("");
     } catch (err) {
       setError(err?.response?.data?.detail || "Could not load site statistics.");
     } finally {
-      setBusy(false);
+      if (!silent) setBusy(false);
     }
-  };
+  }, [canView, range]);
 
   useEffect(() => {
-    if (!loading && canView) load(range);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, canView, range]);
+    if (loading || !canView) return undefined;
+
+    load(range);
+    const intervalId = setInterval(() => load(range, { silent: true }), 15000);
+
+    return () => clearInterval(intervalId);
+  }, [loading, canView, range, load]);
 
   const traffic = useMemo(
     () =>
@@ -148,13 +197,13 @@ export default function StatsPage() {
                 {days} days
               </button>
             ))}
-            <button
-              onClick={() => load(range)}
-              disabled={busy}
-              className="rounded-xl px-4 py-2 text-sm font-semibold border border-white/10 bg-white/5 hover:bg-white/10 text-zinc-300 btn-press disabled:opacity-50 inline-flex items-center gap-2"
-            >
-              <RefreshCw className={`w-4 h-4 ${busy ? "animate-spin" : ""}`} /> Refresh
-            </button>
+            <div className="inline-flex items-center gap-2 rounded-xl border border-emerald-300/15 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-200">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300 opacity-50" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-300" />
+              </span>
+              Live updates
+            </div>
           </div>
         </div>
 
