@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Search, Sparkles } from "lucide-react";
 
+const HERO_BACKGROUND = "/media/hero-background.gif";
+
 export default function Hero({ query, setQuery, totalAssets }) {
   const [pan, setPan] = useState({ x: 0, y: 0 });
 
@@ -19,15 +21,25 @@ export default function Hero({ query, setQuery, totalAssets }) {
       className="relative isolate overflow-hidden min-h-[64vh] md:min-h-[58vh] flex flex-col items-center justify-center text-center px-6 pt-24 pb-12 md:pt-20 md:pb-10"
       data-testid="hero-section"
     >
-      {/* Animated in-house background layer */}
+      {/* Local animated GIF background */}
       <div
-        className="absolute inset-0 -z-10 overflow-hidden pointer-events-none hero-animated-backdrop"
+        className="absolute inset-0 -z-10 overflow-hidden pointer-events-none"
         style={{
           transform: `translate3d(${pan.x * 0.4}px, ${pan.y * 0.4}px, 0) scale(1.05)`,
           transition: "transform 0.3s ease-out",
         }}
-        data-testid="hero-bg-gradient"
-      />
+      >
+        <img
+          src={HERO_BACKGROUND}
+          alt=""
+          className="w-full h-full object-cover"
+          style={{
+            filter: "blur(14px) brightness(1.1) saturate(1.25)",
+            opacity: 0.9,
+          }}
+          data-testid="hero-bg-gif"
+        />
+      </div>
       {/* Soft blend layers */}
       <div className="absolute inset-0 -z-10 hero-theme-overlay" />
       <div className="absolute inset-0 -z-10 hero-theme-gradient" />
