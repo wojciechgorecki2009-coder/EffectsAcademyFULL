@@ -1666,7 +1666,7 @@ async def track_visit(payload: AnalyticsVisit, request: Request):
 @api_router.get("/moderator/stats")
 async def moderator_stats(request: Request, days: int = 7):
     await require_uploader(request)
-    days = days if days in {7, 28, 365} else 7
+    days = days if days in {7, 28, 90, 365} else 7
     dates = day_range(days)
     start_ts = time.time() - days * 86400
 

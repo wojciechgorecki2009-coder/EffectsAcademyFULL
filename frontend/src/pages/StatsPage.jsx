@@ -15,7 +15,7 @@ import { Activity, ArrowLeft, Crown, Download, Eye, Radio, RefreshCw, ShieldChec
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
-const RANGES = [7, 28, 365];
+const RANGES = [7, 28, 90, 365];
 
 function compactNumber(value = 0) {
   return new Intl.NumberFormat(undefined, { notation: value >= 10000 ? "compact" : "standard" }).format(value);
