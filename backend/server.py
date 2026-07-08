@@ -178,30 +178,66 @@ def public_user(user: dict) -> dict:
     }
 
 
+def stripe_active_status(status: str = "") -> bool:
+    return status in {"active", "trialing"}
+
+
 async def sync_user_from_stripe(user: dict) -> dict:
     if not STRIPE_SECRET_KEY or not user.get("id"):
         return user
     try:
         customer_id = user.get("stripe_customer_id", "")
-        if not customer_id:
+        candidate_customers = []
+
+        if customer_id:
+            try:
+                candidate_customers.append(stripe.Customer.retrieve(customer_id))
+            except stripe.error.StripeError:
+                logging.warning("Stored Stripe customer %s could not be retrieved", customer_id)
+
+        if not candidate_customers:
             escaped_user_id = user["id"].replace("'", "\\'")
             customers = stripe.Customer.search(
                 query=f"metadata['user_id']:'{escaped_user_id}'",
-                limit=1,
+                limit=5,
             )
-            if customers.data:
-                customer_id = customers.data[0].id
-        if not customer_id:
+            candidate_customers.extend(customers.data)
+
+        if not candidate_customers and user.get("email"):
+            escaped_email = user["email"].replace("'", "\\'")
+            customers = stripe.Customer.search(
+                query=f"email:'{escaped_email}'",
+                limit=5,
+            )
+            candidate_customers.extend(customers.data)
+
+        if not candidate_customers:
             return user
-        subscriptions = stripe.Subscription.list(customer=customer_id, status="all", limit=20)
-        active_subscription = next(
-            (item for item in subscriptions.data if item.status in {"active", "trialing"}),
-            None,
-        )
+
+        fallback_customer = candidate_customers[0]
+        fallback_subscription = None
+        active_customer = None
+        active_subscription = None
+
+        for customer in candidate_customers:
+            subscriptions = stripe.Subscription.list(customer=customer.id, status="all", limit=20)
+            if fallback_subscription is None and subscriptions.data:
+                fallback_subscription = subscriptions.data[0]
+            matching_subscription = next(
+                (item for item in subscriptions.data if stripe_active_status(item.status)),
+                None,
+            )
+            if matching_subscription:
+                active_customer = customer
+                active_subscription = matching_subscription
+                break
+
+        selected_customer = active_customer or fallback_customer
+        selected_subscription = active_subscription or fallback_subscription
         updates = {
-            "stripe_customer_id": customer_id,
-            "premium_status": active_subscription.status if active_subscription else "inactive",
-            "stripe_subscription_id": active_subscription.id if active_subscription else "",
+            "stripe_customer_id": selected_customer.id,
+            "premium_status": selected_subscription.status if active_subscription else "inactive",
+            "stripe_subscription_id": selected_subscription.id if selected_subscription else "",
             "updated_at": now_iso(),
         }
         await db.users.update_one({"id": user["id"]}, {"$set": updates})
@@ -209,6 +245,18 @@ async def sync_user_from_stripe(user: dict) -> dict:
     except stripe.error.StripeError:
         logging.exception("Unable to reconcile Stripe customer for %s", user.get("id"))
         return user
+
+
+async def user_filter_for_stripe_event(obj: dict) -> Optional[dict]:
+    user_id = (obj.get("metadata") or {}).get("user_id") or obj.get("client_reference_id")
+    if user_id:
+        return {"id": user_id}
+    customer_id = obj.get("customer")
+    if customer_id:
+        existing = await db.users.find_one({"stripe_customer_id": customer_id}, {"_id": 0, "id": 1})
+        if existing:
+            return {"id": existing["id"]}
+    return None
 
 
 async def request_user(request: Request, required: bool = False) -> Optional[dict]:
@@ -237,7 +285,7 @@ async def request_user(request: Request, required: bool = False) -> Optional[dic
 def has_premium_access(user: Optional[dict]) -> bool:
     if not user:
         return False
-    return user.get("role") in {"Admin", "Uploader"} or user.get("premium_status") in {"active", "trialing"}
+    return user.get("role") in {"Admin", "Uploader"} or stripe_active_status(user.get("premium_status", ""))
 
 
 def can_manage_assets(user: Optional[dict]) -> bool:
@@ -445,6 +493,8 @@ async def require_asset_access(request: Request, asset: dict):
     user = await request_user(request)
     if user and user.get("role") in {"Admin", "Uploader"}:
         return
+    if user and not has_premium_access(user):
+        user = await sync_user_from_stripe(user)
     uploader_password = request.headers.get("x-upload-password") or request.query_params.get("upload_password", "")
     if USE_MOCK_DB and uploader_password in LOCAL_PREVIEW_UPLOAD_PASSWORDS:
         return
@@ -767,6 +817,7 @@ async def dev_login(payload: DevLoginRequest):
 @api_router.get("/auth/me")
 async def auth_me(request: Request):
     user = await request_user(request, required=True)
+    user = await sync_user_from_stripe(user)
     return public_user(user)
 
 
@@ -788,6 +839,7 @@ async def update_user_role(user_id: str, payload: RoleUpdate, request: Request):
 async def create_checkout_session(request: Request):
     enforce_rate_limit(request, "checkout", limit=10, window_seconds=300)
     user = await request_user(request, required=True)
+    user = await sync_user_from_stripe(user)
     if has_premium_access(user):
         return {"url": f"{FRONTEND_URL}/premium?already_subscribed=1"}
     if not STRIPE_SECRET_KEY:
@@ -834,6 +886,7 @@ async def create_checkout_session(request: Request):
 @api_router.post("/billing/create-portal-session")
 async def create_portal_session(request: Request):
     user = await request_user(request, required=True)
+    user = await sync_user_from_stripe(user)
     if not STRIPE_SECRET_KEY or not user.get("stripe_customer_id"):
         raise HTTPException(status_code=400, detail="No Stripe customer is linked to this account")
     session = stripe.billing_portal.Session.create(
@@ -888,10 +941,10 @@ async def stripe_webhook(request: Request):
 
     obj = event["data"]["object"]
     event_type = event["type"]
-    user_id = (obj.get("metadata") or {}).get("user_id") or obj.get("client_reference_id")
-    if user_id and event_type == "checkout.session.completed":
+    user_filter = await user_filter_for_stripe_event(obj)
+    if user_filter and event_type == "checkout.session.completed":
         await db.users.update_one(
-            {"id": user_id},
+            user_filter,
             {"$set": {
                 "premium_status": "active",
                 "stripe_customer_id": obj.get("customer", ""),
@@ -899,12 +952,17 @@ async def stripe_webhook(request: Request):
                 "updated_at": now_iso(),
             }},
         )
-    elif user_id and event_type in {"customer.subscription.updated", "customer.subscription.deleted"}:
+    elif user_filter and event_type in {
+        "customer.subscription.created",
+        "customer.subscription.updated",
+        "customer.subscription.deleted",
+    }:
         status = obj.get("status", "inactive")
         await db.users.update_one(
-            {"id": user_id},
+            user_filter,
             {"$set": {
-                "premium_status": status if status in {"active", "trialing"} else "inactive",
+                "premium_status": status if stripe_active_status(status) else "inactive",
+                "stripe_customer_id": obj.get("customer", ""),
                 "stripe_subscription_id": obj.get("id", ""),
                 "updated_at": now_iso(),
             }},
@@ -1157,6 +1215,8 @@ async def create_premium_download_link(asset_id: str, request: Request):
 @api_router.get("/premium-downloads/{token}")
 async def get_premium_download(token: str, request: Request):
     user = await request_user(request, required=True)
+    if not has_premium_access(user):
+        user = await sync_user_from_stripe(user)
     link = await db.premium_download_links.find_one({"token": token}, {"_id": 0})
     if not link:
         raise HTTPException(404, "Temporary link not found")

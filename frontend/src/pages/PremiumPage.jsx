@@ -37,8 +37,12 @@ export default function PremiumPage() {
     setBusy(true);
     api.post("/billing/confirm-checkout", { session_id: checkoutSessionId })
       .then(() => refreshUser())
-      .catch((err) => {
-        if (active) setError(checkoutErrorMessage(err, "Payment succeeded, but Premium is still being confirmed."));
+      .catch(async (err) => {
+        const refreshed = await refreshUser().catch(() => null);
+        const premiumActive = ["active", "trialing"].includes(refreshed?.premium_status) || ["Admin", "Uploader"].includes(refreshed?.role);
+        if (active && !premiumActive) {
+          setError(checkoutErrorMessage(err, "Payment succeeded, but Premium is still being confirmed. Please refresh in a moment."));
+        }
       })
       .finally(() => {
         if (active) setBusy(false);

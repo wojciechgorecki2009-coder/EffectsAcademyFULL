@@ -56,6 +56,7 @@ def premium_line_item(use_configured_price: bool = True) -> dict:
 async def create_checkout_session_with_price_fallback(request: Request):
     server.enforce_rate_limit(request, "checkout", limit=10, window_seconds=300)
     user = await server.request_user(request, required=True)
+    user = await server.sync_user_from_stripe(user)
     if server.has_premium_access(user):
         return {"url": f"{server.FRONTEND_URL}/premium?already_subscribed=1"}
     if not server.STRIPE_SECRET_KEY:
