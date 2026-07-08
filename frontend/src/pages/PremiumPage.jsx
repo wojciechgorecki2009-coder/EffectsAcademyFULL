@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Check, Crown, LockKeyhole, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowLeft, Check, Crown, LockKeyhole, ShieldCheck, Sparkles, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
@@ -14,6 +14,19 @@ const BENEFITS = [
   "Manage or cancel anytime through Stripe",
 ];
 
+const COMPARISON_ROWS = [
+  { feature: "AI text generator credits", free: "5 / month", premium: "30 / month" },
+  { feature: "AI generation storage", free: "Basic recent results", premium: "Saved generation storage" },
+  { feature: "AI image quality", free: "Standard generations", premium: "Higher quality generations" },
+  { feature: "Premium assets", free: false, premium: true },
+  { feature: "Premium presets", free: false, premium: true },
+  { feature: "Premium project files", free: false, premium: true },
+  { feature: "Premium asset downloads", free: false, premium: "Unlimited" },
+  { feature: "Beta feature access", free: false, premium: true },
+  { feature: "Exclusive monthly drops", free: false, premium: true },
+  { feature: "Subscription management", free: "Not needed", premium: "Manage in Stripe" },
+];
+
 const checkoutErrorMessage = (err, fallback) => {
   const data = err?.response?.data;
   if (typeof data === "string" && data.trim()) return data.trim();
@@ -21,6 +34,30 @@ const checkoutErrorMessage = (err, fallback) => {
   if (err?.message) return err.message;
   return fallback;
 };
+
+function ComparisonValue({ value, premium = false }) {
+  if (value === true) {
+    return (
+      <span className={`inline-flex items-center gap-2 font-semibold ${premium ? "text-emerald-300" : "text-zinc-300"}`}>
+        <span className="w-7 h-7 rounded-full bg-emerald-400/10 border border-emerald-300/20 flex items-center justify-center">
+          <Check className="w-4 h-4 text-emerald-300" />
+        </span>
+        Included
+      </span>
+    );
+  }
+  if (value === false) {
+    return (
+      <span className="inline-flex items-center gap-2 text-zinc-500">
+        <span className="w-7 h-7 rounded-full bg-rose-400/10 border border-rose-300/15 flex items-center justify-center">
+          <X className="w-4 h-4 text-rose-300" />
+        </span>
+        Not included
+      </span>
+    );
+  }
+  return <span className={premium ? "font-semibold text-white" : "text-zinc-300"}>{value}</span>;
+}
 
 export default function PremiumPage() {
   const { user, hasPremium, config, refreshUser } = useAuth();
@@ -167,6 +204,56 @@ export default function PremiumPage() {
             <div className="flex items-center justify-center gap-2 text-xs text-zinc-600 mt-5">
               <ShieldCheck className="w-3.5 h-3.5" /> Secure checkout hosted by Stripe
             </div>
+          </div>
+        </div>
+
+        <div className="mt-10 rounded-3xl border border-white/10 bg-[var(--site-panel)] overflow-hidden">
+          <div className="p-6 md:p-8 border-b border-white/10 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-300/10 px-3 py-1 text-xs font-semibold text-purple-200 mb-4">
+                <Sparkles className="w-3.5 h-3.5" /> Free vs Premium
+              </div>
+              <h2 className="font-display text-3xl font-black tracking-tight">Compare what you get</h2>
+              <p className="text-zinc-400 mt-2 max-w-2xl">
+                Free members can browse, download free assets, and test the AI tools. Premium unlocks the full vault, higher AI limits, saved generation storage, and early beta features.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-purple-300/20 bg-purple-500/10 px-4 py-3 text-sm text-purple-100">
+              Premium includes <span className="font-bold text-white">30 AI credits/month</span> plus every Premium asset.
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] text-sm">
+              <thead>
+                <tr className="border-b border-white/10 text-left">
+                  <th className="px-6 md:px-8 py-5 text-xs uppercase tracking-[0.24em] text-zinc-500">Feature</th>
+                  <th className="px-6 md:px-8 py-5">
+                    <div className="text-xs uppercase tracking-[0.24em] text-zinc-500">Free</div>
+                    <div className="font-display text-xl font-black text-white mt-1">$0</div>
+                  </th>
+                  <th className="px-6 md:px-8 py-5 bg-purple-500/5">
+                    <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-purple-200">
+                      <Crown className="w-4 h-4" /> Premium
+                    </div>
+                    <div className="font-display text-xl font-black text-white mt-1">$5.99 / month</div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {COMPARISON_ROWS.map((row) => (
+                  <tr key={row.feature} className="border-b border-white/5 last:border-b-0 hover:bg-white/[0.03] transition-colors">
+                    <td className="px-6 md:px-8 py-5 font-semibold text-white">{row.feature}</td>
+                    <td className="px-6 md:px-8 py-5">
+                      <ComparisonValue value={row.free} />
+                    </td>
+                    <td className="px-6 md:px-8 py-5 bg-purple-500/5">
+                      <ComparisonValue value={row.premium} premium />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
