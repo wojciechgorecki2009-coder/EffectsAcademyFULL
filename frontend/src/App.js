@@ -4,6 +4,7 @@ import { Toaster } from "sonner";
 import { UploadAccessProvider } from "@/lib/uploadAccess";
 import { AuthProvider } from "@/lib/auth";
 import { ThemeProvider } from "@/lib/theme";
+import { api } from "@/lib/api";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import PersistentAudioBar from "@/components/PersistentAudioBar";
@@ -17,6 +18,7 @@ import GoogleCallbackPage from "@/pages/GoogleCallbackPage";
 import { PrivacyPage, SupportPage, TermsPage } from "@/pages/LegalPages";
 import AiImagePage from "@/pages/AiImagePage";
 import DownloadAccessPage from "@/pages/DownloadAccessPage";
+import StatsPage from "@/pages/StatsPage";
 import "@/App.css";
 
 const ASSETS_CHANGED_EVENT = "effectsacademy:assets-changed";
@@ -45,6 +47,30 @@ function ScrollToTopOnRouteChange() {
   return null;
 }
 
+function getVisitorId() {
+  const key = "ea_visitor_id";
+  const existing = localStorage.getItem(key);
+  if (existing) return existing;
+  const next = `visitor_${window.crypto?.randomUUID?.() || `${Date.now()}_${Math.random().toString(36).slice(2)}`}`;
+  localStorage.setItem(key, next);
+  return next;
+}
+
+function AnalyticsTracker() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    const visitor_id = getVisitorId();
+    const sendVisit = () => api.post("/analytics/visit", { visitor_id, path: pathname }).catch(() => {});
+    const sendHeartbeat = () => api.post("/analytics/visit", { visitor_id, path: pathname, heartbeat: true }).catch(() => {});
+    sendVisit();
+    const timer = window.setInterval(sendHeartbeat, 60 * 1000);
+    return () => window.clearInterval(timer);
+  }, [pathname]);
+
+  return null;
+}
+
 function RefreshableRoutes() {
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -67,6 +93,7 @@ function RefreshableRoutes() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/premium" element={<PremiumPage />} />
         <Route path="/ai-image" element={<AiImagePage />} />
+        <Route path="/stats" element={<StatsPage />} />
         <Route path="/download/:token" element={<DownloadAccessPage />} />
         <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />
       </Routes>
@@ -83,6 +110,7 @@ export default function App() {
         <MouseParallaxRoot>
           <div className="App min-h-screen bg-[var(--site-bg)] text-white transition-colors duration-300">
             <ScrollToTopOnRouteChange />
+            <AnalyticsTracker />
             <Nav />
             <RefreshableRoutes />
             <Footer />

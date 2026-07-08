@@ -134,6 +134,19 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def utc_day_from_ts(timestamp: Optional[float] = None) -> str:
+    current = timestamp if timestamp is not None else time.time()
+    return datetime.fromtimestamp(current, timezone.utc).strftime("%Y-%m-%d")
+
+
+def day_range(days: int) -> List[str]:
+    today = datetime.now(timezone.utc)
+    return [
+        datetime.fromtimestamp(today.timestamp() - offset * 86400, timezone.utc).strftime("%Y-%m-%d")
+        for offset in range(days - 1, -1, -1)
+    ]
+
+
 def enforce_rate_limit(request: Request, bucket: str, limit: int = 5, window_seconds: int = 300) -> None:
     forwarded = request.headers.get("x-forwarded-for", "")
     ip = forwarded.split(",", 1)[0].strip() or request.client.host if request.client else "unknown"
@@ -666,6 +679,12 @@ class RoleUpdate(BaseModel):
     role: str
 
 
+class AnalyticsVisit(BaseModel):
+    visitor_id: str
+    path: Optional[str] = "/"
+    heartbeat: bool = False
+
+
 class AiImageEditResponse(BaseModel):
     image_base64: str
     mime_type: str = "image/png"
@@ -1170,6 +1189,13 @@ async def increment_download(asset_id: str, request: Request):
     res = await db.assets.update_one({"id": asset_id}, {"$inc": {"download_count": 1}})
     if res.matched_count == 0:
         raise HTTPException(404, "Asset not found")
+    await db.analytics_downloads.insert_one({
+        "asset_id": asset_id,
+        "title": asset.get("title", ""),
+        "category": asset.get("category", ""),
+        "timestamp": time.time(),
+        "date": utc_day_from_ts(),
+    })
     doc = await db.assets.find_one({"id": asset_id}, {"_id": 0})
     return {"download_count": doc["download_count"]}
 
@@ -1204,6 +1230,14 @@ async def create_premium_download_link(asset_id: str, request: Request):
         "expires_at": expires_at,
     })
     await db.assets.update_one({"id": asset_id}, {"$inc": {"download_count": 1}})
+    await db.analytics_downloads.insert_one({
+        "asset_id": asset_id,
+        "title": asset.get("title", ""),
+        "category": asset.get("category", ""),
+        "timestamp": now_ts,
+        "date": utc_day_from_ts(now_ts),
+        "premium_link": True,
+    })
     return {
         "url": f"{FRONTEND_URL}/download/{token}",
         "token": token,
@@ -1591,6 +1625,99 @@ async def health():
 async def stats():
     total = await db.assets.count_documents({})
     return {"total_assets": total}
+
+
+@api_router.post("/analytics/visit")
+async def track_visit(payload: AnalyticsVisit, request: Request):
+    visitor_id = re.sub(r"[^a-zA-Z0-9:_-]", "", payload.visitor_id or "")[:80]
+    if len(visitor_id) < 8:
+        raise HTTPException(status_code=400, detail="Invalid visitor ID")
+
+    path = (payload.path or "/").strip()[:240]
+    if not path.startswith("/"):
+        path = "/"
+
+    user = await request_user(request)
+    now_ts = time.time()
+    today = utc_day_from_ts(now_ts)
+    await db.analytics_visitors.update_one(
+        {"visitor_id": visitor_id},
+        {"$set": {
+            "visitor_id": visitor_id,
+            "last_seen": now_ts,
+            "last_seen_iso": now_iso(),
+            "last_path": path,
+            "user_id": user.get("id", "") if user else "",
+            "role": user.get("role", "Viewer") if user else "Viewer",
+        }, "$setOnInsert": {"first_seen": now_ts}},
+        upsert=True,
+    )
+    if not payload.heartbeat:
+        await db.analytics_page_views.insert_one({
+            "visitor_id": visitor_id,
+            "user_id": user.get("id", "") if user else "",
+            "path": path,
+            "date": today,
+            "timestamp": now_ts,
+        })
+    return {"ok": True}
+
+
+@api_router.get("/moderator/stats")
+async def moderator_stats(request: Request, days: int = 7):
+    await require_uploader(request)
+    days = days if days in {7, 28, 365} else 7
+    dates = day_range(days)
+    start_ts = time.time() - days * 86400
+
+    page_views = await db.analytics_page_views.find(
+        {"timestamp": {"$gte": start_ts}},
+        {"_id": 0, "date": 1, "visitor_id": 1},
+    ).to_list(25000)
+    visitors_by_day = {date: set() for date in dates}
+    page_views_by_day = {date: 0 for date in dates}
+    for view in page_views:
+        date = view.get("date")
+        if date not in page_views_by_day:
+            continue
+        page_views_by_day[date] += 1
+        visitor_id = view.get("visitor_id")
+        if visitor_id:
+            visitors_by_day[date].add(visitor_id)
+
+    traffic = [
+        {
+            "date": date,
+            "visitors": len(visitors_by_day[date]),
+            "page_views": page_views_by_day[date],
+        }
+        for date in dates
+    ]
+
+    online_now = await db.analytics_visitors.count_documents({"last_seen": {"$gte": time.time() - 300}})
+    premium_users = await db.users.count_documents({"premium_status": {"$in": ["active", "trialing"]}})
+    asset_docs = await db.assets.find(
+        {},
+        {"_id": 0, "id": 1, "title": 1, "category": 1, "creator_tag": 1, "download_count": 1},
+    ).to_list(5000)
+    total_downloads = sum(int(asset.get("download_count") or 0) for asset in asset_docs)
+    top_assets = sorted(asset_docs, key=lambda item: int(item.get("download_count") or 0), reverse=True)[:12]
+    for asset in top_assets:
+        asset["download_count"] = int(asset.get("download_count") or 0)
+
+    return {
+        "range_days": days,
+        "summary": {
+            "unique_visitors": len({view.get("visitor_id") for view in page_views if view.get("visitor_id")}),
+            "page_views": len(page_views),
+            "online_now": online_now,
+            "premium_users": premium_users,
+            "total_downloads": total_downloads,
+            "total_assets": len(asset_docs),
+        },
+        "traffic": traffic,
+        "top_assets": top_assets,
+    }
 
 
 @api_router.get("/distinct/creators")

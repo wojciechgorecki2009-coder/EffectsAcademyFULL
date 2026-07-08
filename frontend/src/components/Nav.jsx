@@ -1,6 +1,6 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useState } from "react";
-import { Lock, ChevronDown, Menu, Upload, LogOut, UserCircle, Crown, Settings, Check } from "lucide-react";
+import { Lock, ChevronDown, Menu, Upload, LogOut, UserCircle, Crown, Settings, Check, BarChart3 } from "lucide-react";
 import DiscordIcon from "@/components/DiscordIcon";
 import {
   DropdownMenu,
@@ -55,6 +55,7 @@ export default function Nav() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
+  const canViewStats = ["Admin", "Uploader"].includes(user?.role);
 
   const tabClass = ({ isActive }) =>
     `relative px-3 py-1.5 text-sm font-medium rounded-lg btn-press ${
@@ -126,6 +127,17 @@ export default function Nav() {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+          {canViewStats && (
+            <NavLink
+              to="/stats"
+              className={tabClass}
+              data-testid="nav-tab-stats"
+            >
+              <span className="inline-flex items-center gap-1.5">
+                <BarChart3 className="w-3.5 h-3.5" /> Stats
+              </span>
+            </NavLink>
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
@@ -257,7 +269,7 @@ export default function Nav() {
 
       {mobileOpen && (
         <div className="xl:hidden border-t border-white/5 px-4 py-3 flex flex-wrap gap-2">
-          {[...PRIMARY_TABS, ...MORE_TABS].map((t) => (
+          {[...PRIMARY_TABS, ...(canViewStats ? [{ to: "/stats", label: "Stats" }] : []), ...MORE_TABS].map((t) => (
             <NavLink
               key={t.to}
               to={t.to}
