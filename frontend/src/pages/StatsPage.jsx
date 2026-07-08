@@ -21,10 +21,14 @@ function compactNumber(value = 0) {
   return new Intl.NumberFormat(undefined, { notation: value >= 10000 ? "compact" : "standard" }).format(value);
 }
 
-function shortDate(value) {
+function formatDate(value, includeYear = false) {
   const date = new Date(`${value}T00:00:00Z`);
   if (!Number.isFinite(date.getTime())) return value;
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    ...(includeYear ? { year: "numeric" } : {}),
+  });
 }
 
 function StatCard({ icon: Icon, label, value, note, tone = "blue" }) {
@@ -88,8 +92,13 @@ export default function StatsPage() {
   }, [loading, canView, range]);
 
   const traffic = useMemo(
-    () => (data?.traffic || []).map((point) => ({ ...point, label: shortDate(point.date) })),
-    [data],
+    () =>
+      (data?.traffic || []).map((point) => ({
+        ...point,
+        label: formatDate(point.date),
+        tooltipLabel: formatDate(point.date, range >= 90),
+      })),
+    [data, range],
   );
 
   if (loading) {
@@ -178,6 +187,7 @@ export default function StatsPage() {
                   <XAxis dataKey="label" stroke="#71717a" tickLine={false} axisLine={false} minTickGap={22} />
                   <YAxis stroke="#71717a" tickLine={false} axisLine={false} allowDecimals={false} width={34} />
                   <Tooltip
+                    labelFormatter={(label, payload) => payload?.[0]?.payload?.tooltipLabel || label}
                     contentStyle={{
                       background: "rgba(10,10,16,0.96)",
                       border: "1px solid rgba(255,255,255,0.12)",
