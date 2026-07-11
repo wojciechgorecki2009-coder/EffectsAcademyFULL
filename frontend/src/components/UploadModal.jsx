@@ -16,7 +16,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
-import { Upload, ImagePlus, Plus, Files } from "lucide-react";
+import { Upload, ImagePlus, Plus, Files, RefreshCw } from "lucide-react";
 import { api, CATEGORIES, AUDIO_CREATORS, SHOWS, FILE_BASE } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -37,7 +37,11 @@ const initial = {
   original_filename: "",
   external_url: "",
   pack_id: "",
+  is_updated: false,
+  updated_at: "",
 };
+
+const UPDATE_MARKABLE_CATEGORIES = new Set(["Overlays", "Sound FX"]);
 
 const titleFromFilename = (name = "") =>
   name
@@ -274,7 +278,12 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
       return toast.error("Provide a file upload or external link.");
     setSubmitting(true);
     try {
-      const payload = { ...form, bpm: "", genre: form.genre || form.bpm || "" };
+      const payload = {
+        ...form,
+        bpm: "",
+        genre: form.genre || form.bpm || "",
+        ...(editing?.id && !canMarkUpdated ? { is_updated: false, updated_at: "" } : {}),
+      };
       if (editing?.id) {
         await api.patch(`/assets/${editing.id}`, payload);
         toast.success("Asset updated.");
@@ -294,6 +303,7 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
   const isAudio = form.category === "Audios";
   const isPF = form.category === "Project Files";
   const isTorrent = form.category === "Torrents";
+  const canMarkUpdated = Boolean(editing?.id) && UPDATE_MARKABLE_CATEGORIES.has(form.category);
   const thumbnailPreviewSrc = form.thumbnail_url
     ? form.thumbnail_url.startsWith("http") ? form.thumbnail_url : `${FILE_BASE}${form.thumbnail_url}`
     : "";
@@ -415,6 +425,33 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
                 </div>
               )}
             </div>
+
+            {canMarkUpdated && (
+              <label className="col-span-2 group cursor-pointer rounded-xl border border-amber-300/20 bg-amber-300/5 px-4 py-3 flex items-start gap-3 hover:bg-amber-300/10 transition-colors">
+                <span className={`mt-0.5 w-5 h-5 rounded-md border flex items-center justify-center transition-all ${form.is_updated ? "bg-amber-300 border-amber-200 text-black shadow-[0_0_18px_rgba(251,191,36,0.25)]" : "border-white/20 bg-white/5 text-transparent"}`}>
+                  <RefreshCw className="w-3.5 h-3.5" />
+                </span>
+                <input
+                  type="checkbox"
+                  checked={Boolean(form.is_updated)}
+                  onChange={(e) => setForm((f) => ({
+                    ...f,
+                    is_updated: e.target.checked,
+                    updated_at: e.target.checked ? f.updated_at : "",
+                  }))}
+                  className="sr-only"
+                  data-testid="upload-updated-checkbox"
+                />
+                <span>
+                  <span className="block text-sm font-semibold text-amber-100">
+                    Mark this asset as updated
+                  </span>
+                  <span className="block text-xs text-zinc-400 mt-1">
+                    Use this when the existing Drive link now contains a new overlay or sound effect. It will move back into Recently Added and show an UPDATED tag.
+                  </span>
+                </span>
+              </label>
+            )}
 
             <div className="col-span-2">
               <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">

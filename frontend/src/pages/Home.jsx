@@ -36,7 +36,12 @@ const DASHBOARD_SECTIONS = [
   "Torrents",
 ];
 
-const getStamp = (asset) => new Date(asset.created_at || asset.createdAt || 0).getTime() || 0;
+const getStamp = (asset) => {
+  const displayStamp = asset.is_updated && asset.updated_at
+    ? asset.updated_at
+    : asset.created_at || asset.createdAt;
+  return new Date(displayStamp || 0).getTime() || 0;
+};
 
 const matchesSearch = (asset, query) => {
   const q = query.trim().toLowerCase();

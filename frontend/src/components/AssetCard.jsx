@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Crown, Copy, Download, ImageIcon, Link as LinkIcon, LockKeyhole, Pencil, Sparkles, Trash2 } from "lucide-react";
+import { Crown, Copy, Download, ImageIcon, Link as LinkIcon, LockKeyhole, Pencil, RefreshCw, Sparkles, Trash2 } from "lucide-react";
 import { CATEGORY_COLORS, api, buildFileUrl, buildDownloadUrl, deriveDownloadFilename, getAuthToken, getPass } from "@/lib/api";
 import { useUploadAccess } from "@/lib/uploadAccess";
 import { useAuth } from "@/lib/auth";
@@ -16,11 +16,18 @@ import {
 import { toast } from "sonner";
 
 const isRecentlyAdded = (asset) => {
-  const stamp = asset.created_at || asset.createdAt || asset.updated_at;
+  const stamp = asset.created_at || asset.createdAt;
   if (!stamp) return false;
   const created = new Date(stamp).getTime();
   if (!Number.isFinite(created)) return false;
   return Date.now() - created < 7 * 24 * 60 * 60 * 1000;
+};
+
+const isRecentlyUpdated = (asset) => {
+  if (!asset.is_updated || !asset.updated_at) return false;
+  const updated = new Date(asset.updated_at).getTime();
+  if (!Number.isFinite(updated)) return false;
+  return Date.now() - updated < 14 * 24 * 60 * 60 * 1000;
 };
 
 const isVideoPreview = (url = "") => /\.(mp4|webm|mov|m4v)(?:[?#]|$)/i.test(url);
@@ -75,7 +82,8 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
   const isAudio = asset.category === "Audios";
   const isSoundEffect = asset.category === "Sound FX";
   const isPremium = asset.category === "Premium";
-  const isNew = isRecentlyAdded(asset);
+  const isUpdated = isRecentlyUpdated(asset);
+  const isNew = !isUpdated && isRecentlyAdded(asset);
   const isLockedPremium = isPremium && !isUploader && !hasPremium;
   const thumbnailSrc = asset.thumbnail_url
     ? buildFileUrl(asset.thumbnail_url, isPremium && hasPremium ? getAuthToken() : "", isPremium && isUploader ? getPass() : "")
@@ -181,6 +189,8 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
         external_url: asset.external_url || "",
         pack_id: asset.pack_id || "",
         custom_category_id: asset.custom_category_id || "",
+        is_updated: false,
+        updated_at: "",
       };
       await api.post("/assets", copy);
       toast.success("Asset duplicated.");
@@ -258,6 +268,11 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
             {isNew && (
               <div className="bg-emerald-400/90 text-black text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-1 shadow-lg shadow-emerald-950/30">
                 <Sparkles className="w-3 h-3" /> NEW
+              </div>
+            )}
+            {isUpdated && (
+              <div className="bg-amber-300/95 text-black text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-1 shadow-lg shadow-amber-950/30">
+                <RefreshCw className="w-3 h-3" /> UPDATED
               </div>
             )}
           </div>

@@ -534,6 +534,8 @@ class Asset(BaseModel):
     external_url: Optional[str] = ""          # Drive/Mega/MediaFire link
     pack_id: Optional[str] = ""
     custom_category_id: Optional[str] = ""
+    is_updated: bool = False
+    updated_at: Optional[str] = ""
     download_count: int = 0
     has_external_url: Optional[bool] = False
     created_at: str = Field(default_factory=now_iso)
@@ -555,6 +557,8 @@ class AssetCreate(BaseModel):
     external_url: Optional[str] = ""
     pack_id: Optional[str] = ""
     custom_category_id: Optional[str] = ""
+    is_updated: Optional[bool] = False
+    updated_at: Optional[str] = ""
 
 
 class AssetUpdate(BaseModel):
@@ -573,6 +577,8 @@ class AssetUpdate(BaseModel):
     external_url: Optional[str] = None
     pack_id: Optional[str] = None
     custom_category_id: Optional[str] = None
+    is_updated: Optional[bool] = None
+    updated_at: Optional[str] = None
 
 
 class Pack(BaseModel):
@@ -1204,6 +1210,22 @@ async def update_asset(
     updates = {k: v for k, v in payload.model_dump().items() if v is not None}
     if not updates:
         raise HTTPException(400, "No fields to update")
+
+    existing = await db.assets.find_one({"id": asset_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(404, "Asset not found")
+
+    next_category = updates.get("category") or existing.get("category")
+    update_markable = next_category in {"Overlays", "Sound FX"}
+    if updates.get("is_updated") is True:
+        if update_markable:
+            updates["updated_at"] = now_iso()
+        else:
+            updates["is_updated"] = False
+            updates["updated_at"] = ""
+    elif updates.get("is_updated") is False:
+        updates["updated_at"] = ""
+
     res = await db.assets.update_one({"id": asset_id}, {"$set": updates})
     if res.matched_count == 0:
         raise HTTPException(404, "Asset not found")

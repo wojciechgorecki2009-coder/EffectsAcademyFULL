@@ -46,7 +46,12 @@ const SORT_OPTIONS = [
 ];
 
 const getGenre = (asset) => (asset.genre || (asset.category === "Audios" ? asset.bpm : "") || "").trim();
-const getStamp = (asset) => new Date(asset.created_at || asset.createdAt || 0).getTime() || 0;
+const getStamp = (asset) => {
+  const displayStamp = asset.is_updated && asset.updated_at
+    ? asset.updated_at
+    : asset.created_at || asset.createdAt;
+  return new Date(displayStamp || 0).getTime() || 0;
+};
 const sortAssets = (list, sortBy) => [...list].sort((a, b) => {
   if (sortBy === "downloads") return (b.download_count || 0) - (a.download_count || 0);
   if (sortBy === "az") return (a.title || "").localeCompare(b.title || "");
