@@ -51,28 +51,14 @@ function PreviewMedia({ src, title, className = "", videoClassName = "", imageCl
 }
 
 async function downloadUrlWithoutLeavingPage(url, filename) {
-  try {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error("Download request failed");
-    const blob = await response.blob();
-    const objectUrl = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = objectUrl;
-    link.download = filename || "download";
-    link.rel = "noopener";
-    link.style.display = "none";
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
-  } catch (error) {
-    const iframe = document.createElement("iframe");
-    iframe.src = url;
-    iframe.title = "Download";
-    iframe.style.display = "none";
-    document.body.appendChild(iframe);
-    setTimeout(() => iframe.remove(), 60000);
-  }
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename || "download";
+  link.rel = "noopener";
+  link.style.display = "none";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
 }
 
 export default function AssetCard({ asset, onChanged, allAssets = [] }) {

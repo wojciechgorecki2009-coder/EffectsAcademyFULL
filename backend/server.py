@@ -25,6 +25,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field, EmailStr
 from typing import List, Optional
 from datetime import datetime, timezone
+from urllib.parse import quote, urlencode
 from PIL import Image, ImageOps, UnidentifiedImageError
 import jwt
 import stripe
@@ -1034,28 +1035,25 @@ async def upload_file(
     }
 
 
-@api_router.get("/uploads/{filename}")
-async def serve_upload(
-    request: Request,
-    filename: str,
-    download: int = 0,
-    name: Optional[str] = None,
-):
-    if Path(filename).name != filename:
-        raise HTTPException(status_code=400, detail="Invalid filename")
-
-    asset = await db.assets.find_one(
+async def upload_asset_for_filename(filename: str):
+    return await db.assets.find_one(
         {"file_url": f"/api/uploads/{filename}"},
         {"_id": 0},
     )
-    if asset:
-        await require_asset_access(request, asset)
 
+
+async def build_upload_access_url(
+    filename: str,
+    asset: Optional[dict],
+    request: Request,
+    download: int = 0,
+    name: Optional[str] = None,
+):
     if USE_OBJECT_STORAGE:
-        if S3_PUBLIC_BASE_URL and (not asset or asset.get("category") != "Premium"):
-            return RedirectResponse(f"{S3_PUBLIC_BASE_URL}/{filename}", status_code=307)
+        if S3_PUBLIC_BASE_URL and not download and (not asset or asset.get("category") != "Premium"):
+            return f"{S3_PUBLIC_BASE_URL}/{quote(filename)}"
         try:
-            url = await asyncio.to_thread(
+            return await asyncio.to_thread(
                 s3.generate_presigned_url,
                 "get_object",
                 Params={
@@ -1068,6 +1066,48 @@ async def serve_upload(
         except Exception:
             logging.exception("Object storage download failed")
             raise HTTPException(status_code=404, detail="File not found")
+
+    params = {}
+    if download:
+        params["download"] = "1"
+    if name:
+        params["name"] = name
+    suffix = f"?{urlencode(params)}" if params else ""
+    return f"{str(request.base_url).rstrip('/')}/api/uploads/{quote(filename)}{suffix}"
+
+
+@api_router.get("/uploads/{filename}/direct")
+async def upload_direct_url(
+    request: Request,
+    filename: str,
+    download: int = 0,
+    name: Optional[str] = None,
+):
+    if Path(filename).name != filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    asset = await upload_asset_for_filename(filename)
+    if asset:
+        await require_asset_access(request, asset)
+    url = await build_upload_access_url(filename, asset, request, download=download, name=name)
+    return {"url": url, "expires_in_seconds": 900 if USE_OBJECT_STORAGE else None}
+
+
+@api_router.get("/uploads/{filename}")
+async def serve_upload(
+    request: Request,
+    filename: str,
+    download: int = 0,
+    name: Optional[str] = None,
+):
+    if Path(filename).name != filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+
+    asset = await upload_asset_for_filename(filename)
+    if asset:
+        await require_asset_access(request, asset)
+
+    if USE_OBJECT_STORAGE:
+        url = await build_upload_access_url(filename, asset, request, download=download, name=name)
         return RedirectResponse(url, status_code=307)
 
     file_path = UPLOAD_DIR / filename
