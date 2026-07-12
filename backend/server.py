@@ -1715,12 +1715,17 @@ async def stats():
 
 
 @api_router.post("/analytics/visit")
-async def track_visit(payload: AnalyticsVisit, request: Request):
-    visitor_id = re.sub(r"[^a-zA-Z0-9:_-]", "", payload.visitor_id or "")[:80]
+async def track_visit(request: Request):
+    try:
+        payload = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid analytics payload")
+
+    visitor_id = re.sub(r"[^a-zA-Z0-9:_-]", "", str(payload.get("visitor_id") or ""))[:80]
     if len(visitor_id) < 8:
         raise HTTPException(status_code=400, detail="Invalid visitor ID")
 
-    path = (payload.path or "/").strip()[:240]
+    path = str(payload.get("path") or "/").strip()[:240]
     if not path.startswith("/"):
         path = "/"
 
@@ -1739,7 +1744,7 @@ async def track_visit(payload: AnalyticsVisit, request: Request):
         }, "$setOnInsert": {"first_seen": now_ts}},
         upsert=True,
     )
-    if not payload.heartbeat:
+    if not bool(payload.get("heartbeat")):
         await db.analytics_page_views.insert_one({
             "visitor_id": visitor_id,
             "user_id": user.get("id", "") if user else "",

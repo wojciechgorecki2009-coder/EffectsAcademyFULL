@@ -4,7 +4,7 @@ import { Toaster } from "sonner";
 import { UploadAccessProvider } from "@/lib/uploadAccess";
 import { AuthProvider } from "@/lib/auth";
 import { ThemeProvider } from "@/lib/theme";
-import { api } from "@/lib/api";
+import { API } from "@/lib/api";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import PersistentAudioBar from "@/components/PersistentAudioBar";
@@ -61,11 +61,29 @@ function AnalyticsTracker() {
 
   useEffect(() => {
     const visitor_id = getVisitorId();
-    const sendVisit = () => api.post("/analytics/visit", { visitor_id, path: pathname }).catch(() => {});
-    const sendHeartbeat = () => api.post("/analytics/visit", { visitor_id, path: pathname, heartbeat: true }).catch(() => {});
+    const postAnalytics = (payload) => {
+      fetch(`${API}/analytics/visit`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+        keepalive: true,
+      }).catch(() => {});
+    };
+    const sendVisit = () => postAnalytics({ visitor_id, path: pathname });
+    const sendHeartbeat = () => {
+      if (document.visibilityState === "visible") {
+        postAnalytics({ visitor_id, path: pathname, heartbeat: true });
+      }
+    };
     sendVisit();
-    const timer = window.setInterval(sendHeartbeat, 60 * 1000);
-    return () => window.clearInterval(timer);
+    const timer = window.setInterval(sendHeartbeat, 4 * 60 * 1000);
+    const visibilityHandler = () => {
+      if (document.visibilityState === "visible") sendHeartbeat();
+    };
+    document.addEventListener("visibilitychange", visibilityHandler);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", visibilityHandler);
+    };
   }, [pathname]);
 
   return null;
