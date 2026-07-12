@@ -52,6 +52,9 @@ const titleFromFilename = (name = "") =>
 
 const isVideoPreview = (url = "") => /\.(mp4|webm|mov|m4v)(?:[?#]|$)/i.test(url);
 
+const isYouTubeUrl = (url = "") =>
+  /^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\//i.test(url.trim());
+
 async function compressThumbnail(file) {
   if (!file?.type?.startsWith("image/")) return file;
   if (file.type === "image/gif") return file;
@@ -274,12 +277,16 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
   const submit = async (e) => {
     e.preventDefault();
     if (!form.title.trim()) return toast.error("Title is required.");
+    if (form.category === "Videos" && !isYouTubeUrl(form.external_url))
+      return toast.error("Videos need a valid YouTube link.");
     if (!form.file_url && !form.external_url)
       return toast.error("Provide a file upload or external link.");
     setSubmitting(true);
     try {
       const payload = {
         ...form,
+        file_url: form.category === "Videos" ? "" : form.file_url,
+        original_filename: form.category === "Videos" ? "" : form.original_filename,
         bpm: "",
         genre: form.genre || form.bpm || "",
         ...(editing?.id && !canMarkUpdated ? { is_updated: false, updated_at: "" } : {}),
@@ -301,6 +308,7 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
   };
 
   const isAudio = form.category === "Audios";
+  const isVideo = form.category === "Videos";
   const isPF = form.category === "Project Files";
   const isTorrent = form.category === "Torrents";
   const canMarkUpdated = Boolean(editing?.id) && UPDATE_MARKABLE_CATEGORIES.has(form.category);
@@ -333,7 +341,9 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
             {editing ? "Edit Asset" : "Upload Asset"}
           </DialogTitle>
           <DialogDescription className="text-zinc-400">
-            Pick a category, drop a thumbnail, and add one file or bulk upload a batch.
+            {isVideo
+              ? "Paste a YouTube link and it will play directly inside the Videos tab."
+              : "Pick a category, drop a thumbnail, and add one file or bulk upload a batch."}
           </DialogDescription>
         </DialogHeader>
 
@@ -346,7 +356,7 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
               <Input
                 value={form.title}
                 onChange={(e) => set("title", e.target.value)}
-                placeholder="For bulk uploads, filenames become titles automatically"
+                placeholder={isVideo ? "Video title" : "For bulk uploads, filenames become titles automatically"}
                 className="bg-white/5 border-white/10 mt-1"
                 data-testid="upload-title-input"
               />
@@ -631,7 +641,8 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
               )}
             </div>
 
-            <div className="col-span-2 grid grid-cols-2 gap-3 mt-2 pt-3 border-t border-white/5">
+            <div className={`col-span-2 grid ${isVideo ? "grid-cols-1" : "grid-cols-2"} gap-3 mt-2 pt-3 border-t border-white/5`}>
+              {!isVideo && (
               <div>
                 <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">
                   File Upload (≤ 50MB)
@@ -648,21 +659,27 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
                   />
                 </label>
               </div>
+              )}
               <div>
                 <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">
-                  External URL (Drive / Mega)
+                  {isVideo ? "YouTube URL" : "External URL (Drive / Mega)"}
                 </label>
                 <Input
                   value={form.external_url}
                   onChange={(e) => set("external_url", e.target.value)}
-                  placeholder="https://drive.google.com/..."
+                  placeholder={isVideo ? "https://www.youtube.com/watch?v=..." : "https://drive.google.com/..."}
                   className="bg-white/5 border-white/10 mt-1"
                   data-testid="upload-external-url"
                 />
+                {isVideo && (
+                  <p className="mt-1 text-xs text-zinc-500">
+                    YouTube, youtu.be, Shorts, and embed links are supported.
+                  </p>
+                )}
               </div>
             </div>
 
-            {!editing && (
+            {!editing && !isVideo && (
               <div className="col-span-2 rounded-xl border border-neon/20 bg-neon/5 p-4">
                 <label className="text-xs font-mono uppercase tracking-widest text-zinc-400">
                   Bulk Upload

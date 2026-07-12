@@ -30,6 +30,7 @@ export const CATEGORIES = [
   "Audios",
   "Sound FX",
   "Presets",
+  "Videos",
   "Premium",
 ];
 
@@ -115,6 +116,7 @@ export const CATEGORY_COLORS = {
   Audios:          { text: "#34D399", bg: "rgba(16,185,129,0.12)", border: "rgba(16,185,129,0.3)" },
   "Sound FX":      { text: "#A78BFA", bg: "rgba(139,92,246,0.12)", border: "rgba(139,92,246,0.3)" },
   Presets:         { text: "#22D3EE", bg: "rgba(6,182,212,0.12)",  border: "rgba(6,182,212,0.3)" },
+  Videos:          { text: "#F87171", bg: "rgba(239,68,68,0.12)", border: "rgba(239,68,68,0.32)" },
   Premium:         { text: "#FDE047", bg: "rgba(234,179,8,0.12)",  border: "rgba(234,179,8,0.3)" },
 };
 

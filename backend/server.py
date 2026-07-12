@@ -135,6 +135,22 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def is_youtube_url(url: str = "") -> bool:
+    return bool(re.match(r"^https?://(www\.)?(youtube\.com|youtu\.be)/", (url or "").strip(), re.IGNORECASE))
+
+
+def normalize_asset_video_payload(data: dict) -> dict:
+    if data.get("category") != "Videos":
+        return data
+    if not is_youtube_url(data.get("external_url", "")):
+        raise HTTPException(400, "Videos require a valid YouTube link")
+    data["file_url"] = ""
+    data["original_filename"] = ""
+    data["is_updated"] = False
+    data["updated_at"] = ""
+    return data
+
+
 def utc_day_from_ts(timestamp: Optional[float] = None) -> str:
     current = timestamp if timestamp is not None else time.time()
     return datetime.fromtimestamp(current, timezone.utc).strftime("%Y-%m-%d")
@@ -521,7 +537,7 @@ class Asset(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     title: str
     description: Optional[str] = ""
-    category: str  # Torrents | Project Files | Overlays | Audios | Sound FX | Presets | Premium
+    category: str  # Torrents | Project Files | Overlays | Audios | Sound FX | Presets | Videos | Premium
     creator_tag: Optional[str] = ""           # for Audios creator (MRBIT, IUSETHIS, ...) or any uploader name
     ae_version: Optional[str] = ""            # for Project Files
     bpm: Optional[str] = ""                   # for Audios
@@ -1197,7 +1213,8 @@ async def list_assets(
 @api_router.post("/assets", response_model=Asset)
 async def create_asset(payload: AssetCreate, request: Request):
     await require_uploader(request)
-    asset = Asset(**payload.model_dump())
+    data = normalize_asset_video_payload(payload.model_dump())
+    asset = Asset(**data)
     await db.assets.insert_one(asset.model_dump())
     return asset
 
@@ -1216,6 +1233,14 @@ async def update_asset(
         raise HTTPException(404, "Asset not found")
 
     next_category = updates.get("category") or existing.get("category")
+    if next_category == "Videos":
+        candidate = {**existing, **updates, "category": "Videos"}
+        normalize_asset_video_payload(candidate)
+        updates["file_url"] = ""
+        updates["original_filename"] = ""
+        updates["is_updated"] = False
+        updates["updated_at"] = ""
+
     update_markable = next_category in {"Overlays", "Sound FX"}
     if updates.get("is_updated") is True:
         if update_markable:

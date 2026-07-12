@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Crown, Copy, Download, ImageIcon, Link as LinkIcon, LockKeyhole, Pencil, RefreshCw, Sparkles, Trash2 } from "lucide-react";
+import { Crown, Copy, Download, ImageIcon, Link as LinkIcon, LockKeyhole, Pencil, Play, RefreshCw, Sparkles, Trash2 } from "lucide-react";
 import { CATEGORY_COLORS, api, buildFileUrl, buildDownloadUrl, deriveDownloadFilename, getAuthToken, getPass } from "@/lib/api";
 import { useUploadAccess } from "@/lib/uploadAccess";
 import { useAuth } from "@/lib/auth";
@@ -31,6 +31,29 @@ const isRecentlyUpdated = (asset) => {
 };
 
 const isVideoPreview = (url = "") => /\.(mp4|webm|mov|m4v)(?:[?#]|$)/i.test(url);
+
+const extractYouTubeId = (url = "") => {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.replace(/^www\./, "");
+    if (host === "youtu.be") return parsed.pathname.split("/").filter(Boolean)[0] || "";
+    if (!host.endsWith("youtube.com")) return "";
+    if (parsed.pathname === "/watch") return parsed.searchParams.get("v") || "";
+    const parts = parsed.pathname.split("/").filter(Boolean);
+    if (["embed", "shorts", "live"].includes(parts[0])) return parts[1] || "";
+  } catch {}
+  return "";
+};
+
+const youtubeThumbnailUrl = (url = "") => {
+  const id = extractYouTubeId(url);
+  return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : "";
+};
+
+const youtubeEmbedUrl = (url = "") => {
+  const id = extractYouTubeId(url);
+  return id ? `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0&modestbranding=1` : "";
+};
 
 function PreviewMedia({ src, title, className = "", videoClassName = "", imageClassName = "" }) {
   if (!src) return null;
@@ -81,13 +104,16 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
   const color = CATEGORY_COLORS[asset.category] || CATEGORY_COLORS.Overlays;
   const isAudio = asset.category === "Audios";
   const isSoundEffect = asset.category === "Sound FX";
+  const isVideo = asset.category === "Videos";
   const isPremium = asset.category === "Premium";
   const isUpdated = isRecentlyUpdated(asset);
   const isNew = !isUpdated && isRecentlyAdded(asset);
   const isLockedPremium = isPremium && !isUploader && !hasPremium;
+  const youtubeThumb = isVideo ? youtubeThumbnailUrl(asset.external_url) : "";
+  const youtubeEmbed = isVideo ? youtubeEmbedUrl(asset.external_url) : "";
   const thumbnailSrc = asset.thumbnail_url
     ? buildFileUrl(asset.thumbnail_url, isPremium && hasPremium ? getAuthToken() : "", isPremium && isUploader ? getPass() : "")
-    : "";
+    : youtubeThumb;
   const fileSrc = asset.file_url
     ? buildFileUrl(asset.file_url, isPremium ? getAuthToken() : "", isPremium && isUploader ? getPass() : "")
     : "";
@@ -146,6 +172,10 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
   };
 
   const download = async () => {
+    if (isVideo) {
+      setPreviewOpen(true);
+      return;
+    }
     setDownloading(true);
     toast.success("Starting download...");
     try {
@@ -217,7 +247,8 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
     event.preventDefault();
     event.stopPropagation();
     if (isLockedPremium) return openPremium(event);
-    if (!isAudio && thumbnailSrc) setPreviewOpen(true);
+    if (isVideo && youtubeEmbed) setPreviewOpen(true);
+    else if (!isAudio && thumbnailSrc) setPreviewOpen(true);
   };
 
   return (
@@ -239,9 +270,9 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
             <button
               type="button"
               onClick={openPreview}
-              disabled={isAudio}
-              className={`block w-full h-full text-left ${!isAudio ? "cursor-zoom-in" : "cursor-default"}`}
-              title={!isAudio ? "Open larger preview" : undefined}
+              disabled={isAudio && !isVideo}
+              className={`block w-full h-full text-left ${!isAudio || isVideo ? "cursor-zoom-in" : "cursor-default"}`}
+              title={isVideo ? "Watch video" : !isAudio ? "Open larger preview" : undefined}
             >
               <PreviewMedia
                 src={thumbnailSrc}
@@ -257,6 +288,13 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
           {thumbnailIsVideo && (
             <div className="absolute bottom-3 left-3 z-[2] bg-black/65 text-[10px] font-mono px-2 py-1 rounded-full text-white border border-white/10">
               VIDEO PREVIEW
+            </div>
+          )}
+          {isVideo && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <span className="h-14 w-14 rounded-full bg-black/65 border border-white/15 flex items-center justify-center text-white shadow-[0_0_30px_rgba(239,68,68,0.25)]">
+                <Play className="w-6 h-6 ml-0.5" />
+              </span>
             </div>
           )}
           <div className="absolute top-3 left-3 z-[2] flex flex-wrap gap-2">
@@ -299,10 +337,10 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
             >
               {asset.category}
             </span>
-            <div className="flex items-center gap-1.5 text-xs text-zinc-500 font-mono">
+            {!isVideo && <div className="flex items-center gap-1.5 text-xs text-zinc-500 font-mono">
               <Download className="w-3.5 h-3.5" />
               {downloadCount}
-            </div>
+            </div>}
           </div>
 
           <h3 className="font-display font-semibold text-lg leading-tight line-clamp-1">
@@ -352,8 +390,8 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
               className={`flex-1 ${isLockedPremium ? "bg-purple-500 hover:bg-purple-400" : "bg-neon hover:bg-neon/90"} text-white font-semibold rounded-lg py-2.5 text-sm flex items-center justify-center gap-2 btn-press disabled:opacity-70`}
               data-testid={`download-btn-${asset.id}`}
             >
-              {isLockedPremium ? <LockKeyhole className="w-4 h-4" /> : <Download className="w-4 h-4" />}
-              {isLockedPremium ? "Unlock Premium" : downloading ? "Downloading..." : "Download"}
+              {isLockedPremium ? <LockKeyhole className="w-4 h-4" /> : isVideo ? <Play className="w-4 h-4" /> : <Download className="w-4 h-4" />}
+              {isLockedPremium ? "Unlock Premium" : isVideo ? "Watch" : downloading ? "Downloading..." : "Download"}
             </button>
             {isUploader && (
               <>
@@ -406,13 +444,24 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
             <DialogHeader>
               <DialogTitle className="font-display text-2xl flex items-center gap-2">
                 {isPremium && <Crown className="w-5 h-5 text-purple-300" />}
+                {isVideo && <Play className="w-5 h-5 text-red-300" />}
                 {asset.title}
               </DialogTitle>
               <DialogDescription className="text-zinc-400">
-                {isPremium ? "Included with membership" : asset.category}
+                {isVideo ? "YouTube playback" : isPremium ? "Included with membership" : asset.category}
               </DialogDescription>
             </DialogHeader>
-            {thumbnailSrc ? (
+            {isVideo && youtubeEmbed ? (
+              <div className="aspect-video w-full overflow-hidden rounded-2xl border border-white/10 bg-black">
+                <iframe
+                  src={youtubeEmbed}
+                  title={asset.title}
+                  className="h-full w-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                />
+              </div>
+            ) : thumbnailSrc ? (
               thumbnailIsVideo ? (
                 <video
                   src={thumbnailSrc}

@@ -29,6 +29,10 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://effectsacademy.com/category/videos</loc>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://effectsacademy.com/category/premium</loc>
     <priority>0.7</priority>
   </url>

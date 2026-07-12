@@ -26,6 +26,7 @@ const SLUG_TO_CATEGORY = {
   "audios": "Audios",
   "sound-fx": "Sound FX",
   "presets": "Presets",
+  "videos": "Videos",
   "premium": "Premium",
 };
 
@@ -36,6 +37,7 @@ const DESCRIPTIONS = {
   Audios: "Tracks curated by the community's top audio creators.",
   "Sound FX": "Whooshes, impacts, risers, foley. Built for cuts.",
   Presets: "Plug-and-play presets for AE & beyond.",
+  Videos: "Community videos, tutorials, showcases, and updates playable inside Effects Academy.",
   Premium: "Premium drops, exclusive packs.",
 };
 

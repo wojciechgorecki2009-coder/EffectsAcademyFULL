@@ -23,7 +23,7 @@ export default function Footer() {
           </div>
           <p className="text-sm text-zinc-500 leading-relaxed">
             A curated library of free and premium editing assets for video editors, including project files,
-            overlays, presets, audios, sound effects, torrents, and AI tools.
+            overlays, presets, audios, sound effects, torrents, videos, and AI tools.
           </p>
           <a
             href={`mailto:${SUPPORT_EMAIL}`}
@@ -40,6 +40,7 @@ export default function Footer() {
             <li><Link to="/category/project-files" className="hover:text-neon transition-colors">Project Files</Link></li>
             <li><Link to="/category/overlays" className="hover:text-neon transition-colors">Overlays</Link></li>
             <li><Link to="/category/audios" className="hover:text-neon transition-colors">Audios</Link></li>
+            <li><Link to="/category/videos" className="hover:text-neon transition-colors">Videos</Link></li>
           </ul>
         </div>
         <div>

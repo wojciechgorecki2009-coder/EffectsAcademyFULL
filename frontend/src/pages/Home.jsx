@@ -24,6 +24,7 @@ const CATEGORY_TO_SLUG = {
   Audios: "audios",
   "Sound FX": "sound-fx",
   Presets: "presets",
+  Videos: "videos",
   Premium: "premium",
 };
 
@@ -33,6 +34,7 @@ const DASHBOARD_SECTIONS = [
   "Project Files",
   "Overlays",
   "Sound FX",
+  "Videos",
   "Torrents",
 ];
 
@@ -102,7 +104,10 @@ export default function Home() {
   const showsPickerForFilter = filter === "Audios" || filter === "Torrents";
 
   const sortedAssets = useMemo(() => [...assets].sort((a, b) => getStamp(b) - getStamp(a)), [assets]);
-  const recentlyAdded = useMemo(() => sortedAssets.slice(0, 8), [sortedAssets]);
+  const recentlyAdded = useMemo(
+    () => sortedAssets.filter((asset) => asset.category !== "Videos").slice(0, 8),
+    [sortedAssets]
+  );
 
   const mergedAudioCreators = useMemo(() => {
     const customs = Array.from(
