@@ -59,7 +59,7 @@ export default function Nav() {
   const canViewStats = ["Admin", "Uploader"].includes(user?.role);
 
   const tabClass = ({ isActive }) =>
-    `relative px-3 py-1.5 text-sm font-medium rounded-lg btn-press ${
+    `relative whitespace-nowrap px-2.5 py-1.5 text-sm font-medium rounded-lg btn-press ${
       isActive
         ? "text-white bg-white/10"
         : "text-zinc-400 hover:text-white hover:bg-white/5"
@@ -74,7 +74,7 @@ export default function Nav() {
       className="fixed top-0 inset-x-0 z-50 glass"
       data-testid="main-nav"
     >
-      <div className="max-w-[1400px] mx-auto px-4 md:px-8 h-16 grid grid-cols-[1fr_auto] xl:grid-cols-[1fr_auto_1fr] items-center gap-4">
+      <div className="max-w-[1500px] mx-auto px-4 md:px-7 h-16 grid grid-cols-[1fr_auto] xl:grid-cols-[minmax(180px,1fr)_auto_minmax(360px,1fr)] items-center gap-3">
         <Link
           to="/"
           className="flex items-center gap-2 btn-press justify-self-start"
@@ -91,7 +91,7 @@ export default function Nav() {
           </span>
         </Link>
 
-        <nav className="hidden xl:flex items-center justify-center gap-1">
+        <nav className="hidden xl:flex items-center justify-center gap-0.5">
           {PRIMARY_TABS.map((t) => (
             <NavLink
               key={t.to}
@@ -106,7 +106,7 @@ export default function Nav() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                className="px-3 py-1.5 text-sm font-medium rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 btn-press flex items-center gap-1"
+                className="whitespace-nowrap px-2.5 py-1.5 text-sm font-medium rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 btn-press flex items-center gap-1"
                 data-testid="nav-tab-more"
               >
                 More <ChevronDown className="w-3.5 h-3.5" />
@@ -142,7 +142,7 @@ export default function Nav() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                className="px-3 py-1.5 text-sm font-medium rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 btn-press flex items-center gap-1.5"
+                className="whitespace-nowrap px-2.5 py-1.5 text-sm font-medium rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 btn-press flex items-center gap-1.5"
                 data-testid="nav-settings"
               >
                 <Settings className="w-3.5 h-3.5" /> Settings
