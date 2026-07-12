@@ -116,6 +116,17 @@ export default function Nav() {
               className="glass border-white/10 text-white"
               align="end"
             >
+              {canViewStats && (
+                <DropdownMenuItem
+                  onClick={() => navigate("/stats")}
+                  className="cursor-pointer hover:bg-white/10 focus:bg-white/10"
+                  data-testid="nav-more-stats"
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <BarChart3 className="w-3.5 h-3.5" /> Stats
+                  </span>
+                </DropdownMenuItem>
+              )}
               {MORE_TABS.map((t) => (
                 <DropdownMenuItem
                   key={t.to}
@@ -128,17 +139,6 @@ export default function Nav() {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-          {canViewStats && (
-            <NavLink
-              to="/stats"
-              className={tabClass}
-              data-testid="nav-tab-stats"
-            >
-              <span className="inline-flex items-center gap-1.5">
-                <BarChart3 className="w-3.5 h-3.5" /> Stats
-              </span>
-            </NavLink>
-          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
