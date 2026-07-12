@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Search, Sparkles } from "lucide-react";
 
-const HERO_BACKGROUND = "/media/hero-background.gif";
+const HERO_BACKGROUND = "/media/hero-background-poster.jpg";
 
 export default function Hero({ query, setQuery, totalAssets }) {
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -21,7 +21,7 @@ export default function Hero({ query, setQuery, totalAssets }) {
       className="relative isolate overflow-hidden min-h-[64vh] md:min-h-[58vh] flex flex-col items-center justify-center text-center px-6 pt-24 pb-12 md:pt-20 md:pb-10"
       data-testid="hero-section"
     >
-      {/* Local animated GIF background */}
+      {/* Lightweight local hero background. Keep animated media off Render to protect bandwidth. */}
       <div
         className="absolute inset-0 -z-10 overflow-hidden pointer-events-none"
         style={{
