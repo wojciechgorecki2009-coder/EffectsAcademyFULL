@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Check, Crown, LockKeyhole, ShieldCheck, Sparkles, X } from "lucide-react";
 import { api } from "@/lib/api";
-import { useAuth } from "@/lib/auth";
+import { hasPremiumAccess, useAuth } from "@/lib/auth";
 
 const BENEFITS = [
   "All premium assets included with membership",
@@ -76,7 +76,7 @@ export default function PremiumPage() {
       .then(() => refreshUser())
       .catch(async (err) => {
         const refreshed = await refreshUser().catch(() => null);
-        const premiumActive = ["active", "trialing"].includes(refreshed?.premium_status) || ["Admin", "Uploader"].includes(refreshed?.role);
+        const premiumActive = hasPremiumAccess(refreshed);
         if (active && !premiumActive) {
           setError(checkoutErrorMessage(err, "Payment succeeded, but Premium is still being confirmed. Please refresh in a moment."));
         }

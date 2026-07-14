@@ -3,13 +3,14 @@ import { Link } from "react-router-dom";
 import { Wand2, UploadCloud, Image as ImageIcon, Download, Crown, ShieldCheck, Sparkles, AlertCircle, Loader2, Database, HardDrive, RefreshCw, X, MessageSquareText, Palette } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
-import { useAuth } from "@/lib/auth";
+import { hasPremiumAccess, useAuth } from "@/lib/auth";
 
 const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
 
 function limitLabel(user, usage) {
   if (!user) return "Sign in required";
-  if (["active", "trialing"].includes(user.premium_status)) return "Premium plan";
+  if (user.premium_cancel_at_period_end) return "Premium cancelled";
+  if (hasPremiumAccess(user)) return "Premium plan";
   if (["Admin", "Uploader"].includes(user.role)) return "Moderator tools";
   return "Free viewer";
 }
@@ -50,14 +51,16 @@ export default function AiImagePage() {
   const [selectedStorageItem, setSelectedStorageItem] = useState(null);
 
   const hasGenerations = usage?.unlimited || (usage?.remaining ?? 0) > 0;
-  const canGenerate = user && file && replacementText.trim() && !generating && hasGenerations;
-  const canUseStorage = user && (["active", "trialing"].includes(user.premium_status) || ["Admin", "Uploader"].includes(user.role));
+  const cancelledPremium = Boolean(user?.premium_cancel_at_period_end && !["Admin", "Uploader"].includes(user?.role));
+  const canGenerate = user && !cancelledPremium && file && replacementText.trim() && !generating && hasGenerations;
+  const canUseStorage = user && hasPremiumAccess(user);
 
   const planCopy = useMemo(() => {
+    if (cancelledPremium) return "AI tools locked after cancellation";
     if (!usage) return "Checking your monthly limit...";
     if (usage.unlimited) return "Unlimited generations for moderators";
     return `${usage.remaining} of ${usage.limit} generations left this month`;
-  }, [usage]);
+  }, [cancelledPremium, usage]);
 
   useEffect(() => {
     if (!generating) return;
@@ -84,7 +87,10 @@ export default function AiImagePage() {
     try {
       const { data } = await api.get("/ai-image/usage");
       setUsage(data);
-    } catch {
+    } catch (err) {
+      if (err?.response?.status === 402) {
+        toast.error(err.response.data?.detail || "AI tools are locked on this account.");
+      }
       setUsage(null);
     } finally {
       setUsageLoading(false);
@@ -440,7 +446,7 @@ export default function AiImagePage() {
           )}
           <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 min-w-56">
             <div className="flex items-center gap-2 text-sm text-white">
-              {["active", "trialing"].includes(user?.premium_status) ? (
+              {hasPremiumAccess(user) ? (
                 <Crown className="w-4 h-4 text-purple-300" />
               ) : (
                 <Sparkles className="w-4 h-4 text-neon" />
@@ -468,6 +474,15 @@ export default function AiImagePage() {
           <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
           <p>
             You have used your monthly AI generations. Please try again next month or upgrade to Premium for 30 monthly generations.
+          </p>
+        </div>
+      )}
+
+      {cancelledPremium && (
+        <div className="mb-6 rounded-2xl border border-red-400/20 bg-red-400/10 p-4 text-sm text-red-100 flex gap-3">
+          <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+          <p>
+            Your Premium plan was cancelled, so AI tools are locked on this account. Reactivate Premium to use AI generation again.
           </p>
         </div>
       )}

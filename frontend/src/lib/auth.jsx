@@ -3,6 +3,16 @@ import { api, clearAuthToken, getAuthToken, setAuthToken } from "./api";
 
 const AuthContext = createContext(null);
 
+export function hasPremiumAccess(user) {
+  if (!user) return false;
+  if (["Uploader", "Admin"].includes(user.role)) return true;
+  return ["active", "trialing"].includes(user.premium_status) && !user.premium_cancel_at_period_end;
+}
+
+export function hasCancelledPremium(user) {
+  return Boolean(user?.premium_cancel_at_period_end && !["Uploader", "Admin"].includes(user?.role));
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [config, setConfig] = useState({
@@ -73,7 +83,8 @@ export function AuthProvider({ children }) {
     loginAsLocalViewer,
     logout,
     refreshUser,
-    hasPremium: ["Uploader", "Admin"].includes(user?.role) || ["active", "trialing"].includes(user?.premium_status),
+    hasPremium: hasPremiumAccess(user),
+    hasCancelledPremium: hasCancelledPremium(user),
   }), [user, config, loading, loginWithGoogle, loginAsLocalViewer, logout, refreshUser]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

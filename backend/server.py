@@ -205,11 +205,18 @@ def public_user(user: dict) -> dict:
         "picture": user.get("picture", ""),
         "role": user.get("role", "Viewer"),
         "premium_status": user.get("premium_status", "inactive"),
+        "premium_cancel_at_period_end": bool(user.get("premium_cancel_at_period_end")),
     }
 
 
 def stripe_active_status(status: str = "") -> bool:
     return status in {"active", "trialing"}
+
+
+def subscription_grants_premium(subscription: Optional[dict]) -> bool:
+    if not subscription:
+        return False
+    return stripe_active_status(subscription.get("status", "")) and not bool(subscription.get("cancel_at_period_end"))
 
 
 async def sync_user_from_stripe(user: dict) -> dict:
@@ -254,7 +261,7 @@ async def sync_user_from_stripe(user: dict) -> dict:
             if fallback_subscription is None and subscriptions.data:
                 fallback_subscription = subscriptions.data[0]
             matching_subscription = next(
-                (item for item in subscriptions.data if stripe_active_status(item.status)),
+                (item for item in subscriptions.data if subscription_grants_premium(item)),
                 None,
             )
             if matching_subscription:
@@ -264,9 +271,11 @@ async def sync_user_from_stripe(user: dict) -> dict:
 
         selected_customer = active_customer or fallback_customer
         selected_subscription = active_subscription or fallback_subscription
+        grants_premium = subscription_grants_premium(selected_subscription)
         updates = {
             "stripe_customer_id": selected_customer.id,
-            "premium_status": selected_subscription.status if active_subscription else "inactive",
+            "premium_status": selected_subscription.status if grants_premium else "inactive",
+            "premium_cancel_at_period_end": bool(selected_subscription.get("cancel_at_period_end")) if selected_subscription else False,
             "stripe_subscription_id": selected_subscription.id if selected_subscription else "",
             "updated_at": now_iso(),
         }
@@ -315,7 +324,15 @@ async def request_user(request: Request, required: bool = False) -> Optional[dic
 def has_premium_access(user: Optional[dict]) -> bool:
     if not user:
         return False
-    return user.get("role") in {"Admin", "Uploader"} or stripe_active_status(user.get("premium_status", ""))
+    if user.get("role") in {"Admin", "Uploader"}:
+        return True
+    if user.get("premium_cancel_at_period_end"):
+        return False
+    return stripe_active_status(user.get("premium_status", ""))
+
+
+def has_cancelled_premium(user: Optional[dict]) -> bool:
+    return bool(user and user.get("premium_cancel_at_period_end") and user.get("role") not in {"Admin", "Uploader"})
 
 
 def can_manage_assets(user: Optional[dict]) -> bool:
@@ -325,7 +342,7 @@ def can_manage_assets(user: Optional[dict]) -> bool:
 def ai_generation_limit(user: dict) -> Optional[int]:
     if user.get("role") in {"Admin", "Uploader"}:
         return None
-    if user.get("premium_status") in {"active", "trialing"}:
+    if has_premium_access(user):
         return 30
     return 5
 
@@ -954,14 +971,16 @@ async def confirm_checkout(payload: CheckoutConfirmation, request: Request):
         return {"premium_status": user.get("premium_status", "inactive"), "complete": False}
     subscription_id = session.get("subscription")
     subscription_status = "active"
+    subscription = None
     if subscription_id:
         subscription = stripe.Subscription.retrieve(subscription_id)
         subscription_status = subscription.get("status", "inactive")
-    premium_status = subscription_status if subscription_status in {"active", "trialing"} else "inactive"
+    premium_status = subscription_status if subscription_grants_premium(subscription or {"status": subscription_status}) else "inactive"
     await db.users.update_one(
         {"id": user["id"]},
         {"$set": {
             "premium_status": premium_status,
+            "premium_cancel_at_period_end": bool(subscription.get("cancel_at_period_end")) if subscription else False,
             "stripe_customer_id": session.get("customer", ""),
             "stripe_subscription_id": subscription_id or "",
             "updated_at": now_iso(),
@@ -989,6 +1008,7 @@ async def stripe_webhook(request: Request):
             user_filter,
             {"$set": {
                 "premium_status": "active",
+                "premium_cancel_at_period_end": False,
                 "stripe_customer_id": obj.get("customer", ""),
                 "stripe_subscription_id": obj.get("subscription", ""),
                 "updated_at": now_iso(),
@@ -1000,10 +1020,12 @@ async def stripe_webhook(request: Request):
         "customer.subscription.deleted",
     }:
         status = obj.get("status", "inactive")
+        premium_status = status if subscription_grants_premium(obj) else "inactive"
         await db.users.update_one(
             user_filter,
             {"$set": {
-                "premium_status": status if stripe_active_status(status) else "inactive",
+                "premium_status": premium_status,
+                "premium_cancel_at_period_end": bool(obj.get("cancel_at_period_end")),
                 "stripe_customer_id": obj.get("customer", ""),
                 "stripe_subscription_id": obj.get("id", ""),
                 "updated_at": now_iso(),
@@ -1462,12 +1484,16 @@ async def submit_suggestion(payload: SuggestionCreate, request: Request):
 @api_router.get("/ai-image/usage")
 async def ai_image_usage(request: Request):
     user = await request_user(request, required=True)
+    if has_cancelled_premium(user):
+        raise HTTPException(status_code=402, detail="Premium was cancelled. AI tools are locked on this account.")
     return await ai_usage_for_user(user)
 
 
 @api_router.get("/ai-image/storage", response_model=AiImageStorageResponse)
 async def ai_image_storage(request: Request):
     user = await request_user(request, required=True)
+    if has_cancelled_premium(user):
+        return {"available": False, "total_bytes": 0, "count": 0, "items": []}
     if not has_premium_access(user):
         return {"available": False, "total_bytes": 0, "count": 0, "items": []}
 
@@ -1497,6 +1523,8 @@ async def edit_ai_image(
 ):
     enforce_rate_limit(request, "ai-image", limit=20, window_seconds=300)
     user = await request_user(request, required=True)
+    if has_cancelled_premium(user):
+        raise HTTPException(status_code=402, detail="Premium was cancelled. AI tools are locked on this account.")
     if not FAL_KEY:
         raise HTTPException(status_code=503, detail="Fal Nano Banana image generation is not configured yet")
 
@@ -1787,7 +1815,10 @@ async def moderator_stats(request: Request, days: int = 7):
     ]
 
     online_now = await db.analytics_visitors.count_documents({"last_seen": {"$gte": time.time() - 300}})
-    premium_users = await db.users.count_documents({"premium_status": {"$in": ["active", "trialing"]}})
+    premium_users = await db.users.count_documents({
+        "premium_status": {"$in": ["active", "trialing"]},
+        "premium_cancel_at_period_end": {"$ne": True},
+    })
     asset_docs = await db.assets.find(
         {},
         {"_id": 0, "id": 1, "title": 1, "category": 1, "creator_tag": 1, "download_count": 1},
