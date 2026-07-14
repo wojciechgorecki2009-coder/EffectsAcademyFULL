@@ -12,6 +12,7 @@ const BENEFITS = [
   "New exclusive drops every month",
   "Subscription tied securely to your Google account",
   "Manage or cancel anytime through Stripe",
+  "Cancelling Premium removes access to Premium assets and AI tools",
 ];
 
 const COMPARISON_ROWS = [
@@ -197,6 +198,9 @@ export default function PremiumPage() {
             {!hasPremium && user && (
               <p className="text-xs text-zinc-500 mt-3 text-center">After subscribing, this button becomes Manage subscription.</p>
             )}
+            <p className="text-xs text-zinc-500 mt-3 text-center">
+              If you cancel Premium, access to Premium assets and Premium AI tools is removed from your account.
+            </p>
             {!config.stripe_configured && config.dev_login_enabled && (
               <p className="text-xs text-zinc-500 mt-3 text-center">Local preview mode — no payment will be submitted.</p>
             )}
