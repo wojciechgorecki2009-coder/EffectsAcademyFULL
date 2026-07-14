@@ -213,10 +213,21 @@ def stripe_active_status(status: str = "") -> bool:
     return status in {"active", "trialing"}
 
 
+def subscription_is_cancelled(subscription: Optional[dict]) -> bool:
+    if not subscription:
+        return False
+    return bool(
+        subscription.get("cancel_at_period_end")
+        or subscription.get("canceled_at")
+        or subscription.get("ended_at")
+        or subscription.get("status") in {"canceled", "incomplete_expired", "unpaid"}
+    )
+
+
 def subscription_grants_premium(subscription: Optional[dict]) -> bool:
     if not subscription:
         return False
-    return stripe_active_status(subscription.get("status", "")) and not bool(subscription.get("cancel_at_period_end"))
+    return stripe_active_status(subscription.get("status", "")) and not subscription_is_cancelled(subscription)
 
 
 async def sync_user_from_stripe(user: dict) -> dict:
@@ -277,18 +288,19 @@ async def sync_user_from_stripe(user: dict) -> dict:
         active_customer = None
         active_subscription = None
 
-        for customer in candidate_customers:
-            subscriptions = stripe.Subscription.list(customer=customer.id, status="all", limit=20)
-            if fallback_subscription is None and subscriptions.data:
-                fallback_subscription = subscriptions.data[0]
-            matching_subscription = next(
-                (item for item in subscriptions.data if subscription_grants_premium(item)),
-                None,
-            )
-            if matching_subscription:
-                active_customer = customer
-                active_subscription = matching_subscription
-                break
+        if not direct_subscription:
+            for customer in candidate_customers:
+                subscriptions = stripe.Subscription.list(customer=customer.id, status="all", limit=20)
+                if fallback_subscription is None and subscriptions.data:
+                    fallback_subscription = subscriptions.data[0]
+                matching_subscription = next(
+                    (item for item in subscriptions.data if subscription_grants_premium(item)),
+                    None,
+                )
+                if matching_subscription:
+                    active_customer = customer
+                    active_subscription = matching_subscription
+                    break
 
         selected_customer = active_customer or fallback_customer
         selected_subscription = active_subscription or fallback_subscription
@@ -296,7 +308,7 @@ async def sync_user_from_stripe(user: dict) -> dict:
         updates = {
             "stripe_customer_id": selected_customer.id if selected_customer else (selected_subscription.get("customer") if selected_subscription else ""),
             "premium_status": selected_subscription.status if grants_premium else "inactive",
-            "premium_cancel_at_period_end": bool(selected_subscription.get("cancel_at_period_end")) if selected_subscription else False,
+            "premium_cancel_at_period_end": subscription_is_cancelled(selected_subscription),
             "stripe_subscription_id": selected_subscription.id if selected_subscription else "",
             "updated_at": now_iso(),
         }
@@ -1004,7 +1016,7 @@ async def confirm_checkout(payload: CheckoutConfirmation, request: Request):
         {"id": user["id"]},
         {"$set": {
             "premium_status": premium_status,
-            "premium_cancel_at_period_end": bool(subscription.get("cancel_at_period_end")) if subscription else False,
+            "premium_cancel_at_period_end": subscription_is_cancelled(subscription),
             "stripe_customer_id": session.get("customer", ""),
             "stripe_subscription_id": subscription_id or "",
             "updated_at": now_iso(),
@@ -1040,7 +1052,7 @@ async def stripe_webhook(request: Request):
             user_filter,
             {"$set": {
                 "premium_status": premium_status,
-                "premium_cancel_at_period_end": bool(subscription.get("cancel_at_period_end")) if subscription else False,
+                "premium_cancel_at_period_end": subscription_is_cancelled(subscription),
                 "stripe_customer_id": obj.get("customer", ""),
                 "stripe_subscription_id": subscription_id,
                 "updated_at": now_iso(),
@@ -1057,7 +1069,7 @@ async def stripe_webhook(request: Request):
             user_filter,
             {"$set": {
                 "premium_status": premium_status,
-                "premium_cancel_at_period_end": bool(obj.get("cancel_at_period_end")),
+                "premium_cancel_at_period_end": subscription_is_cancelled(obj),
                 "stripe_customer_id": obj.get("customer", ""),
                 "stripe_subscription_id": obj.get("id", ""),
                 "updated_at": now_iso(),
