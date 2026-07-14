@@ -233,6 +233,33 @@ def subscription_grants_premium(subscription: Optional[dict]) -> bool:
     return stripe_active_status(subscription.get("status", "")) and not subscription_is_cancelled(subscription)
 
 
+def user_is_staff(user: Optional[dict]) -> bool:
+    return bool(user and user.get("role") in {"Admin", "Uploader"})
+
+
+def user_has_premium_flags(user: Optional[dict]) -> bool:
+    if not user:
+        return False
+    return bool(
+        stripe_active_status(user.get("premium_status", ""))
+        or user.get("premium_cancel_at_period_end")
+        or user.get("premium_cancelled")
+        or user.get("stripe_subscription_id")
+    )
+
+
+async def clear_premium_access(user: dict) -> dict:
+    updates = {
+        "premium_status": "inactive",
+        "premium_cancel_at_period_end": False,
+        "premium_cancelled": False,
+        "stripe_subscription_id": "",
+        "updated_at": now_iso(),
+    }
+    await db.users.update_one({"id": user["id"]}, {"$set": updates})
+    return {**user, **updates}
+
+
 async def sync_user_from_stripe(user: dict) -> dict:
     if not STRIPE_SECRET_KEY or not user.get("id"):
         return user
@@ -275,22 +302,8 @@ async def sync_user_from_stripe(user: dict) -> dict:
             candidate_customers.extend(customers.data)
 
         if not candidate_customers and not direct_subscription:
-            is_staff_user = user.get("role") in {"Admin", "Uploader"}
-            has_stale_premium = (
-                stripe_active_status(user.get("premium_status", ""))
-                or bool(user.get("premium_cancel_at_period_end"))
-                or bool(user.get("stripe_subscription_id"))
-            )
-            if not is_staff_user and (subscription_missing or has_stale_premium):
-                updates = {
-                    "premium_status": "inactive",
-                    "premium_cancel_at_period_end": False,
-                    "premium_cancelled": False,
-                    "stripe_subscription_id": "",
-                    "updated_at": now_iso(),
-                }
-                await db.users.update_one({"id": user["id"]}, {"$set": updates})
-                return {**user, **updates}
+            if not user_is_staff(user) and (subscription_missing or user_has_premium_flags(user)):
+                return await clear_premium_access(user)
             return user
 
         fallback_customer = candidate_customers[0] if candidate_customers else None
@@ -328,9 +341,13 @@ async def sync_user_from_stripe(user: dict) -> dict:
         return {**user, **updates}
     except stripe.error.StripeError:
         logging.exception("Unable to reconcile Stripe customer for %s", user.get("id"))
+        if not user_is_staff(user) and user_has_premium_flags(user):
+            return await clear_premium_access(user)
         return user
     except Exception:
         logging.exception("Unexpected Stripe reconciliation failure for %s", user.get("id"))
+        if not user_is_staff(user) and user_has_premium_flags(user):
+            return await clear_premium_access(user)
         return user
 
 
@@ -372,7 +389,7 @@ async def request_user(request: Request, required: bool = False) -> Optional[dic
 def has_premium_access(user: Optional[dict]) -> bool:
     if not user:
         return False
-    if user.get("role") in {"Admin", "Uploader"}:
+    if user_is_staff(user):
         return True
     if user.get("premium_cancel_at_period_end") or user.get("premium_cancelled"):
         return False
@@ -380,15 +397,15 @@ def has_premium_access(user: Optional[dict]) -> bool:
 
 
 def has_cancelled_premium(user: Optional[dict]) -> bool:
-    return bool(user and (user.get("premium_cancel_at_period_end") or user.get("premium_cancelled")) and user.get("role") not in {"Admin", "Uploader"})
+    return bool(user and (user.get("premium_cancel_at_period_end") or user.get("premium_cancelled")) and not user_is_staff(user))
 
 
 def can_manage_assets(user: Optional[dict]) -> bool:
-    return bool(user and user.get("role") in {"Admin", "Uploader"})
+    return user_is_staff(user)
 
 
 def ai_generation_limit(user: dict) -> Optional[int]:
-    if user.get("role") in {"Admin", "Uploader"}:
+    if user_is_staff(user):
         return None
     if has_premium_access(user):
         return 30
