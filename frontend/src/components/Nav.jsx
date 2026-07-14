@@ -1,6 +1,6 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useState } from "react";
-import { Lock, ChevronDown, Menu, Upload, LogOut, UserCircle, Crown, Settings, Check, BarChart3 } from "lucide-react";
+import { Lock, Menu, Upload, LogOut, UserCircle, Crown, Settings, Check, BarChart3 } from "lucide-react";
 import DiscordIcon from "@/components/DiscordIcon";
 import {
   DropdownMenu,
@@ -32,18 +32,18 @@ const FONT_OPTIONS = [
 
 const PRIMARY_TABS = [
   { to: "/", label: "Browse" },
-  { to: "/category/torrents", label: "Torrents" },
-  { to: "/category/project-files", label: "Project Files" },
-  { to: "/category/overlays", label: "Overlays" },
-  { to: "/category/audios", label: "Audios" },
+  { to: "/category/premium", label: "Premium" },
   { to: "/category/videos", label: "Videos" },
   { to: "/ai-image", label: "AI Tools" },
 ];
 
 const MORE_TABS = [
+  { to: "/category/torrents", label: "Torrents" },
+  { to: "/category/project-files", label: "Project Files" },
+  { to: "/category/overlays", label: "Overlays" },
+  { to: "/category/audios", label: "Audios" },
   { to: "/category/sound-fx", label: "Sound FX" },
   { to: "/category/presets", label: "Presets" },
-  { to: "/category/premium", label: "Premium" },
   { to: "/dmca", label: "DMCA" },
   { to: "/suggestions", label: "Suggestions" },
 ];
@@ -103,49 +103,28 @@ export default function Nav() {
               {t.label}
             </NavLink>
           ))}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                className="whitespace-nowrap px-2.5 py-1.5 text-sm font-medium rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 btn-press flex items-center gap-1"
-                data-testid="nav-tab-more"
-              >
-                More <ChevronDown className="w-3.5 h-3.5" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              className="glass border-white/10 text-white"
-              align="end"
+          {canViewStats && (
+            <NavLink
+              to="/stats"
+              className={tabClass}
+              data-testid="nav-tab-stats"
             >
-              {canViewStats && (
-                <DropdownMenuItem
-                  onClick={() => navigate("/stats")}
-                  className="cursor-pointer hover:bg-white/10 focus:bg-white/10"
-                  data-testid="nav-more-stats"
-                >
-                  <span className="inline-flex items-center gap-2">
-                    <BarChart3 className="w-3.5 h-3.5" /> Stats
-                  </span>
-                </DropdownMenuItem>
-              )}
-              {MORE_TABS.map((t) => (
-                <DropdownMenuItem
-                  key={t.to}
-                  onClick={() => navigate(t.to)}
-                  className="cursor-pointer hover:bg-white/10 focus:bg-white/10"
-                  data-testid={`nav-more-${t.label.toLowerCase()}`}
-                >
-                  {t.label}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+              <span className="inline-flex items-center gap-1.5">
+                <BarChart3 className="w-3.5 h-3.5" /> Stats
+              </span>
+            </NavLink>
+          )}
+        </nav>
+
+        <div className="relative z-10 flex flex-nowrap items-center justify-end gap-2 min-w-0">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                className="whitespace-nowrap px-2.5 py-1.5 text-sm font-medium rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 btn-press flex items-center gap-1.5"
+                className="hidden sm:inline-flex shrink-0 items-center justify-center w-10 h-10 rounded-lg border border-white/10 bg-white/[0.03] text-zinc-400 hover:text-white hover:bg-white/10 btn-press"
                 data-testid="nav-settings"
+                title="Settings"
               >
-                <Settings className="w-3.5 h-3.5" /> Settings
+                <Settings className="w-4 h-4" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="glass border-white/10 text-white min-w-44" align="end">
@@ -176,9 +155,6 @@ export default function Nav() {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-        </nav>
-
-        <div className="relative z-10 flex flex-nowrap items-center justify-end gap-2 min-w-0">
           {!isUploader ? (
             <Button
               onClick={() => setAccessOpen(true)}
