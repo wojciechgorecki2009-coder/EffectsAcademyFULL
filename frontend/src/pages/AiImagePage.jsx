@@ -9,7 +9,7 @@ const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
 
 function limitLabel(user, usage) {
   if (!user) return "Sign in required";
-  if (user.premium_cancel_at_period_end) return "Premium cancelled";
+  if (user.premium_cancel_at_period_end || user.premium_cancelled) return "Premium cancelled";
   if (hasPremiumAccess(user)) return "Premium plan";
   if (["Admin", "Uploader"].includes(user.role)) return "Moderator tools";
   return "Free viewer";
@@ -51,7 +51,7 @@ export default function AiImagePage() {
   const [selectedStorageItem, setSelectedStorageItem] = useState(null);
 
   const hasGenerations = usage?.unlimited || (usage?.remaining ?? 0) > 0;
-  const cancelledPremium = Boolean(user?.premium_cancel_at_period_end && !["Admin", "Uploader"].includes(user?.role));
+  const cancelledPremium = Boolean((user?.premium_cancel_at_period_end || user?.premium_cancelled) && !["Admin", "Uploader"].includes(user?.role));
   const canGenerate = user && !cancelledPremium && file && replacementText.trim() && !generating && hasGenerations;
   const canUseStorage = user && hasPremiumAccess(user);
 

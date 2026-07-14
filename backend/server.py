@@ -198,6 +198,7 @@ def create_session_token(user_id: str) -> str:
 
 
 def public_user(user: dict) -> dict:
+    premium_cancelled = bool(user.get("premium_cancelled") or user.get("premium_cancel_at_period_end"))
     return {
         "id": user["id"],
         "email": user.get("email", ""),
@@ -205,7 +206,8 @@ def public_user(user: dict) -> dict:
         "picture": user.get("picture", ""),
         "role": user.get("role", "Viewer"),
         "premium_status": user.get("premium_status", "inactive"),
-        "premium_cancel_at_period_end": bool(user.get("premium_cancel_at_period_end")),
+        "premium_cancel_at_period_end": premium_cancelled,
+        "premium_cancelled": premium_cancelled,
     }
 
 
@@ -218,6 +220,7 @@ def subscription_is_cancelled(subscription: Optional[dict]) -> bool:
         return False
     return bool(
         subscription.get("cancel_at_period_end")
+        or subscription.get("cancel_at")
         or subscription.get("canceled_at")
         or subscription.get("ended_at")
         or subscription.get("status") in {"canceled", "incomplete_expired", "unpaid"}
@@ -282,6 +285,7 @@ async def sync_user_from_stripe(user: dict) -> dict:
                 updates = {
                     "premium_status": "inactive",
                     "premium_cancel_at_period_end": False,
+                    "premium_cancelled": False,
                     "stripe_subscription_id": "",
                     "updated_at": now_iso(),
                 }
@@ -311,10 +315,12 @@ async def sync_user_from_stripe(user: dict) -> dict:
         selected_customer = active_customer or fallback_customer
         selected_subscription = active_subscription or fallback_subscription
         grants_premium = subscription_grants_premium(selected_subscription)
+        premium_cancelled = subscription_is_cancelled(selected_subscription)
         updates = {
             "stripe_customer_id": selected_customer.id if selected_customer else (selected_subscription.get("customer") if selected_subscription else ""),
             "premium_status": selected_subscription.status if grants_premium else "inactive",
-            "premium_cancel_at_period_end": subscription_is_cancelled(selected_subscription),
+            "premium_cancel_at_period_end": premium_cancelled,
+            "premium_cancelled": premium_cancelled,
             "stripe_subscription_id": selected_subscription.id if selected_subscription else "",
             "updated_at": now_iso(),
         }
@@ -368,13 +374,13 @@ def has_premium_access(user: Optional[dict]) -> bool:
         return False
     if user.get("role") in {"Admin", "Uploader"}:
         return True
-    if user.get("premium_cancel_at_period_end"):
+    if user.get("premium_cancel_at_period_end") or user.get("premium_cancelled"):
         return False
     return stripe_active_status(user.get("premium_status", ""))
 
 
 def has_cancelled_premium(user: Optional[dict]) -> bool:
-    return bool(user and user.get("premium_cancel_at_period_end") and user.get("role") not in {"Admin", "Uploader"})
+    return bool(user and (user.get("premium_cancel_at_period_end") or user.get("premium_cancelled")) and user.get("role") not in {"Admin", "Uploader"})
 
 
 def can_manage_assets(user: Optional[dict]) -> bool:
@@ -1018,11 +1024,13 @@ async def confirm_checkout(payload: CheckoutConfirmation, request: Request):
         subscription = stripe.Subscription.retrieve(subscription_id)
         subscription_status = subscription.get("status", "inactive")
     premium_status = subscription_status if subscription_grants_premium(subscription or {"status": subscription_status}) else "inactive"
+    premium_cancelled = subscription_is_cancelled(subscription)
     await db.users.update_one(
         {"id": user["id"]},
         {"$set": {
             "premium_status": premium_status,
-            "premium_cancel_at_period_end": subscription_is_cancelled(subscription),
+            "premium_cancel_at_period_end": premium_cancelled,
+            "premium_cancelled": premium_cancelled,
             "stripe_customer_id": session.get("customer", ""),
             "stripe_subscription_id": subscription_id or "",
             "updated_at": now_iso(),
@@ -1054,11 +1062,13 @@ async def stripe_webhook(request: Request):
             except stripe.error.StripeError:
                 logging.exception("Unable to retrieve completed checkout subscription %s", subscription_id)
         premium_status = subscription.get("status") if subscription_grants_premium(subscription) else "inactive"
+        premium_cancelled = subscription_is_cancelled(subscription)
         await db.users.update_one(
             user_filter,
             {"$set": {
                 "premium_status": premium_status,
-                "premium_cancel_at_period_end": subscription_is_cancelled(subscription),
+                "premium_cancel_at_period_end": premium_cancelled,
+                "premium_cancelled": premium_cancelled,
                 "stripe_customer_id": obj.get("customer", ""),
                 "stripe_subscription_id": subscription_id,
                 "updated_at": now_iso(),
@@ -1071,11 +1081,13 @@ async def stripe_webhook(request: Request):
     }:
         status = obj.get("status", "inactive")
         premium_status = status if subscription_grants_premium(obj) else "inactive"
+        premium_cancelled = subscription_is_cancelled(obj)
         await db.users.update_one(
             user_filter,
             {"$set": {
                 "premium_status": premium_status,
-                "premium_cancel_at_period_end": subscription_is_cancelled(obj),
+                "premium_cancel_at_period_end": premium_cancelled,
+                "premium_cancelled": premium_cancelled,
                 "stripe_customer_id": obj.get("customer", ""),
                 "stripe_subscription_id": obj.get("id", ""),
                 "updated_at": now_iso(),
@@ -1874,6 +1886,7 @@ async def moderator_stats(request: Request, days: int = 7):
     premium_users = await db.users.count_documents({
         "premium_status": {"$in": ["active", "trialing"]},
         "premium_cancel_at_period_end": {"$ne": True},
+        "premium_cancelled": {"$ne": True},
     })
     asset_docs = await db.assets.find(
         {},
