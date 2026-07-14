@@ -224,7 +224,19 @@ async def sync_user_from_stripe(user: dict) -> dict:
         return user
     try:
         customer_id = user.get("stripe_customer_id", "")
+        subscription_id = user.get("stripe_subscription_id", "")
         candidate_customers = []
+        direct_subscription = None
+        subscription_missing = False
+
+        if subscription_id:
+            try:
+                direct_subscription = stripe.Subscription.retrieve(subscription_id)
+                if not customer_id and direct_subscription.get("customer"):
+                    customer_id = direct_subscription.get("customer")
+            except stripe.error.InvalidRequestError:
+                subscription_missing = True
+                logging.warning("Stored Stripe subscription %s could not be retrieved", subscription_id)
 
         if customer_id:
             try:
@@ -248,11 +260,20 @@ async def sync_user_from_stripe(user: dict) -> dict:
             )
             candidate_customers.extend(customers.data)
 
-        if not candidate_customers:
+        if not candidate_customers and not direct_subscription:
+            if subscription_missing:
+                updates = {
+                    "premium_status": "inactive",
+                    "premium_cancel_at_period_end": False,
+                    "stripe_subscription_id": "",
+                    "updated_at": now_iso(),
+                }
+                await db.users.update_one({"id": user["id"]}, {"$set": updates})
+                return {**user, **updates}
             return user
 
-        fallback_customer = candidate_customers[0]
-        fallback_subscription = None
+        fallback_customer = candidate_customers[0] if candidate_customers else None
+        fallback_subscription = direct_subscription
         active_customer = None
         active_subscription = None
 
@@ -273,7 +294,7 @@ async def sync_user_from_stripe(user: dict) -> dict:
         selected_subscription = active_subscription or fallback_subscription
         grants_premium = subscription_grants_premium(selected_subscription)
         updates = {
-            "stripe_customer_id": selected_customer.id,
+            "stripe_customer_id": selected_customer.id if selected_customer else (selected_subscription.get("customer") if selected_subscription else ""),
             "premium_status": selected_subscription.status if grants_premium else "inactive",
             "premium_cancel_at_period_end": bool(selected_subscription.get("cancel_at_period_end")) if selected_subscription else False,
             "stripe_subscription_id": selected_subscription.id if selected_subscription else "",
@@ -1007,13 +1028,21 @@ async def stripe_webhook(request: Request):
     event_type = event["type"]
     user_filter = await user_filter_for_stripe_event(obj)
     if user_filter and event_type == "checkout.session.completed":
+        subscription = None
+        subscription_id = obj.get("subscription", "")
+        if subscription_id:
+            try:
+                subscription = stripe.Subscription.retrieve(subscription_id)
+            except stripe.error.StripeError:
+                logging.exception("Unable to retrieve completed checkout subscription %s", subscription_id)
+        premium_status = subscription.get("status") if subscription_grants_premium(subscription) else "inactive"
         await db.users.update_one(
             user_filter,
             {"$set": {
-                "premium_status": "active",
-                "premium_cancel_at_period_end": False,
+                "premium_status": premium_status,
+                "premium_cancel_at_period_end": bool(subscription.get("cancel_at_period_end")) if subscription else False,
                 "stripe_customer_id": obj.get("customer", ""),
-                "stripe_subscription_id": obj.get("subscription", ""),
+                "stripe_subscription_id": subscription_id,
                 "updated_at": now_iso(),
             }},
         )
