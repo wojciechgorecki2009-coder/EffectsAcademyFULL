@@ -272,7 +272,13 @@ async def sync_user_from_stripe(user: dict) -> dict:
             candidate_customers.extend(customers.data)
 
         if not candidate_customers and not direct_subscription:
-            if subscription_missing:
+            is_staff_user = user.get("role") in {"Admin", "Uploader"}
+            has_stale_premium = (
+                stripe_active_status(user.get("premium_status", ""))
+                or bool(user.get("premium_cancel_at_period_end"))
+                or bool(user.get("stripe_subscription_id"))
+            )
+            if not is_staff_user and (subscription_missing or has_stale_premium):
                 updates = {
                     "premium_status": "inactive",
                     "premium_cancel_at_period_end": False,
@@ -576,7 +582,7 @@ async def require_asset_access(request: Request, asset: dict):
     user = await request_user(request)
     if user and user.get("role") in {"Admin", "Uploader"}:
         return
-    if user and not has_premium_access(user):
+    if user:
         user = await sync_user_from_stripe(user)
     uploader_password = request.headers.get("x-upload-password") or request.query_params.get("upload_password", "")
     if USE_MOCK_DB and uploader_password in LOCAL_PREVIEW_UPLOAD_PASSWORDS:
@@ -1402,7 +1408,7 @@ async def create_premium_download_link(asset_id: str, request: Request):
 @api_router.get("/premium-downloads/{token}")
 async def get_premium_download(token: str, request: Request):
     user = await request_user(request, required=True)
-    if not has_premium_access(user):
+    if user.get("role") not in {"Admin", "Uploader"}:
         user = await sync_user_from_stripe(user)
     link = await db.premium_download_links.find_one({"token": token}, {"_id": 0})
     if not link:
@@ -1528,6 +1534,8 @@ async def submit_suggestion(payload: SuggestionCreate, request: Request):
 @api_router.get("/ai-image/usage")
 async def ai_image_usage(request: Request):
     user = await request_user(request, required=True)
+    if user.get("role") not in {"Admin", "Uploader"}:
+        user = await sync_user_from_stripe(user)
     if has_cancelled_premium(user):
         raise HTTPException(status_code=402, detail="Premium was cancelled. AI tools are locked on this account.")
     return await ai_usage_for_user(user)
@@ -1536,6 +1544,8 @@ async def ai_image_usage(request: Request):
 @api_router.get("/ai-image/storage", response_model=AiImageStorageResponse)
 async def ai_image_storage(request: Request):
     user = await request_user(request, required=True)
+    if user.get("role") not in {"Admin", "Uploader"}:
+        user = await sync_user_from_stripe(user)
     if has_cancelled_premium(user):
         return {"available": False, "total_bytes": 0, "count": 0, "items": []}
     if not has_premium_access(user):
@@ -1567,6 +1577,8 @@ async def edit_ai_image(
 ):
     enforce_rate_limit(request, "ai-image", limit=20, window_seconds=300)
     user = await request_user(request, required=True)
+    if user.get("role") not in {"Admin", "Uploader"}:
+        user = await sync_user_from_stripe(user)
     if has_cancelled_premium(user):
         raise HTTPException(status_code=402, detail="Premium was cancelled. AI tools are locked on this account.")
     if not FAL_KEY:
