@@ -74,7 +74,7 @@ export default function Nav() {
       className="fixed top-0 inset-x-0 z-50 glass"
       data-testid="main-nav"
     >
-      <div className="relative max-w-[1500px] mx-auto px-4 md:px-7 h-16 flex items-center gap-3">
+      <div className="relative max-w-[1500px] mx-auto px-4 md:px-7 h-16 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
         <Link
           to="/"
           className="relative z-10 flex items-center gap-2 btn-press shrink-0"
@@ -91,7 +91,7 @@ export default function Nav() {
           </span>
         </Link>
 
-        <nav className="hidden xl:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 items-center justify-center gap-0.5">
+        <nav className="hidden xl:flex min-w-0 items-center justify-center gap-0.5 px-2">
           {PRIMARY_TABS.map((t) => (
             <NavLink
               key={t.to}
@@ -178,7 +178,7 @@ export default function Nav() {
           </DropdownMenu>
         </nav>
 
-        <div className="relative z-10 ml-auto flex flex-nowrap items-center gap-2">
+        <div className="relative z-10 flex flex-nowrap items-center justify-end gap-2 min-w-0">
           {!isUploader ? (
             <Button
               onClick={() => setAccessOpen(true)}
