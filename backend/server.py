@@ -284,6 +284,9 @@ async def sync_user_from_stripe(user: dict) -> dict:
     except stripe.error.StripeError:
         logging.exception("Unable to reconcile Stripe customer for %s", user.get("id"))
         return user
+    except Exception:
+        logging.exception("Unexpected Stripe reconciliation failure for %s", user.get("id"))
+        return user
 
 
 async def user_filter_for_stripe_event(obj: dict) -> Optional[dict]:

@@ -39,8 +39,8 @@ export default function LoginPage() {
     try {
       await loginWithGoogle(response.credential);
       navigate(safeReturnTo, { replace: true });
-    } catch {
-      setError("Google sign-in failed. Please try again.");
+    } catch (err) {
+      setError(err?.response?.data?.detail || "Google sign-in failed. Please try again.");
     } finally {
       setBusy(false);
     }
