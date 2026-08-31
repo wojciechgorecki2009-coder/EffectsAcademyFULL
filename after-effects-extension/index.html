@@ -1,0 +1,69 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Effects Academy</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div class="brand">
+          <div class="logo">Ae</div>
+          <div>
+            <h1>Effects<span>Academy</span></h1>
+            <p>Fast assets inside After Effects</p>
+          </div>
+        </div>
+        <button id="refreshBtn" class="icon-button" title="Refresh assets">↻</button>
+      </header>
+
+      <section class="status-card">
+        <div>
+          <strong id="statusTitle">Live library</strong>
+          <p id="statusText">Loading assets from Effects Academy…</p>
+        </div>
+        <span id="assetCount" class="pill">0</span>
+      </section>
+
+      <section class="controls">
+        <input id="searchInput" type="search" placeholder="Search audios, presets, overlays…" />
+        <div id="categoryTabs" class="tabs"></div>
+      </section>
+
+      <section id="assetGrid" class="asset-grid" aria-live="polite"></section>
+
+      <section id="emptyState" class="empty hidden">
+        <h2>No assets found</h2>
+        <p>Try another search or category.</p>
+      </section>
+
+      <section id="player" class="player hidden">
+        <div class="player-thumb" id="playerThumb"></div>
+        <div class="player-main">
+          <strong id="playerTitle">Audio preview</strong>
+          <audio id="audioEl" controls preload="none"></audio>
+        </div>
+      </section>
+
+      <footer class="settings">
+        <details>
+          <summary>Connection settings</summary>
+          <label>
+            API base
+            <input id="apiBaseInput" type="url" />
+          </label>
+          <label>
+            Auth token for premium files, optional
+            <input id="authTokenInput" type="password" placeholder="Paste site token later if needed" />
+          </label>
+          <p>Tip: leave the API base alone unless you are testing locally.</p>
+        </details>
+      </footer>
+    </main>
+
+    <script src="./js/app.js"></script>
+  </body>
+</html>
