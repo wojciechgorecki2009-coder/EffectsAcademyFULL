@@ -312,6 +312,9 @@ export default function PremiumPage() {
             <p className="text-xs text-zinc-500 mt-3 text-center">
               If you cancel Premium, access to Premium assets and Premium AI tools is removed from your account.
             </p>
+            <p className="text-xs text-zinc-500 mt-3 text-center">
+              [NO REFUNDS!!]
+            </p>
             {!config.stripe_configured && config.dev_login_enabled && (
               <p className="text-xs text-zinc-500 mt-3 text-center">Local preview mode — no payment will be submitted.</p>
             )}
