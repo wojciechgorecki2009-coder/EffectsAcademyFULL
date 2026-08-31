@@ -11,6 +11,7 @@ const state = {
   downloadUrl: "",
   downloadFilename: "",
   assetId: "",
+  allowSlowedDownloads: true,
   playing: false,
   loading: false,
   progress: 0,
@@ -73,7 +74,7 @@ export function useGlobalAudio() {
   return snapshot;
 }
 
-export async function playGlobalAudio({ src, originalSrc, title, subtitle, thumbnail, downloadUrl, downloadFilename, assetId }) {
+export async function playGlobalAudio({ src, originalSrc, title, subtitle, thumbnail, downloadUrl, downloadFilename, assetId, allowSlowedDownloads = true }) {
   if (!audio || !src) return;
 
   const isNewTrack = audio.src !== src;
@@ -86,6 +87,7 @@ export async function playGlobalAudio({ src, originalSrc, title, subtitle, thumb
     downloadUrl: downloadUrl || originalSrc || src,
     downloadFilename: downloadFilename || "",
     assetId: assetId || "",
+    allowSlowedDownloads,
     loading: true,
     ...(isNewTrack ? { progress: 0, duration: 0 } : {}),
   });

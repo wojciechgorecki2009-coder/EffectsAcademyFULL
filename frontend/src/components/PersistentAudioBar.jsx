@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Download, Music2, Pause, Play, Volume2, VolumeX, Repeat } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
@@ -17,8 +18,50 @@ function fmt(t) {
   return `${m}:${s}`;
 }
 
+function audioBufferToWav(buffer) {
+  const channels = buffer.numberOfChannels;
+  const sampleRate = buffer.sampleRate;
+  const frames = buffer.length;
+  const bytesPerSample = 2;
+  const blockAlign = channels * bytesPerSample;
+  const dataSize = frames * blockAlign;
+  const arrayBuffer = new ArrayBuffer(44 + dataSize);
+  const view = new DataView(arrayBuffer);
+  const writeText = (offset, text) => {
+    for (let i = 0; i < text.length; i += 1) view.setUint8(offset + i, text.charCodeAt(i));
+  };
+  writeText(0, "RIFF");
+  view.setUint32(4, 36 + dataSize, true);
+  writeText(8, "WAVE");
+  writeText(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, channels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * blockAlign, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, 16, true);
+  writeText(36, "data");
+  view.setUint32(40, dataSize, true);
+  const channelData = Array.from({ length: channels }, (_, channel) => buffer.getChannelData(channel));
+  let offset = 44;
+  for (let frame = 0; frame < frames; frame += 1) {
+    for (let channel = 0; channel < channels; channel += 1) {
+      const sample = Math.max(-1, Math.min(1, channelData[channel][frame]));
+      view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+      offset += bytesPerSample;
+    }
+  }
+  return new Blob([arrayBuffer], { type: "audio/wav" });
+}
+
+function safeAudioTitle(title = "audio") {
+  return (title || "audio").replace(/[<>:"/\\|?*]+/g, "_").trim() || "audio";
+}
+
 export default function PersistentAudioBar() {
   const audio = useGlobalAudio();
+  const [generatingRate, setGeneratingRate] = useState(null);
 
   if (!audio.src) return null;
 
@@ -38,6 +81,42 @@ export default function PersistentAudioBar() {
     link.remove();
     if (audio.assetId) api.post(`/assets/${audio.assetId}/download`).catch(() => {});
     toast.success("Starting download...");
+  };
+  const downloadSlowed = async (rate) => {
+    if (generatingRate || !audio.allowSlowedDownloads) return;
+    setGeneratingRate(rate);
+    try {
+      const response = await fetch(audio.src);
+      if (!response.ok) throw new Error("Unable to load audio");
+      const encoded = await response.arrayBuffer();
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass || !window.OfflineAudioContext) throw new Error("Audio processing is not supported in this browser");
+      const decoder = new AudioContextClass();
+      const decoded = await decoder.decodeAudioData(encoded.slice(0));
+      await decoder.close();
+      const outputFrames = Math.ceil(decoded.length / rate);
+      const offline = new OfflineAudioContext(decoded.numberOfChannels, outputFrames, decoded.sampleRate);
+      const source = offline.createBufferSource();
+      source.buffer = decoded;
+      source.playbackRate.value = rate;
+      source.connect(offline.destination);
+      source.start(0);
+      const slowed = await offline.startRendering();
+      const blob = audioBufferToWav(slowed);
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `${safeAudioTitle(audio.title)} - ${rate}x slowed.wav`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+      if (audio.assetId) api.post(`/assets/${audio.assetId}/download`).catch(() => {});
+      toast.success(`${rate}x slowed version downloaded.`);
+    } catch (error) {
+      toast.error(error?.message || "Unable to create slowed audio.");
+    } finally {
+      setGeneratingRate(null);
+    }
   };
 
   return (
@@ -109,6 +188,23 @@ export default function PersistentAudioBar() {
               >
                 <Download className="w-4 h-4" />
               </button>
+              {audio.allowSlowedDownloads && (
+                <div className="flex items-center gap-1.5">
+                  {[0.9, 0.8].map((rate) => (
+                    <button
+                      key={rate}
+                      type="button"
+                      onClick={() => downloadSlowed(rate)}
+                      disabled={Boolean(generatingRate)}
+                      className="px-2.5 h-9 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 disabled:opacity-50 text-xs font-mono font-semibold text-zinc-200 flex items-center gap-1.5 btn-press"
+                      title={`Download a ${rate}x slowed version`}
+                    >
+                      <Download className="w-3 h-3" />
+                      {generatingRate === rate ? "..." : rate}
+                    </button>
+                  ))}
+                </div>
+              )}
               <button
                 type="button"
                 onClick={() => setGlobalLooping(!audio.looping)}
@@ -141,14 +237,28 @@ export default function PersistentAudioBar() {
           </div>
 
           <div className="mt-3 flex md:hidden items-center justify-between gap-3 border-t border-white/5 pt-3">
-            <button
-              type="button"
-              onClick={downloadCurrent}
-              className="text-zinc-400 hover:text-white border border-white/10 rounded-lg px-3 h-8 flex items-center gap-2 text-xs btn-press"
-              aria-label="Download audio"
-            >
-              <Download className="w-4 h-4" /> Download
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={downloadCurrent}
+                className="text-zinc-400 hover:text-white border border-white/10 rounded-lg px-3 h-8 flex items-center gap-2 text-xs btn-press"
+                aria-label="Download audio"
+              >
+                <Download className="w-4 h-4" /> Download
+              </button>
+              {audio.allowSlowedDownloads && [0.9, 0.8].map((rate) => (
+                <button
+                  key={rate}
+                  type="button"
+                  onClick={() => downloadSlowed(rate)}
+                  disabled={Boolean(generatingRate)}
+                  className="px-2.5 h-8 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 disabled:opacity-50 text-xs font-mono font-semibold text-zinc-200 flex items-center gap-1 btn-press"
+                  title={`Download a ${rate}x slowed version`}
+                >
+                  {generatingRate === rate ? "..." : rate}
+                </button>
+              ))}
+            </div>
             <button
               type="button"
               onClick={() => setGlobalLooping(!audio.looping)}

@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Crown, Copy, Download, ImageIcon, Link as LinkIcon, LockKeyhole, Pencil, Play, RefreshCw, Sparkles, Trash2 } from "lucide-react";
-import { CATEGORY_COLORS, api, buildFileUrl, buildDownloadUrl, deriveDownloadFilename, getAuthToken, getPass } from "@/lib/api";
+import { CATEGORY_COLORS, FILE_BASE, api, buildFileUrl, buildDownloadUrl, deriveDownloadFilename, getAuthToken } from "@/lib/api";
 import { useUploadAccess } from "@/lib/uploadAccess";
 import { useAuth } from "@/lib/auth";
-import { useGlobalAudio } from "@/lib/globalAudio";
-import AudioPlayer from "@/components/AudioPlayer";
+import { playGlobalAudio, toggleGlobalAudio, useGlobalAudio } from "@/lib/globalAudio";
 import UploadModal from "@/components/UploadModal";
 import {
   Dialog,
@@ -92,6 +91,14 @@ async function downloadUrlWithoutLeavingPage(url, filename) {
   link.remove();
 }
 
+function directUrlEndpoint(src) {
+  if (!src) return "";
+  const path = src.startsWith(FILE_BASE) ? src.slice(FILE_BASE.length) : src;
+  const match = path.match(/\/api\/uploads\/([^/?#]+)/);
+  if (!match) return "";
+  return `/uploads/${encodeURIComponent(decodeURIComponent(match[1]))}/direct`;
+}
+
 export default function AssetCard({ asset, onChanged, allAssets = [] }) {
   const { isUploader, canDelete } = useUploadAccess();
   const { hasPremium } = useAuth();
@@ -122,6 +129,7 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
   const isActiveAudio = Boolean(fileSrc) && globalAudio.originalSrc === fileSrc;
   const downloadFilename = deriveDownloadFilename(asset);
   const downloadUrl = asset.file_url ? buildDownloadUrl(asset.file_url, downloadFilename) : "";
+  const hasAudioPlayback = (isAudio || isSoundEffect) && Boolean(fileSrc) && !isLockedPremium;
   const displayGenre = asset.genre || (isAudio ? asset.bpm : "");
   const thumbnailIsVideo = isVideoPreview(thumbnailSrc);
 
@@ -177,6 +185,10 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
   };
 
   const download = async () => {
+    if (hasAudioPlayback) {
+      await playAudio();
+      return;
+    }
     if (isVideo) {
       setPreviewOpen(true);
       return;
@@ -256,17 +268,66 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
     else if (!isAudio && thumbnailSrc) setPreviewOpen(true);
   };
 
+  const playAudio = async () => {
+    if (!hasAudioPlayback) return;
+    if (isActiveAudio) {
+      toggleGlobalAudio();
+      return;
+    }
+    try {
+      const endpoint = directUrlEndpoint(fileSrc);
+      const resolved = endpoint
+        ? (await api.get(endpoint)).data?.url || fileSrc
+        : fileSrc;
+      await playGlobalAudio({
+        src: resolved,
+        originalSrc: fileSrc,
+        title: asset.title || "Audio preview",
+        subtitle: asset.creator_tag ? `Audio by ${asset.creator_tag}` : "Playing from EffectsAcademy",
+        thumbnail: thumbnailSrc,
+        downloadUrl,
+        downloadFilename,
+        assetId: asset.id,
+        allowSlowedDownloads: true,
+      });
+    } catch {
+      toast.error("Unable to play this audio yet.");
+    }
+  };
+
+  const handleCardClick = (event) => {
+    if (isLockedPremium) {
+      openPremium(event);
+      return;
+    }
+    if (!hasAudioPlayback) return;
+    const interactive = event.target.closest("button, a, input, textarea, select, [role='button']");
+    if (interactive && interactive !== event.currentTarget) return;
+    playAudio();
+  };
+
+  const handleCardKeyDown = (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    if (isLockedPremium) {
+      openPremium(event);
+      return;
+    }
+    if (!hasAudioPlayback) return;
+    event.preventDefault();
+    playAudio();
+  };
+
   return (
     <>
       <div
         ref={ref}
         onMouseMove={onMove}
         onMouseLeave={onLeave}
-        onClick={isLockedPremium ? openPremium : undefined}
-        role={isLockedPremium ? "button" : undefined}
-        tabIndex={isLockedPremium ? 0 : undefined}
-        onKeyDown={isLockedPremium ? (e) => { if (e.key === "Enter" || e.key === " ") openPremium(e); } : undefined}
-        className={`tilt-card group rounded-2xl overflow-hidden bg-[var(--site-surface)] backdrop-blur-xl border transition-all duration-300 fade-in ${isPremium ? "border-purple-300/20 shadow-[0_0_32px_rgba(168,85,247,0.13)] hover:border-purple-300/40" : "border-white/5 hover:border-white/15 hover:shadow-[0_18px_50px_rgba(0,0,0,0.28)]"} ${isLockedPremium ? "cursor-pointer" : ""}`}
+        onClick={handleCardClick}
+        role={isLockedPremium || hasAudioPlayback ? "button" : undefined}
+        tabIndex={isLockedPremium || hasAudioPlayback ? 0 : undefined}
+        onKeyDown={handleCardKeyDown}
+        className={`tilt-card group rounded-2xl overflow-hidden bg-[var(--site-surface)] backdrop-blur-xl border transition-all duration-300 fade-in ${isPremium ? "border-purple-300/20 shadow-[0_0_32px_rgba(168,85,247,0.13)] hover:border-purple-300/40" : "border-white/5 hover:border-white/15 hover:shadow-[0_18px_50px_rgba(0,0,0,0.28)]"} ${isLockedPremium || hasAudioPlayback ? "cursor-pointer" : ""}`}
         data-testid={`asset-card-${asset.id}`}
       >
         <div className="aspect-video w-full bg-black/40 overflow-hidden relative">
@@ -274,10 +335,9 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
           {thumbnailSrc ? (
             <button
               type="button"
-              onClick={openPreview}
-              disabled={isAudio && !isVideo}
-              className={`block w-full h-full text-left ${!isAudio || isVideo ? "cursor-zoom-in" : "cursor-default"}`}
-              title={isVideo ? "Watch video" : !isAudio ? "Open larger preview" : undefined}
+              onClick={hasAudioPlayback ? playAudio : openPreview}
+              className={`block w-full h-full text-left ${hasAudioPlayback ? "cursor-pointer" : !isAudio || isVideo ? "cursor-zoom-in" : "cursor-default"}`}
+              title={hasAudioPlayback ? "Play audio" : isVideo ? "Watch video" : !isAudio ? "Open larger preview" : undefined}
             >
               <PreviewMedia
                 src={thumbnailSrc}
@@ -298,6 +358,13 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
           {isVideo && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <span className="h-14 w-14 rounded-full bg-black/65 border border-white/15 flex items-center justify-center text-white shadow-[0_0_30px_rgba(239,68,68,0.25)]">
+                <Play className="w-6 h-6 ml-0.5" />
+              </span>
+            </div>
+          )}
+          {hasAudioPlayback && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-200">
+              <span className="h-14 w-14 rounded-full bg-black/65 border border-white/15 flex items-center justify-center text-white shadow-[0_0_30px_rgba(82,87,255,0.35)]">
                 <Play className="w-6 h-6 ml-0.5" />
               </span>
             </div>
@@ -375,27 +442,6 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
             <p className="text-sm text-zinc-400 line-clamp-2">{asset.description}</p>
           )}
 
-          {isAudio && asset.file_url && !isLockedPremium && (
-            <div
-              className={`${isActiveAudio ? "max-h-44 opacity-100 translate-y-0 pointer-events-auto" : "max-h-0 opacity-0 -translate-y-1 pointer-events-none group-hover:max-h-44 group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto group-focus-within:max-h-44 group-focus-within:opacity-100 group-focus-within:translate-y-0 group-focus-within:pointer-events-auto"} overflow-hidden transition-all duration-300 ease-out`}
-            >
-              <AudioPlayer
-                src={fileSrc}
-                title={asset.title}
-                subtitle={asset.creator_tag ? `Audio by ${asset.creator_tag}` : "Playing from EffectsAcademy"}
-                thumbnail={thumbnailSrc}
-                downloadUrl={downloadUrl}
-                downloadFilename={downloadFilename}
-                assetId={asset.id}
-                allowSlowedDownloads={!isSoundEffect}
-                onDownload={async () => {
-                  toast.success("Starting download...");
-                  recordDownload();
-                }}
-              />
-            </div>
-          )}
-
           <div className="flex gap-2 pt-1">
             <button
               type="button"
@@ -404,8 +450,8 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
               className={`flex-1 ${isLockedPremium ? "bg-purple-500 hover:bg-purple-400" : "bg-neon hover:bg-neon/90"} text-white font-semibold rounded-lg py-2.5 text-sm flex items-center justify-center gap-2 btn-press disabled:opacity-70`}
               data-testid={`download-btn-${asset.id}`}
             >
-              {isLockedPremium ? <LockKeyhole className="w-4 h-4" /> : isVideo ? <Play className="w-4 h-4" /> : <Download className="w-4 h-4" />}
-              {isLockedPremium ? "Unlock Premium" : isVideo ? "Watch" : downloading ? "Downloading..." : "Download"}
+              {isLockedPremium ? <LockKeyhole className="w-4 h-4" /> : (isVideo || hasAudioPlayback) ? <Play className="w-4 h-4" /> : <Download className="w-4 h-4" />}
+              {isLockedPremium ? "Unlock Premium" : isVideo ? "Watch" : hasAudioPlayback ? (isActiveAudio && globalAudio.playing ? "Pause" : "Play") : downloading ? "Downloading..." : "Download"}
             </button>
             {isUploader && !isLockedPremium && (
               <>
