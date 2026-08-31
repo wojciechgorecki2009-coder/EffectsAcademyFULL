@@ -130,12 +130,14 @@ button {
 }
 
 button:focus,
-input:focus {
+input:focus,
+summary:focus {
   outline: none;
 }
 
 button:focus-visible,
-input:focus-visible {
+input:focus-visible,
+summary:focus-visible {
   box-shadow: 0 0 0 2px rgba(82, 87, 255, 0.42);
 }
 
@@ -854,6 +856,19 @@ audio {
   cursor: pointer;
   color: #cac7d8;
   margin-bottom: 8px;
+  outline: none;
+  border-radius: 8px;
+  transition: color 150ms ease, background 150ms ease, box-shadow 150ms ease;
+}
+
+.settings summary:focus,
+.settings summary:active {
+  outline: none;
+}
+
+.settings summary:focus-visible {
+  background: rgba(82, 87, 255, 0.12);
+  box-shadow: 0 0 0 2px rgba(82, 87, 255, 0.28);
 }
 
 .settings label {
