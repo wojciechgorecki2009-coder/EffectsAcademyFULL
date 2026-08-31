@@ -1250,7 +1250,7 @@ async def create_checkout_session(request: Request):
     }
     if has_twitch_discount:
         checkout_params["discounts"] = [{"coupon": STRIPE_TWITCH_COUPON_ID}]
-        checkout_params["allow_promotion_codes"] = False
+        checkout_params.pop("allow_promotion_codes", None)
     customer_id = user.get("stripe_customer_id")
     if not customer_id:
         customer = stripe.Customer.create(
