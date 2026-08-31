@@ -43,6 +43,7 @@ const twitchMessage = (state, broadcaster = "mrbit100", discount = 15) => {
   if (state === "linked") return `Twitch linked. Subscriber discount unlocked for ${discount}% off Premium.`;
   if (state === "not_subscribed") return `Twitch linked, but that account is not currently subscribed to ${broadcaster}.`;
   if (state === "cancelled") return "Twitch linking was cancelled.";
+  if (state === "disconnected") return "Twitch account disconnected.";
   if (state === "expired") return "Twitch linking expired. Please try again.";
   if (state === "error") return "Twitch could not verify the subscription. Please try again.";
   return "";
@@ -166,6 +167,21 @@ export default function PremiumPage() {
     }
   };
 
+  const disconnectTwitch = async () => {
+    if (!user?.twitch_login) return;
+    setBusy(true);
+    setError("");
+    try {
+      await api.post("/twitch/disconnect");
+      await refreshUser();
+      navigate("/premium?twitch=disconnected", { replace: true });
+    } catch (err) {
+      setError(checkoutErrorMessage(err, "Unable to sign out of Twitch."));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <section className="min-h-[calc(100vh-4rem)] pt-28 pb-20 px-6" data-testid="premium-page">
       <div className="max-w-5xl mx-auto">
@@ -277,6 +293,17 @@ export default function PremiumPage() {
                       <TwitchIcon className="w-4 h-4" />
                       {user?.twitch_discount_eligible ? "Recheck Twitch" : "Link Twitch for discount"}
                     </button>
+                    {user?.twitch_login && (
+                      <button
+                        type="button"
+                        onClick={disconnectTwitch}
+                        disabled={busy}
+                        className="mt-3 ml-2 inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/10 disabled:opacity-50 text-zinc-200 px-4 py-2 text-sm font-semibold btn-press"
+                        data-testid="premium-twitch-disconnect"
+                      >
+                        Sign out of Twitch
+                      </button>
+                    )}
                     {!config.twitch_configured && (
                       <p className="text-xs text-zinc-500 mt-2">
                         Twitch discount is ready in the code. Add Twitch keys in Render to enable it.

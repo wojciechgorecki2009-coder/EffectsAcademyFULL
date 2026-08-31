@@ -1173,6 +1173,22 @@ async def twitch_refresh_status(request: Request):
     return {"user": public_user(user)}
 
 
+@api_router.post("/twitch/disconnect")
+async def twitch_disconnect(request: Request):
+    user = await request_user(request, required=True)
+    updates = {
+        "twitch_user_id": "",
+        "twitch_login": "",
+        "twitch_display_name": "",
+        "twitch_subscribed": False,
+        "twitch_subscription_checked_at": "",
+        "twitch_subscription_checked_at_ts": 0,
+        "updated_at": now_iso(),
+    }
+    await db.users.update_one({"id": user["id"]}, {"$set": updates})
+    return {"user": public_user({**user, **updates})}
+
+
 @api_router.patch("/admin/users/{user_id}/role")
 async def update_user_role(user_id: str, payload: RoleUpdate, request: Request):
     await require_admin(request)
