@@ -92,6 +92,7 @@
       button.type = "button";
       button.className = "tab" + (state.category === category ? " active" : "");
       button.textContent = category;
+      button.title = category;
       button.onclick = function () {
         state.category = category;
         renderTabs();
