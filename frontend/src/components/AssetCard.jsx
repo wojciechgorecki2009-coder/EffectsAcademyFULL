@@ -112,7 +112,6 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
   const [downloadCount, setDownloadCount] = useState(asset.download_count || 0);
   const color = CATEGORY_COLORS[asset.category] || CATEGORY_COLORS.Overlays;
   const isAudio = asset.category === "Audios";
-  const isSoundEffect = asset.category === "Sound FX";
   const isVideo = asset.category === "Videos";
   const isPremium = asset.category === "Premium";
   const isUpdated = isRecentlyUpdated(asset);
@@ -129,7 +128,7 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
   const isActiveAudio = Boolean(fileSrc) && globalAudio.originalSrc === fileSrc;
   const downloadFilename = deriveDownloadFilename(asset);
   const downloadUrl = asset.file_url ? buildDownloadUrl(asset.file_url, downloadFilename) : "";
-  const hasAudioPlayback = (isAudio || isSoundEffect) && Boolean(fileSrc) && !isLockedPremium;
+  const hasAudioPlayback = isAudio && Boolean(fileSrc) && !isLockedPremium;
   const displayGenre = asset.genre || (isAudio ? asset.bpm : "");
   const thumbnailIsVideo = isVideoPreview(thumbnailSrc);
 
