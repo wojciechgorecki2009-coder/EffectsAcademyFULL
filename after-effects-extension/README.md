@@ -43,6 +43,22 @@ This extension is intentionally not a 1:1 copy of the website. It is a fast asse
 
 For public users, package this as a signed `.zxp` or provide a ZIP with clear install instructions. A signed installer is the cleaner long-term option.
 
+## Create a development `.zxp`
+
+From PowerShell:
+
+```powershell
+.\after-effects-extension\package-dev-zxp.ps1
+```
+
+This creates:
+
+```text
+dist\EffectsAcademy-AE-Panel-dev.zxp
+```
+
+This development file is a ZIP-format package using the `.zxp` extension. If a ZXP installer refuses it, install the unpacked folder during development or sign the package with Adobe `ZXPSignCmd`.
+
 ## Bandwidth notes
 
 The panel should never bundle asset files. It only fetches metadata first. It downloads the real file only when the user previews/imports/downloads it.
