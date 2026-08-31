@@ -399,7 +399,7 @@ input:focus {
 
 .primary:hover {
   filter: brightness(1.08);
-  transform: translateY(-1px);
+  box-shadow: 0 0 18px rgba(82, 87, 255, 0.22);
 }
 
 .secondary {
@@ -413,7 +413,7 @@ input:focus {
 .secondary:hover {
   background: rgba(255, 255, 255, 0.13);
   border-color: rgba(255, 255, 255, 0.18);
-  transform: translateY(-1px);
+  box-shadow: 0 0 14px rgba(255, 255, 255, 0.08);
 }
 
 @media (max-width: 620px) {
@@ -725,9 +725,9 @@ input:focus {
 }
 
 .player-action:hover {
-  transform: translateY(-1px);
   background: rgba(255, 255, 255, 0.13);
   border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 0 14px rgba(82, 87, 255, 0.14);
 }
 
 .primary-action {
