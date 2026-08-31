@@ -117,7 +117,7 @@ export default function Nav() {
           )}
         </nav>
 
-        <div className="relative z-10 flex flex-nowrap items-center justify-end gap-2 shrink-0">
+        <div className="relative z-10 flex flex-nowrap items-center justify-end gap-1.5 shrink-0 xl:-translate-x-3 2xl:-translate-x-6">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
@@ -160,17 +160,18 @@ export default function Nav() {
             <Button
               onClick={() => setAccessOpen(true)}
               variant="ghost"
-              className="shrink-0 whitespace-nowrap border border-white/10 text-white bg-white/[0.03] hover:bg-white/10 rounded-lg btn-press"
+              className="shrink-0 whitespace-nowrap border border-white/10 text-white bg-white/[0.03] hover:bg-white/10 rounded-lg btn-press px-3 xl:px-2.5 2xl:px-3"
               data-testid="access-upload-btn"
             >
               <Lock className="w-4 h-4 mr-2" />
-              Access Upload
+              <span className="hidden 2xl:inline">Access Upload</span>
+              <span className="2xl:hidden">Upload</span>
             </Button>
           ) : (
             <>
               <Button
                 onClick={() => setUploadOpen(true)}
-                className="bg-neon text-[#05050A] hover:bg-neon/90 font-semibold rounded-lg btn-press"
+                className="bg-neon text-[#05050A] hover:bg-neon/90 font-semibold rounded-lg btn-press px-3 xl:px-3 2xl:px-4"
                 data-testid="open-upload-btn"
               >
                 <Upload className="w-4 h-4 mr-2" />
@@ -198,12 +199,12 @@ export default function Nav() {
             <div className="hidden md:flex shrink-0 items-center gap-1">
               <button
                 onClick={() => navigate("/premium")}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/10 text-sm btn-press"
+                className="inline-flex items-center gap-2 px-2.5 2xl:px-3 py-2 rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/10 text-sm btn-press"
                 data-testid="nav-account-button"
                 title={user.email ? `Signed in as ${user.email}` : "Signed in"}
               >
                 {hasPremium ? <Crown className="w-4 h-4 text-purple-300" /> : <UserCircle className="w-4 h-4" />}
-                {hasPremium ? "Premium" : "Signed in"}
+                <span className="hidden 2xl:inline">{hasPremium ? "Premium" : "Signed in"}</span>
               </button>
               <button
                 onClick={logout}
@@ -217,7 +218,7 @@ export default function Nav() {
           ) : (
             <Link
               to="/login"
-              className="hidden md:inline-flex shrink-0 whitespace-nowrap items-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/10 text-sm btn-press"
+            className="hidden md:inline-flex shrink-0 whitespace-nowrap items-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/10 text-sm btn-press"
               data-testid="nav-sign-in"
             >
               <UserCircle className="w-4 h-4" /> Sign in
@@ -226,22 +227,22 @@ export default function Nav() {
 
           <Link
             to="/premium"
-            className="hidden sm:inline-flex shrink-0 whitespace-nowrap items-center gap-2 bg-[#9146FF] hover:bg-[#772ce8] text-white px-4 py-2 rounded-lg text-sm font-semibold btn-press"
+            className="hidden sm:inline-flex shrink-0 whitespace-nowrap items-center gap-2 bg-[#9146FF] hover:bg-[#772ce8] text-white px-3 2xl:px-4 py-2 rounded-lg text-sm font-semibold btn-press"
             data-testid="nav-twitch-link"
           >
             <TwitchIcon className="w-[18px] h-[18px]" />
-            Twitch
+            <span className="hidden 2xl:inline">Twitch</span>
           </Link>
 
           <a
             href="https://discord.gg/2VvMq3Pz85"
             target="_blank"
             rel="noopener noreferrer"
-            className="hidden sm:inline-flex shrink-0 whitespace-nowrap items-center gap-2 bg-discord hover:bg-[#4752C4] text-white px-4 py-2 rounded-lg text-sm font-semibold btn-press"
+            className="hidden sm:inline-flex shrink-0 whitespace-nowrap items-center gap-2 bg-discord hover:bg-[#4752C4] text-white px-3 2xl:px-4 py-2 rounded-lg text-sm font-semibold btn-press"
             data-testid="nav-discord-link"
           >
             <DiscordIcon className="w-[18px] h-[18px]" />
-            Discord
+            <span className="hidden 2xl:inline">Discord</span>
           </a>
 
           <button
