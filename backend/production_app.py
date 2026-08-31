@@ -59,6 +59,9 @@ async def create_checkout_session_with_price_fallback(request: Request):
     user = await server.sync_user_from_stripe(user)
     if server.has_premium_access(user):
         return {"url": f"{server.FRONTEND_URL}/premium?already_subscribed=1"}
+    has_twitch_discount = server.twitch_discount_valid(user)
+    if has_twitch_discount and not server.STRIPE_TWITCH_COUPON_ID:
+        raise HTTPException(status_code=503, detail="Twitch discount is verified, but the Stripe Twitch coupon is not configured yet.")
     if not server.STRIPE_SECRET_KEY:
         if server.USE_MOCK_DB:
             return {"url": f"{server.FRONTEND_URL}/premium?checkout=configuration-required", "demo": True}
@@ -68,13 +71,25 @@ async def create_checkout_session_with_price_fallback(request: Request):
         "mode": "subscription",
         "client_reference_id": user["id"],
         "line_items": [premium_line_item(True)],
-        "metadata": {"user_id": user["id"]},
-        "subscription_data": {"metadata": {"user_id": user["id"]}},
+        "metadata": {
+            "user_id": user["id"],
+            "twitch_discount": "true" if has_twitch_discount else "false",
+        },
+        "subscription_data": {
+            "metadata": {
+                "user_id": user["id"],
+                "twitch_discount": "true" if has_twitch_discount else "false",
+            }
+        },
         "success_url": f"{server.FRONTEND_URL}/premium?checkout=success&session_id={{CHECKOUT_SESSION_ID}}",
         "cancel_url": f"{server.FRONTEND_URL}/premium?checkout=cancelled",
         "allow_promotion_codes": True,
         "billing_address_collection": "required",
     }
+
+    if has_twitch_discount:
+        checkout_params["discounts"] = [{"coupon": server.STRIPE_TWITCH_COUPON_ID}]
+        checkout_params["allow_promotion_codes"] = False
 
     customer_id = user.get("stripe_customer_id")
     if not customer_id:
