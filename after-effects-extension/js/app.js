@@ -7,13 +7,23 @@
   var STORAGE_KEYS = {
     apiBase: "ea_extension_api_base",
     authToken: "ea_extension_auth_token",
-    deviceId: "ea_extension_device_id"
+    deviceId: "ea_extension_device_id",
+    layoutMode: "ea_extension_layout_mode",
+    density: "ea_extension_density",
+    accent: "ea_extension_accent",
+    motion: "ea_extension_motion",
+    font: "ea_extension_font"
   };
 
   var state = {
     apiBase: localStorage.getItem(STORAGE_KEYS.apiBase) || DEFAULT_API_BASE,
     authToken: localStorage.getItem(STORAGE_KEYS.authToken) || "",
     deviceId: localStorage.getItem(STORAGE_KEYS.deviceId) || "",
+    layoutMode: localStorage.getItem(STORAGE_KEYS.layoutMode) || "auto",
+    density: localStorage.getItem(STORAGE_KEYS.density) || "comfortable",
+    accent: localStorage.getItem(STORAGE_KEYS.accent) || "violet",
+    motion: localStorage.getItem(STORAGE_KEYS.motion) || "premium",
+    font: localStorage.getItem(STORAGE_KEYS.font) || "modern",
     assets: [],
     category: "All",
     search: "",
@@ -44,6 +54,11 @@
     playerSlow08Btn: document.getElementById("playerSlow08Btn"),
     audioEl: document.getElementById("audioEl"),
     apiBaseInput: document.getElementById("apiBaseInput"),
+    layoutModeInput: document.getElementById("layoutModeInput"),
+    densityInput: document.getElementById("densityInput"),
+    accentInput: document.getElementById("accentInput"),
+    motionInput: document.getElementById("motionInput"),
+    fontInput: document.getElementById("fontInput"),
     pairingCodeInput: document.getElementById("pairingCodeInput"),
     pairingCodeBtn: document.getElementById("pairingCodeBtn"),
     authTokenInput: document.getElementById("authTokenInput")
@@ -131,6 +146,32 @@
   function setStatus(title, text) {
     els.statusTitle.textContent = title;
     els.statusText.textContent = text;
+  }
+
+  function setBodyClass(prefix, value) {
+    var classes = document.body.className.split(/\s+/).filter(function (name) {
+      return name && name.indexOf(prefix) !== 0;
+    });
+    if (value) classes.push(prefix + value);
+    document.body.className = classes.join(" ");
+  }
+
+  function applyPreferences() {
+    setBodyClass("layout-", state.layoutMode);
+    setBodyClass("density-", state.density);
+    setBodyClass("accent-", state.accent);
+    setBodyClass("motion-", state.motion);
+    setBodyClass("font-", state.font);
+  }
+
+  function bindPreference(input, key, storageKey) {
+    if (!input) return;
+    input.value = state[key];
+    input.addEventListener("change", function () {
+      state[key] = input.value;
+      localStorage.setItem(storageKey, state[key]);
+      applyPreferences();
+    });
   }
 
   function showError(title, text) {
@@ -538,7 +579,7 @@
     if (!state.authToken) {
       state.assets = [];
       renderAssets();
-      showError("Premium sign-in required", "Paste your Effects Academy auth token in Connection settings to unlock the extension.");
+      showError("Premium pairing required", "Generate a pairing code on the Premium page, then enter it in Connection settings.");
       return Promise.resolve();
     }
     setStatus("Live library", "Loading assets from Effects Academy…");
@@ -558,8 +599,14 @@
   }
 
   function initSettings() {
+    applyPreferences();
     els.apiBaseInput.value = state.apiBase;
     els.authTokenInput.value = state.authToken;
+    bindPreference(els.layoutModeInput, "layoutMode", STORAGE_KEYS.layoutMode);
+    bindPreference(els.densityInput, "density", STORAGE_KEYS.density);
+    bindPreference(els.accentInput, "accent", STORAGE_KEYS.accent);
+    bindPreference(els.motionInput, "motion", STORAGE_KEYS.motion);
+    bindPreference(els.fontInput, "font", STORAGE_KEYS.font);
     els.apiBaseInput.addEventListener("change", function () {
       state.apiBase = els.apiBaseInput.value.trim() || DEFAULT_API_BASE;
       localStorage.setItem(STORAGE_KEYS.apiBase, state.apiBase);

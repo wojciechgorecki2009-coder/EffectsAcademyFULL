@@ -7,8 +7,14 @@
   --muted: #9895a6;
   --blue: #5257ff;
   --purple: #9d4dff;
+  --accent: #8b5cf6;
+  --accent-2: #5257ff;
+  --accent-rgb: 139, 92, 246;
+  --accent-2-rgb: 82, 87, 255;
   --green: #34d399;
   --amber: #facc15;
+  --font-ui: Inter, "SF Pro Text", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: Inter, "SF Pro Display", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 @keyframes panelRise {
@@ -107,18 +113,51 @@ body {
   overflow: hidden;
   background: var(--bg);
   color: var(--text);
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-ui);
 }
 
 body {
   background:
-    radial-gradient(circle at 22% 4%, rgba(82, 87, 255, 0.28), transparent 28%),
-    radial-gradient(circle at 90% 18%, rgba(157, 77, 255, 0.18), transparent 30%),
+    radial-gradient(circle at 18% 2%, rgba(var(--accent-2-rgb), 0.34), transparent 28%),
+    radial-gradient(circle at 88% 16%, rgba(var(--accent-rgb), 0.23), transparent 30%),
+    linear-gradient(180deg, rgba(255,255,255,0.025), transparent 38%),
     #050508;
 }
 
+body.accent-blue {
+  --accent: #38bdf8;
+  --accent-2: #5257ff;
+  --accent-rgb: 56, 189, 248;
+  --accent-2-rgb: 82, 87, 255;
+}
+
+body.accent-emerald {
+  --accent: #34d399;
+  --accent-2: #14b8a6;
+  --accent-rgb: 52, 211, 153;
+  --accent-2-rgb: 20, 184, 166;
+}
+
+body.accent-rose {
+  --accent: #fb7185;
+  --accent-2: #a855f7;
+  --accent-rgb: 251, 113, 133;
+  --accent-2-rgb: 168, 85, 247;
+}
+
+body.font-mono {
+  --font-ui: "JetBrains Mono", "Cascadia Mono", "Consolas", ui-monospace, monospace;
+  --font-display: "JetBrains Mono", "Cascadia Mono", "Consolas", ui-monospace, monospace;
+}
+
+body.font-system {
+  --font-ui: "Segoe UI", Arial, sans-serif;
+  --font-display: "Segoe UI", Arial, sans-serif;
+}
+
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -131,12 +170,14 @@ button {
 
 button:focus,
 input:focus,
+select:focus,
 summary:focus {
   outline: none;
 }
 
 button:focus-visible,
 input:focus-visible,
+select:focus-visible,
 summary:focus-visible {
   box-shadow: 0 0 0 2px rgba(82, 87, 255, 0.42);
 }
@@ -147,6 +188,17 @@ summary:focus-visible {
   flex-direction: column;
   gap: 12px;
   padding: 14px;
+  position: relative;
+}
+
+.shell::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  border-radius: 22px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.055), transparent 22%, rgba(var(--accent-rgb), 0.12));
+  opacity: 0.55;
 }
 
 .topbar {
@@ -182,10 +234,11 @@ h1 {
   font-size: 16px;
   line-height: 1;
   letter-spacing: -0.03em;
+  font-family: var(--font-display);
 }
 
 h1 span {
-  color: #6c70ff;
+  color: var(--accent-2);
 }
 
 p {
@@ -224,9 +277,12 @@ p {
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 18px;
-  background: linear-gradient(135deg, rgba(157, 77, 255, 0.13), rgba(255, 255, 255, 0.04));
+  background:
+    linear-gradient(135deg, rgba(var(--accent-rgb), 0.18), rgba(255, 255, 255, 0.04)),
+    rgba(10, 10, 16, 0.58);
   animation: panelRise 360ms ease both, softPulse 1900ms ease 420ms 1;
   transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+  backdrop-filter: blur(18px);
 }
 
 .status-card.error {
@@ -248,9 +304,9 @@ p {
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  background: rgba(82, 87, 255, 0.18);
+  background: rgba(var(--accent-2-rgb), 0.22);
   color: #dcdcff;
-  border: 1px solid rgba(82, 87, 255, 0.35);
+  border: 1px solid rgba(var(--accent-2-rgb), 0.45);
   font-size: 11px;
   font-weight: 800;
 }
@@ -261,7 +317,8 @@ p {
   gap: 9px;
 }
 
-input {
+input,
+select {
   width: 100%;
   height: 40px;
   border-radius: 14px;
@@ -273,7 +330,12 @@ input {
   transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
 }
 
-input:focus {
+select {
+  cursor: pointer;
+}
+
+input:focus,
+select:focus {
   border-color: rgba(82, 87, 255, 0.8);
   box-shadow: 0 0 0 3px rgba(82, 87, 255, 0.16);
   background: rgba(255, 255, 255, 0.1);
@@ -314,8 +376,8 @@ input:focus {
 
 .tab.active {
   color: white;
-  background: linear-gradient(135deg, var(--blue), var(--purple));
-  box-shadow: 0 8px 22px rgba(82, 87, 255, 0.22);
+  background: linear-gradient(135deg, var(--accent-2), var(--accent));
+  box-shadow: 0 8px 22px rgba(var(--accent-2-rgb), 0.28);
 }
 
 .asset-grid {
@@ -339,16 +401,35 @@ input:focus {
   border: 1px solid var(--line);
   border-radius: 16px;
   overflow: hidden;
-  background: var(--surface);
+  background:
+    linear-gradient(145deg, rgba(255,255,255,0.055), transparent 42%),
+    var(--surface);
   animation: cardIn 320ms ease both;
   transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
+  position: relative;
+}
+
+.card::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background: linear-gradient(110deg, transparent 0%, rgba(255,255,255,0.12) 45%, transparent 68%);
+  transform: translateX(-80%);
+  transition: opacity 180ms ease, transform 620ms ease;
 }
 
 .card:hover {
-  border-color: rgba(82, 87, 255, 0.45);
+  border-color: rgba(var(--accent-2-rgb), 0.55);
   background: rgba(24, 24, 34, 0.96);
-  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32), 0 0 30px rgba(82, 87, 255, 0.12);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32), 0 0 30px rgba(var(--accent-2-rgb), 0.16);
   transform: translateY(-3px);
+}
+
+.card:hover::after {
+  opacity: 1;
+  transform: translateX(80%);
 }
 
 .thumb {
@@ -423,6 +504,7 @@ input:focus {
   min-height: 33px;
   font-weight: 900;
   letter-spacing: -0.02em;
+  font-family: var(--font-display);
   margin-bottom: 5px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -459,12 +541,12 @@ input:focus {
 
 .primary {
   color: white;
-  background: linear-gradient(135deg, var(--blue), #5757ff);
+  background: linear-gradient(135deg, var(--accent-2), var(--accent));
 }
 
 .primary:hover {
   filter: brightness(1.08);
-  box-shadow: 0 0 18px rgba(82, 87, 255, 0.22);
+  box-shadow: 0 0 18px rgba(var(--accent-2-rgb), 0.3);
 }
 
 .secondary {
@@ -547,6 +629,118 @@ input:focus {
     height: 32px;
     font-size: 11px;
   }
+}
+
+body.layout-list .tabs {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+
+body.layout-list .tab {
+  flex: 0 0 auto;
+}
+
+body.layout-list .asset-grid {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  gap: 9px;
+}
+
+body.layout-list .card {
+  width: 100%;
+  min-height: 92px;
+  flex-direction: row;
+  align-items: stretch;
+}
+
+body.layout-list .thumb {
+  width: 108px;
+  min-width: 108px;
+  height: 92px;
+}
+
+body.layout-list .title {
+  min-height: 0;
+  -webkit-line-clamp: 1;
+}
+
+body.layout-list .actions {
+  display: flex;
+  margin-top: 8px;
+}
+
+body.layout-grid .asset-grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+}
+
+body.layout-grid .card {
+  flex-direction: column;
+}
+
+body.density-compact .shell {
+  gap: 9px;
+  padding: 11px;
+}
+
+body.density-compact .status-card {
+  padding: 9px 10px;
+}
+
+body.density-compact input,
+body.density-compact select {
+  height: 34px;
+  font-size: 11px;
+  border-radius: 12px;
+}
+
+body.density-compact .tab {
+  height: 27px;
+  font-size: 11px;
+}
+
+body.density-compact .card {
+  min-height: 212px;
+}
+
+body.density-compact .thumb {
+  height: 96px;
+}
+
+body.density-compact.layout-list .card {
+  min-height: 80px;
+}
+
+body.density-compact.layout-list .thumb {
+  width: 86px;
+  min-width: 86px;
+  height: 80px;
+}
+
+body.density-compact .card-body {
+  padding: 9px;
+}
+
+body.density-compact .primary,
+body.density-compact .secondary {
+  height: 30px;
+  font-size: 11px;
+}
+
+body.motion-calm *,
+body.motion-calm *::before,
+body.motion-calm *::after {
+  animation-duration: 1ms !important;
+  transition-duration: 90ms !important;
+}
+
+body.motion-calm .card:hover,
+body.motion-calm .brand:hover .logo,
+body.motion-calm .round-button:hover {
+  transform: none;
 }
 
 @media (max-width: 380px) {
@@ -876,10 +1070,31 @@ audio {
   margin-bottom: 8px;
 }
 
-.settings input {
+.settings input,
+.settings select {
   height: 34px;
   margin-top: 4px;
   font-size: 11px;
+}
+
+.display-settings {
+  margin-bottom: 10px;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.display-settings summary {
+  margin-bottom: 10px;
+  color: #f3f0ff;
+  font-weight: 800;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
 }
 
 .settings-button {

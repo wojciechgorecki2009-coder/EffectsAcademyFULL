@@ -17,6 +17,7 @@ This extension is intentionally not a 1:1 copy of the website. It is a fast asse
 - Applies `.ffx` presets to selected layers
 - Adds audio/video/footage to the active comp when possible
 - Uses `/api/uploads/{filename}/direct` for audio preview/download when possible, so object storage can serve big files directly instead of Render
+- Includes panel customization for layout, density, accent color, motion level, and font style
 
 ## Install for development on Windows
 
