@@ -4,6 +4,7 @@ import { Crown, Copy, Download, ImageIcon, Link as LinkIcon, LockKeyhole, Pencil
 import { CATEGORY_COLORS, api, buildFileUrl, buildDownloadUrl, deriveDownloadFilename, getAuthToken, getPass } from "@/lib/api";
 import { useUploadAccess } from "@/lib/uploadAccess";
 import { useAuth } from "@/lib/auth";
+import { useGlobalAudio } from "@/lib/globalAudio";
 import AudioPlayer from "@/components/AudioPlayer";
 import UploadModal from "@/components/UploadModal";
 import {
@@ -94,6 +95,7 @@ async function downloadUrlWithoutLeavingPage(url, filename) {
 export default function AssetCard({ asset, onChanged, allAssets = [] }) {
   const { isUploader, canDelete } = useUploadAccess();
   const { hasPremium } = useAuth();
+  const globalAudio = useGlobalAudio();
   const navigate = useNavigate();
   const ref = useRef(null);
   const [editOpen, setEditOpen] = useState(false);
@@ -117,6 +119,7 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
   const fileSrc = asset.file_url
     ? buildFileUrl(asset.file_url, isPremium && hasPremium ? getAuthToken() : "", "")
     : "";
+  const isActiveAudio = Boolean(fileSrc) && globalAudio.originalSrc === fileSrc;
   const displayGenre = asset.genre || (isAudio ? asset.bpm : "");
   const thumbnailIsVideo = isVideoPreview(thumbnailSrc);
 
@@ -371,15 +374,19 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
           )}
 
           {isAudio && asset.file_url && !isLockedPremium && (
-            <AudioPlayer
-              src={fileSrc}
-              title={asset.title}
-              allowSlowedDownloads={!isSoundEffect}
-              onDownload={async () => {
-                toast.success("Starting download...");
-                recordDownload();
-              }}
-            />
+            <div
+              className={`${isActiveAudio ? "max-h-44 opacity-100 translate-y-0 pointer-events-auto" : "max-h-0 opacity-0 -translate-y-1 pointer-events-none group-hover:max-h-44 group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto group-focus-within:max-h-44 group-focus-within:opacity-100 group-focus-within:translate-y-0 group-focus-within:pointer-events-auto"} overflow-hidden transition-all duration-300 ease-out`}
+            >
+              <AudioPlayer
+                src={fileSrc}
+                title={asset.title}
+                allowSlowedDownloads={!isSoundEffect}
+                onDownload={async () => {
+                  toast.success("Starting download...");
+                  recordDownload();
+                }}
+              />
+            </div>
           )}
 
           <div className="flex gap-2 pt-1">
