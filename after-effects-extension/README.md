@@ -8,6 +8,7 @@ This extension is intentionally not a 1:1 copy of the website. It is a fast asse
 
 - Loads live assets from the premium-only extension endpoint: `https://effects-academy-api.onrender.com/api/extension/assets`
 - Requires a signed-in Effects Academy account with active Premium access
+- Links each Premium account to one extension install/device at a time so copied tokens cannot be reused by multiple people
 - Filters to editor-friendly categories: Audios, Presets, Project Files, Premium
 - Searches by title, creator, genre, and description
 - Shows thumbnails
@@ -41,6 +42,8 @@ This extension is intentionally not a 1:1 copy of the website. It is a fast asse
    ```
 
 5. On the website Premium page, use `Copy AE extension token`, then paste it into the extension's Connection settings.
+
+If a user changes PC or reinstalls the extension, they can use `Reset linked extension` on the Premium page and then connect the new install.
 
 ## Production packaging
 

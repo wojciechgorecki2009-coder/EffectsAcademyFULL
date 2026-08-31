@@ -6,12 +6,14 @@
   var AUDIO_CATEGORIES = { "Audios": true };
   var STORAGE_KEYS = {
     apiBase: "ea_extension_api_base",
-    authToken: "ea_extension_auth_token"
+    authToken: "ea_extension_auth_token",
+    deviceId: "ea_extension_device_id"
   };
 
   var state = {
     apiBase: localStorage.getItem(STORAGE_KEYS.apiBase) || DEFAULT_API_BASE,
     authToken: localStorage.getItem(STORAGE_KEYS.authToken) || "",
+    deviceId: localStorage.getItem(STORAGE_KEYS.deviceId) || "",
     assets: [],
     category: "All",
     search: "",
@@ -47,6 +49,28 @@
 
   var currentAudioAsset = null;
 
+  function createDeviceId() {
+    var random = "";
+    if (window.crypto && window.crypto.getRandomValues) {
+      var bytes = new Uint8Array(16);
+      window.crypto.getRandomValues(bytes);
+      for (var i = 0; i < bytes.length; i += 1) {
+        random += ("0" + bytes[i].toString(16)).slice(-2);
+      }
+    } else {
+      random = String(Math.random()).slice(2) + String(Date.now());
+    }
+    return "ea-ae-" + random + "-" + Date.now();
+  }
+
+  function ensureDeviceId() {
+    if (!state.deviceId) {
+      state.deviceId = createDeviceId();
+      localStorage.setItem(STORAGE_KEYS.deviceId, state.deviceId);
+    }
+    return state.deviceId;
+  }
+
   function fmtTime(value) {
     if (!isFinite(value) || value < 0) return "0:00";
     var minutes = Math.floor(value / 60);
@@ -71,7 +95,9 @@
   }
 
   function authHeaders() {
-    return state.authToken ? { Authorization: "Bearer " + state.authToken } : {};
+    var headers = { "X-Extension-Device-Id": ensureDeviceId() };
+    if (state.authToken) headers.Authorization = "Bearer " + state.authToken;
+    return headers;
   }
 
   function safeFilename(asset) {

@@ -251,6 +251,8 @@ def public_user(user: dict) -> dict:
         "twitch_subscription_checked_at": user.get("twitch_subscription_checked_at", ""),
         "twitch_discount_eligible": twitch_discount_valid(user),
         "twitch_discount_percent": TWITCH_DISCOUNT_PERCENT,
+        "extension_device_linked": bool(user.get("extension_device_id")),
+        "extension_device_linked_at": user.get("extension_device_linked_at", ""),
         "can_upload": can_upload,
         "can_delete": can_delete,
     }
@@ -1109,6 +1111,24 @@ async def list_extension_assets(request: Request):
     if not has_premium_access(user):
         raise HTTPException(status_code=402, detail="Active Premium subscription required to use the After Effects extension")
 
+    device_id = (request.headers.get("x-extension-device-id") or "").strip()
+    if len(device_id) < 16 or len(device_id) > 120:
+        raise HTTPException(status_code=400, detail="Extension device verification is required")
+
+    linked_device_id = (user.get("extension_device_id") or "").strip()
+    if linked_device_id and linked_device_id != device_id:
+        raise HTTPException(status_code=403, detail="This Premium account is already linked to another After Effects extension install")
+
+    if not linked_device_id:
+        await db.users.update_one(
+            {"id": user["id"]},
+            {"$set": {
+                "extension_device_id": device_id,
+                "extension_device_linked_at": now_iso(),
+                "updated_at": now_iso(),
+            }},
+        )
+
     categories = ["Audios", "Presets", "Project Files", "Premium"]
     docs = await db.assets.find(
         {
@@ -1120,6 +1140,19 @@ async def list_extension_assets(request: Request):
     for doc in docs:
         doc["has_external_url"] = bool(doc.get("external_url"))
     return docs
+
+
+@api_router.post("/extension/reset-device")
+async def reset_extension_device(request: Request):
+    user = await request_user(request, required=True)
+    user = await sync_user_from_stripe(user)
+    if not has_premium_access(user):
+        raise HTTPException(status_code=402, detail="Active Premium subscription required")
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$unset": {"extension_device_id": "", "extension_device_linked_at": ""}, "$set": {"updated_at": now_iso()}},
+    )
+    return {"ok": True}
 
 
 @api_router.post("/twitch/connect")

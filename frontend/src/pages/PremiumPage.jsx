@@ -199,6 +199,20 @@ export default function PremiumPage() {
     }
   };
 
+  const resetExtensionDevice = async () => {
+    if (!hasPremium) return;
+    setBusy(true);
+    setError("");
+    try {
+      await api.post("/extension/reset-device");
+      await refreshUser();
+    } catch (err) {
+      setError(checkoutErrorMessage(err, "Unable to reset your After Effects extension device."));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <section className="min-h-[calc(100vh-4rem)] pt-28 pb-20 px-6" data-testid="premium-page">
       <div className="max-w-5xl mx-auto">
@@ -363,7 +377,7 @@ export default function PremiumPage() {
               <div className="mt-4 rounded-2xl border border-purple-300/20 bg-purple-300/10 px-4 py-4">
                 <p className="text-sm font-semibold text-white">After Effects extension access</p>
                 <p className="text-xs text-zinc-400 mt-1">
-                  Copy this token into the extension Connection settings. Only active Premium accounts can load the extension library.
+                  Copy this token into the extension Connection settings. Only active Premium accounts can load the extension library, and each account can be linked to one extension install at a time.
                 </p>
                 <button
                   type="button"
@@ -374,6 +388,22 @@ export default function PremiumPage() {
                   <Copy className="w-4 h-4" />
                   {extensionTokenCopied ? "Copied" : "Copy AE extension token"}
                 </button>
+                {user?.extension_device_linked && (
+                  <button
+                    type="button"
+                    onClick={resetExtensionDevice}
+                    disabled={busy}
+                    className="mt-3 ml-2 inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] hover:bg-white/10 disabled:opacity-50 text-zinc-100 px-4 py-2 text-sm font-semibold btn-press"
+                    data-testid="reset-extension-device"
+                  >
+                    Reset linked extension
+                  </button>
+                )}
+                {user?.extension_device_linked && (
+                  <p className="text-[11px] text-zinc-500 mt-2">
+                    This account is already linked to an After Effects install. Reset only if you are moving to a new PC or reinstalling.
+                  </p>
+                )}
               </div>
             )}
             {!hasPremium && user && (
