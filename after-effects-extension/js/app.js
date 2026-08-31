@@ -402,6 +402,7 @@
     playbackRate = playbackRate || 1;
     clearErrorState();
     state.loadingId = asset.id;
+    var originalButtonText = button ? button.textContent : "";
     if (button) {
       button.disabled = true;
       button.textContent = "Loading…";
@@ -435,7 +436,7 @@
         state.loadingId = "";
         if (button) {
           button.disabled = false;
-          button.textContent = isAudioAsset(asset) ? "Add to comp" : "Import";
+          button.textContent = originalButtonText || (isAudioAsset(asset) ? "Add to comp" : "Import");
         }
       });
   }
