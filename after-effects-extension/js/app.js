@@ -156,6 +156,10 @@
     return Boolean(asset.file_url);
   }
 
+  function isExternalOnlyAsset(asset) {
+    return !asset.file_url && Boolean(asset.external_url || asset.has_external_url);
+  }
+
   function categoryLabel(asset) {
     return asset.category || "Asset";
   }
@@ -301,9 +305,12 @@
       var importBtn = document.createElement("button");
       importBtn.type = "button";
       importBtn.className = "primary";
-      importBtn.textContent = isArchiveAsset(asset) ? "Unpack + import" : isAudioAsset(asset) ? "Add to comp" : "Import";
-      importBtn.disabled = !canDirectImport(asset);
-      importBtn.onclick = function () { importAsset(asset, importBtn); };
+      importBtn.textContent = isExternalOnlyAsset(asset) ? "Open link" : isArchiveAsset(asset) ? "Unpack + import" : isAudioAsset(asset) ? "Add to comp" : "Import";
+      importBtn.disabled = !canDirectImport(asset) && !isExternalOnlyAsset(asset);
+      importBtn.onclick = function () {
+        if (isExternalOnlyAsset(asset)) openExternal(asset);
+        else importAsset(asset, importBtn);
+      };
 
       var previewBtn = document.createElement("button");
       previewBtn.type = "button";
