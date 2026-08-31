@@ -518,6 +518,46 @@
     return candidate;
   }
 
+  function uniqueNestedExtractDir(archivePath) {
+    var fs = window.require("fs");
+    var path = window.require("path");
+    var parsed = path.parse(archivePath);
+    var root = path.join(parsed.dir, parsed.name + "-unpacked");
+    var candidate = root;
+    var index = 1;
+    while (fs.existsSync(candidate)) {
+      candidate = root + "-" + index;
+      index += 1;
+    }
+    fs.mkdirSync(candidate, { recursive: true });
+    return candidate;
+  }
+
+  function collectArchiveFiles(folderPath, files) {
+    var fs = window.require("fs");
+    var path = window.require("path");
+    var names = [];
+    try {
+      names = fs.readdirSync(folderPath);
+    } catch (err) {
+      return;
+    }
+    names.forEach(function (name) {
+      var fullPath = path.join(folderPath, name);
+      var stat = null;
+      try {
+        stat = fs.statSync(fullPath);
+      } catch (err) {
+        return;
+      }
+      if (stat.isDirectory()) {
+        collectArchiveFiles(fullPath, files);
+      } else if (stat.isFile() && isArchivePath(fullPath)) {
+        files.push(fullPath);
+      }
+    });
+  }
+
   function firstExistingPath(paths) {
     var fs = window.require("fs");
     for (var i = 0; i < paths.length; i += 1) {
@@ -540,10 +580,9 @@
     });
   }
 
-  function extractArchive(archivePath) {
+  function extractArchiveTo(archivePath, extractDir) {
     var path = window.require("path");
     var ext = extensionFromPath(archivePath);
-    var extractDir = uniqueExtractDir(archivePath);
     if (ext === "zip") {
       return runProcess("powershell.exe", [
         "-NoProfile",
@@ -569,10 +608,38 @@
       "C:\\Program Files (x86)\\WinRAR\\WinRAR.exe"
     ]);
     if (winRar) {
-      return runProcess(winRar, ["x", "-ibck", "-o+", archivePath, path.join(extractDir, "\\")]).then(function () { return extractDir; });
+      return runProcess(winRar, ["x", "-ibck", "-o+", archivePath, extractDir + path.sep]).then(function () { return extractDir; });
     }
 
     return Promise.reject(new Error("This is a ." + ext + " archive. Install WinRAR or 7-Zip so the extension can unpack and import it."));
+  }
+
+  function extractArchive(archivePath) {
+    return extractArchiveTo(archivePath, uniqueExtractDir(archivePath));
+  }
+
+  function unpackNestedArchives(rootDir, depth) {
+    depth = depth || 0;
+    if (depth >= 2) return Promise.resolve(rootDir);
+    var archives = [];
+    collectArchiveFiles(rootDir, archives);
+    if (!archives.length) return Promise.resolve(rootDir);
+
+    var chain = Promise.resolve();
+    archives.forEach(function (archivePath) {
+      chain = chain.then(function () {
+        return extractArchiveTo(archivePath, uniqueNestedExtractDir(archivePath))
+          .then(function () { return null; })
+          .catch(function () { return null; });
+      });
+    });
+    return chain.then(function () { return unpackNestedArchives(rootDir, depth + 1); });
+  }
+
+  function openFolder(folderPath) {
+    var childProcess = window.require && window.require("child_process");
+    if (!childProcess || !folderPath) return;
+    childProcess.execFile("explorer.exe", [folderPath], { windowsHide: true }, function () {});
   }
 
   function evalScript(script) {
@@ -611,7 +678,9 @@
         if (!isArchivePath(targetPath)) return targetPath;
         setStatus("Unpacking project pack", asset.title || "Archive");
         return extractArchive(targetPath).then(function (extractDir) {
-          return { extractedDir: extractDir };
+          return unpackNestedArchives(extractDir).then(function () {
+            return { extractedDir: extractDir };
+          });
         });
       })
       .then(function (target) {
@@ -624,9 +693,15 @@
       .then(function (result) {
         var parsed = {};
         try { parsed = JSON.parse(result || "{}"); } catch (e) {}
+        if (parsed.open_folder && parsed.folder_path) {
+          openFolder(parsed.folder_path);
+        }
         if (parsed.ok) {
           clearErrorState();
           setStatus("Imported", parsed.message || (asset.title || "Asset"));
+        } else if (parsed.extracted) {
+          clearErrorState();
+          setStatus("Pack extracted", parsed.message || "Pack extracted. Opened the folder so you can choose files manually.");
         } else {
           showError("Import needs attention", parsed.message || "After Effects could not import this file.");
         }

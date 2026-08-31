@@ -4,6 +4,13 @@ function EA_json(ok, message) {
   return '{"ok":' + (ok ? 'true' : 'false') + ',"message":"' + String(message || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"}';
 }
 
+function EA_jsonPackExtracted(message, folderPath, fileCount) {
+  return '{"ok":false,"extracted":true,"open_folder":true,"folder_path":"' +
+    String(folderPath || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"') +
+    '","file_count":' + Number(fileCount || 0) +
+    ',"message":"' + String(message || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"}';
+}
+
 function EA_activeComp() {
   if (!app.project) return null;
   var item = app.project.activeItem;
@@ -32,7 +39,7 @@ function EA_importAsset(filePath, category, playbackRate) {
       return EA_json(true, "Preset applied to selected layer(s).");
     }
 
-    if (lower.match(/\.aep$/)) {
+    if (lower.match(/\.(aep|aepx)$/)) {
       var projectImportOptions = new ImportOptions(file);
       app.project.importFile(projectImportOptions);
       return EA_json(true, "Project imported into the current After Effects project.");
@@ -65,7 +72,7 @@ function EA_collectImportableFiles(folder, files) {
       EA_collectImportableFiles(item, files);
     } else if (item instanceof File) {
       var path = String(item.fsName).toLowerCase();
-      if (path.match(/\.(aep|aepx|mov|mp4|m4v|avi|wav|mp3|aif|aiff|png|jpg|jpeg|gif|psd|ai|eps)$/)) {
+      if (path.match(/\.(aep|aepx|ffx|mov|mp4|m4v|avi|wav|mp3|aif|aiff|png|jpg|jpeg|gif|webp|psd|ai|eps)$/)) {
         files.push(item);
       }
     }
@@ -81,7 +88,8 @@ function EA_importFolder(folderPath, category) {
     var files = [];
     EA_collectImportableFiles(folder, files);
     if (files.length < 1) {
-      return EA_json(false, "Pack extracted, but no After Effects project or importable media files were found.");
+      var allFiles = folder.getFiles("*");
+      return EA_jsonPackExtracted("Pack extracted, but no After Effects project or importable media files were found. Opening the extracted folder.", folder.fsName, allFiles.length);
     }
 
     var importedCount = 0;
@@ -96,9 +104,15 @@ function EA_importFolder(folderPath, category) {
 
     if (projectCount < 1) {
       for (var j = 0; j < files.length; j += 1) {
+        var filePath = String(files[j].fsName).toLowerCase();
+        if (filePath.match(/\.ffx$/)) continue;
         app.project.importFile(new ImportOptions(files[j]));
         importedCount += 1;
       }
+    }
+
+    if (importedCount < 1) {
+      return EA_jsonPackExtracted("Pack extracted, but the files inside are not directly importable by After Effects. Opening the extracted folder.", folder.fsName, files.length);
     }
 
     return EA_json(true, projectCount > 0
