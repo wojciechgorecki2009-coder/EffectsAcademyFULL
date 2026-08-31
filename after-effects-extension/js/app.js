@@ -451,17 +451,23 @@
 
   function loadAssets() {
     clearErrorState();
+    if (!state.authToken) {
+      state.assets = [];
+      renderAssets();
+      showError("Premium sign-in required", "Paste your Effects Academy auth token in Connection settings to unlock the extension.");
+      return Promise.resolve();
+    }
     setStatus("Live library", "Loading assets from Effects Academy…");
-    return getJson(apiUrl("/assets"))
+    return getJson(apiUrl("/extension/assets"))
       .then(function (assets) {
         state.assets = (assets || []).filter(function (asset) {
           return CATEGORIES.indexOf(asset.category) !== -1 && asset.category !== "Videos";
         });
-        setStatus("Live library ready", "New uploads appear here after refresh.");
+        setStatus("Premium extension unlocked", "New uploads appear here after refresh.");
         renderAssets();
       })
       .catch(function (err) {
-        showError("Could not load assets", err.message || "Check the API base/settings.");
+        showError("Premium access required", err.message || "Sign in with an active Premium account.");
         state.assets = [];
         renderAssets();
       });

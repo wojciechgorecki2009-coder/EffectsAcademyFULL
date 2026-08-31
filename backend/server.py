@@ -1102,6 +1102,26 @@ async def auth_me(request: Request):
     return public_user(user)
 
 
+@api_router.get("/extension/assets", response_model=List[Asset])
+async def list_extension_assets(request: Request):
+    user = await request_user(request, required=True)
+    user = await sync_user_from_stripe(user)
+    if not has_premium_access(user):
+        raise HTTPException(status_code=402, detail="Active Premium subscription required to use the After Effects extension")
+
+    categories = ["Audios", "Presets", "Project Files", "Premium"]
+    docs = await db.assets.find(
+        {
+            "category": {"$in": categories},
+            "file_url": {"$nin": ["", None]},
+        },
+        {"_id": 0},
+    ).sort("created_at", -1).to_list(2000)
+    for doc in docs:
+        doc["has_external_url"] = bool(doc.get("external_url"))
+    return docs
+
+
 @api_router.post("/twitch/connect")
 async def twitch_connect(request: Request):
     enforce_rate_limit(request, "twitch-connect", limit=20, window_seconds=300)

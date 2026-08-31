@@ -6,7 +6,8 @@ This extension is intentionally not a 1:1 copy of the website. It is a fast asse
 
 ## What it does now
 
-- Loads live assets from `https://effects-academy-api.onrender.com/api/assets`
+- Loads live assets from the premium-only extension endpoint: `https://effects-academy-api.onrender.com/api/extension/assets`
+- Requires a signed-in Effects Academy account with active Premium access
 - Filters to editor-friendly categories: Audios, Presets, Project Files, Premium
 - Searches by title, creator, genre, and description
 - Shows thumbnails
@@ -38,6 +39,8 @@ This extension is intentionally not a 1:1 copy of the website. It is a fast asse
    ```text
    Window > Extensions > Effects Academy
    ```
+
+5. On the website Premium page, use `Copy AE extension token`, then paste it into the extension's Connection settings.
 
 ## Production packaging
 
@@ -76,4 +79,5 @@ For the lowest Render bandwidth:
 - Add an extension-specific login code flow instead of requiring token paste/manual auth.
 - Add local caching so repeated imports of the same file do not redownload.
 - Add premium-aware locked cards and login prompt inside the panel.
+- Replace manual token entry with a website/device-code login flow.
 - Add automatic update packaging for the extension files themselves.

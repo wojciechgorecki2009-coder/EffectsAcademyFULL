@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, BadgePercent, Check, Crown, LockKeyhole, ShieldCheck, Sparkles, X } from "lucide-react";
-import { api } from "@/lib/api";
+import { ArrowLeft, BadgePercent, Check, Copy, Crown, LockKeyhole, ShieldCheck, Sparkles, X } from "lucide-react";
+import { api, getAuthToken } from "@/lib/api";
 import { hasPremiumAccess, useAuth } from "@/lib/auth";
 import TwitchIcon from "@/components/TwitchIcon";
 
@@ -79,6 +79,7 @@ export default function PremiumPage() {
   const [searchParams] = useSearchParams();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [extensionTokenCopied, setExtensionTokenCopied] = useState(false);
   const checkoutState = searchParams.get("checkout");
   const checkoutSessionId = searchParams.get("session_id");
   const twitchState = searchParams.get("twitch");
@@ -179,6 +180,22 @@ export default function PremiumPage() {
       setError(checkoutErrorMessage(err, "Unable to sign out of Twitch."));
     } finally {
       setBusy(false);
+    }
+  };
+
+  const copyExtensionToken = async () => {
+    const token = getAuthToken();
+    if (!token) {
+      setError("Sign in first, then copy your After Effects extension token.");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(token);
+      setError("");
+      setExtensionTokenCopied(true);
+      setTimeout(() => setExtensionTokenCopied(false), 2200);
+    } catch {
+      setError("Could not copy automatically. Please copy your token from this browser manually.");
     }
   };
 
@@ -342,6 +359,23 @@ export default function PremiumPage() {
             >
               {busy ? "Opening Stripe..." : hasPremium ? "Manage subscription" : user ? "Subscribe with Stripe" : "Sign in with Google"}
             </button>
+            {hasPremium && (
+              <div className="mt-4 rounded-2xl border border-purple-300/20 bg-purple-300/10 px-4 py-4">
+                <p className="text-sm font-semibold text-white">After Effects extension access</p>
+                <p className="text-xs text-zinc-400 mt-1">
+                  Copy this token into the extension Connection settings. Only active Premium accounts can load the extension library.
+                </p>
+                <button
+                  type="button"
+                  onClick={copyExtensionToken}
+                  className="mt-3 inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] hover:bg-white/10 text-zinc-100 px-4 py-2 text-sm font-semibold btn-press"
+                  data-testid="copy-extension-token"
+                >
+                  <Copy className="w-4 h-4" />
+                  {extensionTokenCopied ? "Copied" : "Copy AE extension token"}
+                </button>
+              </div>
+            )}
             {!hasPremium && user && (
               <p className="text-xs text-zinc-500 mt-3 text-center">After subscribing, this button becomes Manage subscription.</p>
             )}
