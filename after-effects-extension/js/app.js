@@ -124,6 +124,19 @@
     return title + (match ? "." + match[1] : "");
   }
 
+  function extensionFromPath(filePath) {
+    var match = String(filePath || "").toLowerCase().match(/\.([a-z0-9]+)(?:[?#]|$)/);
+    return match ? match[1] : "";
+  }
+
+  function isArchivePath(filePath) {
+    return ["zip", "rar", "7z"].indexOf(extensionFromPath(filePath)) !== -1;
+  }
+
+  function isArchiveAsset(asset) {
+    return isArchivePath(asset.original_filename || "") || isArchivePath(asset.file_url || "");
+  }
+
   function isAudioAsset(asset) {
     return Boolean(AUDIO_CATEGORIES[asset.category]);
   }
@@ -277,7 +290,7 @@
       var importBtn = document.createElement("button");
       importBtn.type = "button";
       importBtn.className = "primary";
-      importBtn.textContent = isAudioAsset(asset) ? "Add to comp" : "Import";
+      importBtn.textContent = isArchiveAsset(asset) ? "Unpack + import" : isAudioAsset(asset) ? "Add to comp" : "Import";
       importBtn.disabled = !canDirectImport(asset);
       importBtn.onclick = function () { importAsset(asset, importBtn); };
 
@@ -475,6 +488,78 @@
     return candidate;
   }
 
+  function uniqueExtractDir(archivePath) {
+    var fs = window.require("fs");
+    var path = window.require("path");
+    var parsed = path.parse(archivePath);
+    var root = path.join(extensionDownloadDir(), parsed.name + "-extracted");
+    var candidate = root;
+    var index = 1;
+    while (fs.existsSync(candidate)) {
+      candidate = root + "-" + index;
+      index += 1;
+    }
+    fs.mkdirSync(candidate, { recursive: true });
+    return candidate;
+  }
+
+  function firstExistingPath(paths) {
+    var fs = window.require("fs");
+    for (var i = 0; i < paths.length; i += 1) {
+      if (fs.existsSync(paths[i])) return paths[i];
+    }
+    return "";
+  }
+
+  function runProcess(command, args) {
+    var childProcess = window.require && window.require("child_process");
+    if (!childProcess) return Promise.reject(new Error("CEP process access is unavailable."));
+    return new Promise(function (resolve, reject) {
+      childProcess.execFile(command, args, { windowsHide: true }, function (error, stdout, stderr) {
+        if (error) {
+          reject(new Error((stderr || stdout || error.message || "Extraction failed").trim()));
+          return;
+        }
+        resolve(stdout || "");
+      });
+    });
+  }
+
+  function extractArchive(archivePath) {
+    var path = window.require("path");
+    var ext = extensionFromPath(archivePath);
+    var extractDir = uniqueExtractDir(archivePath);
+    if (ext === "zip") {
+      return runProcess("powershell.exe", [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "Expand-Archive -LiteralPath $args[0] -DestinationPath $args[1] -Force",
+        archivePath,
+        extractDir
+      ]).then(function () { return extractDir; });
+    }
+
+    var sevenZip = firstExistingPath([
+      "C:\\Program Files\\7-Zip\\7z.exe",
+      "C:\\Program Files (x86)\\7-Zip\\7z.exe"
+    ]);
+    if (sevenZip) {
+      return runProcess(sevenZip, ["x", archivePath, "-o" + extractDir, "-y"]).then(function () { return extractDir; });
+    }
+
+    var winRar = firstExistingPath([
+      "C:\\Program Files\\WinRAR\\WinRAR.exe",
+      "C:\\Program Files (x86)\\WinRAR\\WinRAR.exe"
+    ]);
+    if (winRar) {
+      return runProcess(winRar, ["x", "-ibck", "-o+", archivePath, path.join(extractDir, "\\")]).then(function () { return extractDir; });
+    }
+
+    return Promise.reject(new Error("This is a ." + ext + " archive. Install WinRAR or 7-Zip so the extension can unpack and import it."));
+  }
+
   function evalScript(script) {
     return new Promise(function (resolve, reject) {
       if (!window.__adobe_cep__ || !window.__adobe_cep__.evalScript) {
@@ -508,8 +593,17 @@
         return downloadBinary(url, targetPath);
       })
       .then(function (targetPath) {
+        if (!isArchivePath(targetPath)) return targetPath;
+        setStatus("Unpacking project pack", asset.title || "Archive");
+        return extractArchive(targetPath).then(function (extractDir) {
+          return { extractedDir: extractDir };
+        });
+      })
+      .then(function (target) {
         setStatus("Sending to After Effects", asset.title || "Asset");
-        var script = "EA_importAsset(" + JSON.stringify(targetPath) + "," + JSON.stringify(asset.category || "") + "," + JSON.stringify(playbackRate) + ")";
+        var script = target && target.extractedDir
+          ? "EA_importFolder(" + JSON.stringify(target.extractedDir) + "," + JSON.stringify(asset.category || "") + ")"
+          : "EA_importAsset(" + JSON.stringify(target) + "," + JSON.stringify(asset.category || "") + "," + JSON.stringify(playbackRate) + ")";
         return evalScript(script);
       })
       .then(function (result) {
@@ -529,7 +623,7 @@
         state.loadingId = "";
         if (button) {
           button.disabled = false;
-          button.textContent = originalButtonText || (isAudioAsset(asset) ? "Add to comp" : "Import");
+          button.textContent = originalButtonText || (isArchiveAsset(asset) ? "Unpack + import" : isAudioAsset(asset) ? "Add to comp" : "Import");
         }
       });
   }

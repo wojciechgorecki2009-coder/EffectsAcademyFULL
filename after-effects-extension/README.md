@@ -16,6 +16,7 @@ This extension is intentionally not a 1:1 copy of the website. It is a fast asse
 - Downloads/imports files into After Effects
 - Applies `.ffx` presets to selected layers
 - Adds audio/video/footage to the active comp when possible
+- Unpacks project archives before importing when possible
 - Uses `/api/uploads/{filename}/direct` for audio preview/download when possible, so object storage can serve big files directly instead of Render
 - Includes panel customization for layout, density, accent color, motion level, and font style
 
@@ -76,6 +77,14 @@ For the lowest Render bandwidth:
 - keep `S3_PUBLIC_BASE_URL` configured for public non-premium files;
 - configure object storage CORS so AE/CEP can preview audio directly;
 - use the existing direct URL endpoint for audio preview/import.
+
+## Project pack archive notes
+
+After Effects cannot import `.rar`, `.7z`, or `.zip` archives directly. The extension downloads the archive, extracts it locally, then imports any `.aep`/`.aepx` project files it finds into the current After Effects project.
+
+- `.zip` uses Windows PowerShell `Expand-Archive`.
+- `.rar` and `.7z` require either WinRAR or 7-Zip installed in the normal Program Files location.
+- If a pack has no `.aep`/`.aepx`, the extension imports supported media files from the extracted folder instead.
 
 ## Next recommended upgrades
 

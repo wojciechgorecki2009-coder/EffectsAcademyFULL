@@ -1,4 +1,4 @@
-/* global app, File, ImportOptions */
+/* global app, File, Folder, ImportOptions */
 
 function EA_json(ok, message) {
   return '{"ok":' + (ok ? 'true' : 'false') + ',"message":"' + String(message || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"}';
@@ -50,6 +50,60 @@ function EA_importAsset(filePath, category, playbackRate) {
     }
 
     return EA_json(true, "Imported into the project panel.");
+  } catch (err) {
+    return EA_json(false, err && err.message ? err.message : String(err));
+  } finally {
+    app.endUndoGroup();
+  }
+}
+
+function EA_collectImportableFiles(folder, files) {
+  var children = folder.getFiles();
+  for (var i = 0; i < children.length; i += 1) {
+    var item = children[i];
+    if (item instanceof Folder) {
+      EA_collectImportableFiles(item, files);
+    } else if (item instanceof File) {
+      var path = String(item.fsName).toLowerCase();
+      if (path.match(/\.(aep|aepx|mov|mp4|m4v|avi|wav|mp3|aif|aiff|png|jpg|jpeg|gif|psd|ai|eps)$/)) {
+        files.push(item);
+      }
+    }
+  }
+}
+
+function EA_importFolder(folderPath, category) {
+  app.beginUndoGroup("Effects Academy Import Pack");
+  try {
+    var folder = new Folder(folderPath);
+    if (!folder.exists) return EA_json(false, "Extracted project folder could not be found.");
+
+    var files = [];
+    EA_collectImportableFiles(folder, files);
+    if (files.length < 1) {
+      return EA_json(false, "Pack extracted, but no After Effects project or importable media files were found.");
+    }
+
+    var importedCount = 0;
+    var projectCount = 0;
+    for (var i = 0; i < files.length; i += 1) {
+      var lower = String(files[i].fsName).toLowerCase();
+      if (!lower.match(/\.(aep|aepx)$/)) continue;
+      app.project.importFile(new ImportOptions(files[i]));
+      importedCount += 1;
+      projectCount += 1;
+    }
+
+    if (projectCount < 1) {
+      for (var j = 0; j < files.length; j += 1) {
+        app.project.importFile(new ImportOptions(files[j]));
+        importedCount += 1;
+      }
+    }
+
+    return EA_json(true, projectCount > 0
+      ? "Project pack extracted and imported into the current project."
+      : "Pack extracted and " + importedCount + " media file(s) imported into the project panel.");
   } catch (err) {
     return EA_json(false, err && err.message ? err.message : String(err));
   } finally {
