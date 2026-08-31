@@ -884,7 +884,19 @@ audio {
   box-shadow: 0 0 18px rgba(82, 87, 255, 0.22);
 }
 
-.advanced-token {
+.advanced-settings {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  opacity: 0.72;
+}
+
+.advanced-settings summary {
+  font-size: 10px;
+  margin-bottom: 8px;
+}
+
+.advanced-settings[open] {
   opacity: 0.72;
 }
 
