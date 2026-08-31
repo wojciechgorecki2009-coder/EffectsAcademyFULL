@@ -106,6 +106,17 @@
     return state.apiBase.replace(/\/+$/, "") + path;
   }
 
+  function authenticatedFileUrl(path, download, filename) {
+    var url = fileUrl(path);
+    if (!url || /^https?:\/\//i.test(path || "")) return url;
+    var sep = url.indexOf("?") === -1 ? "?" : "&";
+    var params = [];
+    if (download) params.push("download=1");
+    if (filename) params.push("name=" + encodeURIComponent(filename));
+    if (state.authToken) params.push("access_token=" + encodeURIComponent(state.authToken));
+    return params.length ? url + sep + params.join("&") : url;
+  }
+
   function uploadFilename(path) {
     var match = String(path || "").match(/\/api\/uploads\/([^/?#]+)/);
     return match ? decodeURIComponent(match[1]) : "";
@@ -386,12 +397,12 @@
 
   function getDirectUrl(asset, download) {
     var filename = uploadFilename(asset.file_url);
-    if (!filename) return Promise.resolve(fileUrl(asset.file_url));
+    if (!filename) return Promise.resolve(authenticatedFileUrl(asset.file_url, download, safeFilename(asset)));
 
     var params = download ? "?download=1&name=" + encodeURIComponent(safeFilename(asset)) : "";
     return getJson(apiUrl("/uploads/" + encodeURIComponent(filename) + "/direct" + params))
-      .then(function (data) { return data.url || fileUrl(asset.file_url); })
-      .catch(function () { return fileUrl(asset.file_url); });
+      .then(function (data) { return data.url || authenticatedFileUrl(asset.file_url, download, safeFilename(asset)); })
+      .catch(function () { return authenticatedFileUrl(asset.file_url, download, safeFilename(asset)); });
   }
 
   function previewAudio(asset) {
@@ -444,7 +455,11 @@
 
     return new Promise(function (resolve, reject) {
       var client = /^https:/i.test(url) ? https : http;
-      client.get(url, function (response) {
+      var options = {};
+      if (url.indexOf(state.apiBase.replace(/\/+$/, "")) === 0) {
+        options.headers = authHeaders();
+      }
+      client.get(url, options, function (response) {
         if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
           downloadBinary(response.headers.location, targetPath).then(resolve).catch(reject);
           return;
