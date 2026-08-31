@@ -77,8 +77,13 @@
             <input id="apiBaseInput" type="url" />
           </label>
           <label>
-            Effects Academy auth token, required for extension access
-            <input id="authTokenInput" type="password" placeholder="Paste your signed-in site token" />
+            Pairing code from the Premium page
+            <input id="pairingCodeInput" type="text" placeholder="ABCD-1234" />
+          </label>
+          <button id="pairingCodeBtn" class="settings-button" type="button">Connect Premium account</button>
+          <label class="advanced-token">
+            Existing auth token fallback
+            <input id="authTokenInput" type="password" placeholder="Already connected token" />
           </label>
           <p>This panel is premium-only and links one Effects Academy account to one extension install at a time.</p>
         </details>

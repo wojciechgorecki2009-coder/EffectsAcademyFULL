@@ -41,7 +41,7 @@ This extension is intentionally not a 1:1 copy of the website. It is a fast asse
    Window > Extensions > Effects Academy
    ```
 
-5. On the website Premium page, use `Copy AE extension token`, then paste it into the extension's Connection settings.
+5. On the website Premium page, use `Generate AE pairing code`, then type that short code into the extension's Connection settings.
 
 If a user changes PC or reinstalls the extension, they can use `Reset linked extension` on the Premium page and then connect the new install.
 

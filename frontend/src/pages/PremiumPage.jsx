@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, BadgePercent, Check, Copy, Crown, LockKeyhole, ShieldCheck, Sparkles, X } from "lucide-react";
-import { api, getAuthToken } from "@/lib/api";
+import { ArrowLeft, BadgePercent, Check, Copy, Crown, KeyRound, LockKeyhole, ShieldCheck, Sparkles, X } from "lucide-react";
+import { api } from "@/lib/api";
 import { hasPremiumAccess, useAuth } from "@/lib/auth";
 import TwitchIcon from "@/components/TwitchIcon";
 
@@ -79,7 +79,8 @@ export default function PremiumPage() {
   const [searchParams] = useSearchParams();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [extensionTokenCopied, setExtensionTokenCopied] = useState(false);
+  const [extensionPairingCode, setExtensionPairingCode] = useState("");
+  const [extensionCodeCopied, setExtensionCodeCopied] = useState(false);
   const checkoutState = searchParams.get("checkout");
   const checkoutSessionId = searchParams.get("session_id");
   const twitchState = searchParams.get("twitch");
@@ -183,19 +184,29 @@ export default function PremiumPage() {
     }
   };
 
-  const copyExtensionToken = async () => {
-    const token = getAuthToken();
-    if (!token) {
-      setError("Sign in first, then copy your After Effects extension token.");
-      return;
-    }
+  const generateExtensionPairingCode = async () => {
+    if (!hasPremium) return;
+    setBusy(true);
+    setError("");
     try {
-      await navigator.clipboard.writeText(token);
-      setError("");
-      setExtensionTokenCopied(true);
-      setTimeout(() => setExtensionTokenCopied(false), 2200);
+      const { data } = await api.post("/extension/pairing-code");
+      setExtensionPairingCode(data.code || "");
+      setExtensionCodeCopied(false);
+    } catch (err) {
+      setError(checkoutErrorMessage(err, "Unable to create an After Effects pairing code."));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const copyExtensionPairingCode = async () => {
+    if (!extensionPairingCode) return;
+    try {
+      await navigator.clipboard.writeText(extensionPairingCode);
+      setExtensionCodeCopied(true);
+      setTimeout(() => setExtensionCodeCopied(false), 2200);
     } catch {
-      setError("Could not copy automatically. Please copy your token from this browser manually.");
+      setError("Could not copy the pairing code automatically. Please type it into the extension manually.");
     }
   };
 
@@ -377,17 +388,35 @@ export default function PremiumPage() {
               <div className="mt-4 rounded-2xl border border-purple-300/20 bg-purple-300/10 px-4 py-4">
                 <p className="text-sm font-semibold text-white">After Effects extension access</p>
                 <p className="text-xs text-zinc-400 mt-1">
-                  Copy this token into the extension Connection settings. Only active Premium accounts can load the extension library, and each account can be linked to one extension install at a time.
+                  Generate a short pairing code, then type it into the extension Connection settings. Each Premium account can be linked to one extension install at a time.
                 </p>
                 <button
                   type="button"
-                  onClick={copyExtensionToken}
+                  onClick={generateExtensionPairingCode}
+                  disabled={busy}
                   className="mt-3 inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] hover:bg-white/10 text-zinc-100 px-4 py-2 text-sm font-semibold btn-press"
-                  data-testid="copy-extension-token"
+                  data-testid="generate-extension-code"
                 >
-                  <Copy className="w-4 h-4" />
-                  {extensionTokenCopied ? "Copied" : "Copy AE extension token"}
+                  <KeyRound className="w-4 h-4" />
+                  Generate AE pairing code
                 </button>
+                {extensionPairingCode && (
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <code className="rounded-lg border border-purple-300/20 bg-black/30 px-3 py-2 text-purple-100 tracking-[0.18em]">
+                      {extensionPairingCode}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={copyExtensionPairingCode}
+                      className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] hover:bg-white/10 text-zinc-100 px-3 py-2 text-xs font-semibold btn-press"
+                      data-testid="copy-extension-code"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      {extensionCodeCopied ? "Copied" : "Copy code"}
+                    </button>
+                    <p className="w-full text-[11px] text-zinc-500">This code expires in 10 minutes and can only be used once.</p>
+                  </div>
+                )}
                 {user?.extension_device_linked && (
                   <button
                     type="button"

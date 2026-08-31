@@ -867,6 +867,27 @@ audio {
   font-size: 11px;
 }
 
+.settings-button {
+  height: 34px;
+  border-radius: 11px;
+  padding: 0 12px;
+  margin: 0 0 10px;
+  background: linear-gradient(135deg, var(--blue), var(--purple));
+  color: white;
+  font-size: 11px;
+  font-weight: 900;
+  transition: filter 150ms ease, box-shadow 150ms ease;
+}
+
+.settings-button:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 0 18px rgba(82, 87, 255, 0.22);
+}
+
+.advanced-token {
+  opacity: 0.72;
+}
+
 .hidden {
   display: none !important;
 }

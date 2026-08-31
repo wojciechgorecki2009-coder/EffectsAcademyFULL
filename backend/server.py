@@ -935,6 +935,11 @@ class CheckoutConfirmation(BaseModel):
     session_id: str
 
 
+class ExtensionPairingCodeRedeem(BaseModel):
+    code: str
+    device_id: str
+
+
 class RoleUpdate(BaseModel):
     role: str
 
@@ -1140,6 +1145,76 @@ async def list_extension_assets(request: Request):
     for doc in docs:
         doc["has_external_url"] = bool(doc.get("external_url"))
     return docs
+
+
+@api_router.post("/extension/pairing-code")
+async def create_extension_pairing_code(request: Request):
+    user = await request_user(request, required=True)
+    user = await sync_user_from_stripe(user)
+    if not has_premium_access(user):
+        raise HTTPException(status_code=402, detail="Active Premium subscription required")
+
+    code = f"{secrets.token_hex(2).upper()}-{secrets.token_hex(2).upper()}"
+    now_ts = int(time.time())
+    await db.extension_pairing_codes.delete_many({
+        "$or": [
+            {"user_id": user["id"]},
+            {"expires_at_ts": {"$lte": now_ts}},
+        ]
+    })
+    await db.extension_pairing_codes.insert_one({
+        "code": code,
+        "user_id": user["id"],
+        "created_at": now_iso(),
+        "created_at_ts": now_ts,
+        "expires_at_ts": now_ts + 10 * 60,
+        "used": False,
+    })
+    return {"code": code, "expires_in_seconds": 10 * 60}
+
+
+@api_router.post("/extension/redeem-code")
+async def redeem_extension_pairing_code(payload: ExtensionPairingCodeRedeem):
+    code = (payload.code or "").strip().upper()
+    device_id = (payload.device_id or "").strip()
+    if len(device_id) < 16 or len(device_id) > 120:
+        raise HTTPException(status_code=400, detail="Extension device verification is required")
+    now_ts = int(time.time())
+    record = await db.extension_pairing_codes.find_one(
+        {
+            "code": code,
+            "used": {"$ne": True},
+            "expires_at_ts": {"$gt": now_ts},
+        },
+        {"_id": 0},
+    )
+    if not record:
+        raise HTTPException(status_code=400, detail="Pairing code is invalid or expired")
+
+    user = await db.users.find_one({"id": record["user_id"]}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    user = await sync_user_from_stripe(user)
+    if not has_premium_access(user):
+        raise HTTPException(status_code=402, detail="Active Premium subscription required")
+
+    linked_device_id = (user.get("extension_device_id") or "").strip()
+    if linked_device_id and linked_device_id != device_id:
+        raise HTTPException(status_code=403, detail="This Premium account is already linked to another After Effects extension install")
+
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$set": {
+            "extension_device_id": device_id,
+            "extension_device_linked_at": now_iso(),
+            "updated_at": now_iso(),
+        }},
+    )
+    await db.extension_pairing_codes.update_one(
+        {"code": code},
+        {"$set": {"used": True, "used_at": now_iso(), "device_id": device_id}},
+    )
+    return {"token": create_session_token(user["id"]), "user": public_user(user)}
 
 
 @api_router.post("/extension/reset-device")

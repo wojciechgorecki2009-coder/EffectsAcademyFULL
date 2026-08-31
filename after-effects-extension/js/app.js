@@ -44,6 +44,8 @@
     playerSlow08Btn: document.getElementById("playerSlow08Btn"),
     audioEl: document.getElementById("audioEl"),
     apiBaseInput: document.getElementById("apiBaseInput"),
+    pairingCodeInput: document.getElementById("pairingCodeInput"),
+    pairingCodeBtn: document.getElementById("pairingCodeBtn"),
     authTokenInput: document.getElementById("authTokenInput")
   };
 
@@ -260,7 +262,8 @@
     });
   }
 
-  function getJson(url) {
+  function requestJson(url, requestOptions) {
+    requestOptions = requestOptions || {};
     if (window.require) {
       var http = window.require("http");
       var https = window.require("https");
@@ -268,13 +271,19 @@
       return new Promise(function (resolve, reject) {
         var parsed = new URLCtor(url);
         var client = parsed.protocol === "https:" ? https : http;
-        var options = {
-          method: "GET",
-          headers: authHeaders()
+        var body = requestOptions.body ? JSON.stringify(requestOptions.body) : "";
+        var headers = requestOptions.skipAuth ? {} : authHeaders();
+        if (body) {
+          headers["Content-Type"] = "application/json";
+          headers["Content-Length"] = Buffer.byteLength(body);
+        }
+        var nodeOptions = {
+          method: requestOptions.method || "GET",
+          headers: headers
         };
-        var req = client.request(parsed, options, function (response) {
+        var req = client.request(parsed, nodeOptions, function (response) {
           if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
-            getJson(response.headers.location).then(resolve).catch(reject);
+            requestJson(response.headers.location, requestOptions).then(resolve).catch(reject);
             response.resume();
             return;
           }
@@ -294,14 +303,31 @@
           });
         });
         req.on("error", reject);
+        if (body) req.write(body);
         req.end();
       });
     }
 
-    return fetch(url, { headers: authHeaders() }).then(function (res) {
+    var fetchOptions = {
+      method: requestOptions.method || "GET",
+      headers: requestOptions.skipAuth ? {} : authHeaders()
+    };
+    if (requestOptions.body) {
+      fetchOptions.headers["Content-Type"] = "application/json";
+      fetchOptions.body = JSON.stringify(requestOptions.body);
+    }
+    return fetch(url, fetchOptions).then(function (res) {
       if (!res.ok) throw new Error("Request failed: " + res.status);
       return res.json();
     });
+  }
+
+  function getJson(url) {
+    return requestJson(url);
+  }
+
+  function postJson(url, body, skipAuth) {
+    return requestJson(url, { method: "POST", body: body, skipAuth: skipAuth });
   }
 
   function getDirectUrl(asset, download) {
@@ -475,6 +501,38 @@
     importAsset(currentAudioAsset, button, rate);
   }
 
+  function redeemPairingCode() {
+    var code = (els.pairingCodeInput.value || "").trim().toUpperCase();
+    if (!code) {
+      showError("Pairing code required", "Generate a code on the Premium page, then enter it here.");
+      return;
+    }
+    els.pairingCodeBtn.disabled = true;
+    els.pairingCodeBtn.textContent = "Connecting…";
+    clearErrorState();
+    setStatus("Connecting Premium account", "Checking your pairing code…");
+    postJson(apiUrl("/extension/redeem-code"), {
+      code: code,
+      device_id: ensureDeviceId()
+    }, true)
+      .then(function (data) {
+        if (!data.token) throw new Error("No extension token returned.");
+        state.authToken = data.token;
+        localStorage.setItem(STORAGE_KEYS.authToken, state.authToken);
+        els.authTokenInput.value = state.authToken;
+        els.pairingCodeInput.value = "";
+        setStatus("Premium account connected", "Loading your extension library…");
+        return loadAssets();
+      })
+      .catch(function (err) {
+        showError("Could not connect", err.message || "Pairing code is invalid, expired, or already used.");
+      })
+      .finally(function () {
+        els.pairingCodeBtn.disabled = false;
+        els.pairingCodeBtn.textContent = "Connect Premium account";
+      });
+  }
+
   function loadAssets() {
     clearErrorState();
     if (!state.authToken) {
@@ -511,6 +569,10 @@
       state.authToken = els.authTokenInput.value.trim();
       localStorage.setItem(STORAGE_KEYS.authToken, state.authToken);
       loadAssets();
+    });
+    els.pairingCodeBtn.addEventListener("click", redeemPairingCode);
+    els.pairingCodeInput.addEventListener("keydown", function (event) {
+      if (event.key === "Enter") redeemPairingCode();
     });
   }
 
