@@ -1138,10 +1138,7 @@ async def list_extension_assets(request: Request):
     docs = await db.assets.find(
         {
             "category": {"$in": categories},
-            "$or": [
-                {"file_url": {"$nin": ["", None]}},
-                {"category": "Premium", "external_url": {"$nin": ["", None]}},
-            ],
+            "file_url": {"$nin": ["", None]},
         },
         {"_id": 0},
     ).sort("created_at", -1).to_list(2000)
