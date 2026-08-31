@@ -117,7 +117,7 @@ export default function Nav() {
           )}
         </nav>
 
-        <div className="relative z-10 flex flex-nowrap items-center justify-end gap-1.5 shrink-0 xl:-translate-x-3 2xl:-translate-x-6">
+        <div className="relative z-10 flex flex-nowrap items-center justify-end gap-1.5 shrink-0 xl:translate-x-3 2xl:translate-x-6">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
