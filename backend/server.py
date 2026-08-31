@@ -493,8 +493,6 @@ def twitch_check_user_subscription(access_token: str, twitch_user_id: str) -> bo
     broadcaster_id = twitch_resolve_broadcaster_id()
     if not broadcaster_id:
         raise HTTPException(status_code=503, detail="Twitch broadcaster account was not found")
-    if str(twitch_user_id) == str(broadcaster_id):
-        return False
     response = requests.get(
         "https://api.twitch.tv/helix/subscriptions/user",
         params={"broadcaster_id": broadcaster_id, "user_id": twitch_user_id},
