@@ -332,6 +332,12 @@ select {
 
 select {
   cursor: pointer;
+  color-scheme: dark;
+}
+
+option {
+  background: #11111a;
+  color: #f6f3ff;
 }
 
 input:focus,
@@ -409,27 +415,11 @@ select:focus {
   position: relative;
 }
 
-.card::after {
-  content: "";
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  background: linear-gradient(110deg, transparent 0%, rgba(255,255,255,0.12) 45%, transparent 68%);
-  transform: translateX(-80%);
-  transition: opacity 180ms ease, transform 620ms ease;
-}
-
 .card:hover {
   border-color: rgba(var(--accent-2-rgb), 0.55);
   background: rgba(24, 24, 34, 0.96);
   box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32), 0 0 30px rgba(var(--accent-2-rgb), 0.16);
   transform: translateY(-3px);
-}
-
-.card:hover::after {
-  opacity: 1;
-  transform: translateX(80%);
 }
 
 .thumb {
