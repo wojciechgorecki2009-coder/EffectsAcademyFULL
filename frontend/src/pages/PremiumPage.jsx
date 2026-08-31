@@ -29,6 +29,8 @@ const COMPARISON_ROWS = [
   { feature: "Subscription management", free: "Not needed", premium: "Manage in Stripe" },
 ];
 
+const PREMIUM_PRICE = 9.99;
+
 const checkoutErrorMessage = (err, fallback) => {
   const data = err?.response?.data;
   if (typeof data === "string" && data.trim()) return data.trim();
@@ -84,6 +86,11 @@ export default function PremiumPage() {
     config.twitch_broadcaster_login,
     config.twitch_discount_percent
   );
+  const twitchDiscountPercent = Number(config.twitch_discount_percent || user?.twitch_discount_percent || 15);
+  const hasTwitchDiscount = Boolean(user?.twitch_discount_eligible && !hasPremium);
+  const discountedPrice = Math.max(0, PREMIUM_PRICE * (1 - twitchDiscountPercent / 100));
+  const displayPrice = hasTwitchDiscount ? discountedPrice : PREMIUM_PRICE;
+  const priceLabel = `$${displayPrice.toFixed(2)}`;
 
   useEffect(() => {
     if (checkoutState !== "success" || !checkoutSessionId) return;
@@ -201,8 +208,25 @@ export default function PremiumPage() {
                 Premium packs, project files, presets, curated resources, higher quality AI text images, and more AI text generator credits included with your monthly membership.
               </p>
               <div className="mt-8 flex items-end gap-2">
-                <span className="font-display text-5xl font-black">$9.99</span>
-                <span className="text-zinc-400 pb-1">USD / month</span>
+                <div>
+                  {hasTwitchDiscount && (
+                    <div className="mb-1 flex items-center gap-2 text-sm text-purple-200">
+                      <span className="line-through text-zinc-500">${PREMIUM_PRICE.toFixed(2)}</span>
+                      <span className="inline-flex items-center gap-1 rounded-full border border-purple-300/20 bg-purple-300/10 px-2 py-0.5 text-xs font-semibold">
+                        <BadgePercent className="w-3 h-3" /> Twitch subscriber price
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-end gap-2">
+                    <span className="font-display text-5xl font-black">{priceLabel}</span>
+                    <span className="text-zinc-400 pb-1">USD / month</span>
+                  </div>
+                  {hasTwitchDiscount && (
+                    <p className="mt-2 text-sm text-purple-100">
+                      Your verified Twitch sub unlocks {twitchDiscountPercent}% off Premium.
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -232,7 +256,7 @@ export default function PremiumPage() {
                     <p className="font-semibold text-white flex items-center gap-2">
                       Twitch subscriber discount
                       <span className="inline-flex items-center gap-1 rounded-full border border-purple-300/20 bg-purple-300/10 px-2 py-0.5 text-[11px] text-purple-100">
-                        <BadgePercent className="w-3 h-3" /> {config.twitch_discount_percent || 15}% off
+                        <BadgePercent className="w-3 h-3" /> {twitchDiscountPercent}% off
                       </span>
                     </p>
                     <p className="text-sm text-zinc-400 mt-1">
@@ -327,7 +351,16 @@ export default function PremiumPage() {
                     <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-purple-200">
                       <Crown className="w-4 h-4" /> Premium
                     </div>
-                    <div className="font-display text-xl font-black text-white mt-1">$9.99 / month</div>
+                    <div className="font-display text-xl font-black text-white mt-1">
+                      {hasTwitchDiscount ? (
+                        <span className="inline-flex items-baseline gap-2">
+                          <span>{priceLabel} / month</span>
+                          <span className="text-sm text-zinc-500 line-through">${PREMIUM_PRICE.toFixed(2)}</span>
+                        </span>
+                      ) : (
+                        "$9.99 / month"
+                      )}
+                    </div>
                   </th>
                 </tr>
               </thead>
