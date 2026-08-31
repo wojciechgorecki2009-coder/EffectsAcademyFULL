@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, BadgePercent, Check, Copy, Crown, KeyRound, LockKeyhole, ShieldCheck, Sparkles, X } from "lucide-react";
+import { ArrowLeft, BadgePercent, Check, Crown, KeyRound, LockKeyhole, MousePointerClick, ShieldCheck, Sparkles, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { hasPremiumAccess, useAuth } from "@/lib/auth";
 import TwitchIcon from "@/components/TwitchIcon";
@@ -80,7 +80,6 @@ export default function PremiumPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [extensionPairingCode, setExtensionPairingCode] = useState("");
-  const [extensionCodeCopied, setExtensionCodeCopied] = useState(false);
   const checkoutState = searchParams.get("checkout");
   const checkoutSessionId = searchParams.get("session_id");
   const twitchState = searchParams.get("twitch");
@@ -191,22 +190,10 @@ export default function PremiumPage() {
     try {
       const { data } = await api.post("/extension/pairing-code");
       setExtensionPairingCode(data.code || "");
-      setExtensionCodeCopied(false);
     } catch (err) {
       setError(checkoutErrorMessage(err, "Unable to create an After Effects pairing code."));
     } finally {
       setBusy(false);
-    }
-  };
-
-  const copyExtensionPairingCode = async () => {
-    if (!extensionPairingCode) return;
-    try {
-      await navigator.clipboard.writeText(extensionPairingCode);
-      setExtensionCodeCopied(true);
-      setTimeout(() => setExtensionCodeCopied(false), 2200);
-    } catch {
-      setError("Could not copy the pairing code automatically. Please type it into the extension manually.");
     }
   };
 
@@ -402,19 +389,24 @@ export default function PremiumPage() {
                 </button>
                 {extensionPairingCode && (
                   <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <code className="rounded-lg border border-purple-300/20 bg-black/30 px-3 py-2 text-purple-100 tracking-[0.18em]">
+                    <code
+                      className="rounded-lg border border-purple-300/20 bg-black/30 px-3 py-2 text-purple-100 tracking-[0.18em] select-all cursor-text"
+                      onClick={(event) => {
+                        const range = document.createRange();
+                        range.selectNodeContents(event.currentTarget);
+                        const selection = window.getSelection();
+                        selection?.removeAllRanges();
+                        selection?.addRange(range);
+                      }}
+                      title="Click to select, then press Ctrl+C"
+                    >
                       {extensionPairingCode}
                     </code>
-                    <button
-                      type="button"
-                      onClick={copyExtensionPairingCode}
-                      className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] hover:bg-white/10 text-zinc-100 px-3 py-2 text-xs font-semibold btn-press"
-                      data-testid="copy-extension-code"
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                      {extensionCodeCopied ? "Copied" : "Copy code"}
-                    </button>
-                    <p className="w-full text-[11px] text-zinc-500">This code expires in 10 minutes and can only be used once.</p>
+                    <span className="inline-flex items-center gap-1.5 text-[11px] text-zinc-400">
+                      <MousePointerClick className="w-3.5 h-3.5" />
+                      Click code, then Ctrl+C
+                    </span>
+                    <p className="w-full text-[11px] text-zinc-500">This code expires in 10 minutes and can only be used once. You can also type it manually.</p>
                   </div>
                 )}
                 {user?.extension_device_linked && (
