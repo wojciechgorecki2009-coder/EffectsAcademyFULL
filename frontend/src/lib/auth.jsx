@@ -6,11 +6,11 @@ const AuthContext = createContext(null);
 export function hasPremiumAccess(user) {
   if (!user) return false;
   if (["Uploader", "Admin"].includes(user.role)) return true;
-  return ["active", "trialing"].includes(user.premium_status) && !user.premium_cancel_at_period_end && !user.premium_cancelled;
+  return ["active", "trialing"].includes(user.premium_status);
 }
 
 export function hasCancelledPremium(user) {
-  return Boolean((user?.premium_cancel_at_period_end || user?.premium_cancelled) && !["Uploader", "Admin"].includes(user?.role));
+  return Boolean(user?.premium_cancelled && !["Uploader", "Admin"].includes(user?.role));
 }
 
 export function AuthProvider({ children }) {

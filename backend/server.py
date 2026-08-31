@@ -232,7 +232,8 @@ def create_session_token(user_id: str) -> str:
 
 def public_user(user: dict) -> dict:
     manual_premium = email_has_manual_premium(user.get("email", ""))
-    premium_cancelled = False if manual_premium else bool(user.get("premium_cancelled") or user.get("premium_cancel_at_period_end"))
+    premium_cancel_at_period_end = False if manual_premium else bool(user.get("premium_cancel_at_period_end"))
+    premium_cancelled = False if manual_premium else bool(user.get("premium_cancelled"))
     can_delete = user_is_staff(user)
     can_upload = can_delete or user_is_temp_mod(user)
     return {
@@ -242,7 +243,7 @@ def public_user(user: dict) -> dict:
         "picture": user.get("picture", ""),
         "role": user.get("role", "Viewer"),
         "premium_status": "active" if manual_premium else user.get("premium_status", "inactive"),
-        "premium_cancel_at_period_end": premium_cancelled,
+        "premium_cancel_at_period_end": premium_cancel_at_period_end,
         "premium_cancelled": premium_cancelled,
         "manual_premium": manual_premium,
         "twitch_login": user.get("twitch_login", ""),
@@ -263,10 +264,7 @@ def subscription_is_cancelled(subscription: Optional[dict]) -> bool:
     if not subscription:
         return False
     return bool(
-        subscription.get("cancel_at_period_end")
-        or subscription.get("cancel_at")
-        or subscription.get("canceled_at")
-        or subscription.get("ended_at")
+        subscription.get("ended_at")
         or subscription.get("status") in {"canceled", "incomplete_expired", "unpaid"}
     )
 
@@ -274,7 +272,7 @@ def subscription_is_cancelled(subscription: Optional[dict]) -> bool:
 def subscription_grants_premium(subscription: Optional[dict]) -> bool:
     if not subscription:
         return False
-    return stripe_active_status(subscription.get("status", "")) and not subscription_is_cancelled(subscription)
+    return stripe_active_status(subscription.get("status", ""))
 
 
 def user_is_staff(user: Optional[dict]) -> bool:
@@ -395,7 +393,7 @@ async def sync_user_from_stripe(user: dict) -> dict:
         updates = {
             "stripe_customer_id": selected_customer.id if selected_customer else (selected_subscription.get("customer") if selected_subscription else ""),
             "premium_status": selected_subscription.status if grants_premium else "inactive",
-            "premium_cancel_at_period_end": premium_cancelled,
+            "premium_cancel_at_period_end": bool(selected_subscription.get("cancel_at_period_end")) if selected_subscription else False,
             "premium_cancelled": premium_cancelled,
             "stripe_subscription_id": selected_subscription.id if selected_subscription else "",
             "updated_at": now_iso(),
@@ -539,13 +537,11 @@ def has_premium_access(user: Optional[dict]) -> bool:
         return True
     if email_has_manual_premium(user.get("email", "")):
         return True
-    if user.get("premium_cancel_at_period_end") or user.get("premium_cancelled"):
-        return False
     return stripe_active_status(user.get("premium_status", ""))
 
 
 def has_cancelled_premium(user: Optional[dict]) -> bool:
-    return bool(user and (user.get("premium_cancel_at_period_end") or user.get("premium_cancelled")) and not user_is_staff(user))
+    return bool(user and user.get("premium_cancelled") and not user_is_staff(user))
 
 
 def can_manage_assets(user: Optional[dict]) -> bool:
@@ -1293,7 +1289,7 @@ async def confirm_checkout(payload: CheckoutConfirmation, request: Request):
         {"id": user["id"]},
         {"$set": {
             "premium_status": premium_status,
-            "premium_cancel_at_period_end": premium_cancelled,
+            "premium_cancel_at_period_end": bool(subscription.get("cancel_at_period_end")) if subscription else False,
             "premium_cancelled": premium_cancelled,
             "stripe_customer_id": session.get("customer", ""),
             "stripe_subscription_id": subscription_id or "",
@@ -1331,7 +1327,7 @@ async def stripe_webhook(request: Request):
             user_filter,
             {"$set": {
                 "premium_status": premium_status,
-                "premium_cancel_at_period_end": premium_cancelled,
+                "premium_cancel_at_period_end": bool(subscription.get("cancel_at_period_end")) if subscription else False,
                 "premium_cancelled": premium_cancelled,
                 "stripe_customer_id": obj.get("customer", ""),
                 "stripe_subscription_id": subscription_id,
@@ -1350,7 +1346,7 @@ async def stripe_webhook(request: Request):
             user_filter,
             {"$set": {
                 "premium_status": premium_status,
-                "premium_cancel_at_period_end": premium_cancelled,
+                "premium_cancel_at_period_end": bool(obj.get("cancel_at_period_end")),
                 "premium_cancelled": premium_cancelled,
                 "stripe_customer_id": obj.get("customer", ""),
                 "stripe_subscription_id": obj.get("id", ""),
@@ -1816,8 +1812,6 @@ async def ai_image_usage(request: Request):
     user = await request_user(request, required=True)
     if user.get("role") not in {"Admin", "Uploader"}:
         user = await sync_user_from_stripe(user)
-    if has_cancelled_premium(user):
-        raise HTTPException(status_code=402, detail="Premium was cancelled. AI tools are locked on this account.")
     return await ai_usage_for_user(user)
 
 
@@ -1826,8 +1820,6 @@ async def ai_image_storage(request: Request):
     user = await request_user(request, required=True)
     if user.get("role") not in {"Admin", "Uploader"}:
         user = await sync_user_from_stripe(user)
-    if has_cancelled_premium(user):
-        return {"available": False, "total_bytes": 0, "count": 0, "items": []}
     if not has_premium_access(user):
         return {"available": False, "total_bytes": 0, "count": 0, "items": []}
 
@@ -1859,8 +1851,6 @@ async def edit_ai_image(
     user = await request_user(request, required=True)
     if user.get("role") not in {"Admin", "Uploader"}:
         user = await sync_user_from_stripe(user)
-    if has_cancelled_premium(user):
-        raise HTTPException(status_code=402, detail="Premium was cancelled. AI tools are locked on this account.")
     if not FAL_KEY:
         raise HTTPException(status_code=503, detail="Fal Nano Banana image generation is not configured yet")
 
@@ -2153,7 +2143,6 @@ async def moderator_stats(request: Request, days: int = 7):
     online_now = await db.analytics_visitors.count_documents({"last_seen": {"$gte": time.time() - 300}})
     premium_users = await db.users.count_documents({
         "premium_status": {"$in": ["active", "trialing"]},
-        "premium_cancel_at_period_end": {"$ne": True},
         "premium_cancelled": {"$ne": True},
     })
     asset_docs = await db.assets.find(
