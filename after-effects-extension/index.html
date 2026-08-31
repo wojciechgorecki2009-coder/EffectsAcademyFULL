@@ -43,8 +43,29 @@
       <section id="player" class="player hidden">
         <div class="player-thumb" id="playerThumb"></div>
         <div class="player-main">
-          <strong id="playerTitle">Audio preview</strong>
-          <audio id="audioEl" controls preload="none"></audio>
+          <div class="player-heading">
+            <div class="player-copy">
+              <strong id="playerTitle">Audio preview</strong>
+              <p id="playerSubtitle">Playing from Effects Academy</p>
+            </div>
+            <div class="player-time">
+              <span id="playerCurrent">0:00</span>
+              <span>/</span>
+              <span id="playerDuration">0:00</span>
+            </div>
+          </div>
+          <div class="player-controls">
+            <button id="playerPlayBtn" class="round-button" type="button" aria-label="Play or pause">▶</button>
+            <input id="playerProgress" class="range progress-range" type="range" min="0" max="0" step="0.01" value="0" />
+            <button id="playerMuteBtn" class="mini-button" type="button" aria-label="Mute">🔊</button>
+            <input id="playerVolume" class="range volume-range" type="range" min="0" max="1" step="0.01" value="1" />
+          </div>
+          <div class="player-actions">
+            <button id="playerImportBtn" class="player-action primary-action" type="button">Add to comp</button>
+            <button id="playerSlow09Btn" class="player-action" type="button">Add 0.9x</button>
+            <button id="playerSlow08Btn" class="player-action" type="button">Add 0.8x</button>
+          </div>
+          <audio id="audioEl" preload="none"></audio>
         </div>
       </section>
 

@@ -11,9 +11,11 @@ function EA_activeComp() {
   return item;
 }
 
-function EA_importAsset(filePath, category) {
+function EA_importAsset(filePath, category, playbackRate) {
   app.beginUndoGroup("Effects Academy Import");
   try {
+    playbackRate = Number(playbackRate || 1);
+    if (!isFinite(playbackRate) || playbackRate <= 0) playbackRate = 1;
     var file = new File(filePath);
     if (!file.exists) return EA_json(false, "Downloaded file could not be found.");
 
@@ -40,6 +42,9 @@ function EA_importAsset(filePath, category) {
     if (comp && category !== "Project Files") {
       var layer = comp.layers.add(footage);
       layer.startTime = comp.time;
+      if (playbackRate !== 1) {
+        layer.stretch = 100 / playbackRate;
+      }
       return EA_json(true, "Imported and added to the active comp.");
     }
 

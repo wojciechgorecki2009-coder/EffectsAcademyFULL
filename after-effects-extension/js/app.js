@@ -30,10 +30,30 @@
     player: document.getElementById("player"),
     playerThumb: document.getElementById("playerThumb"),
     playerTitle: document.getElementById("playerTitle"),
+    playerSubtitle: document.getElementById("playerSubtitle"),
+    playerCurrent: document.getElementById("playerCurrent"),
+    playerDuration: document.getElementById("playerDuration"),
+    playerPlayBtn: document.getElementById("playerPlayBtn"),
+    playerProgress: document.getElementById("playerProgress"),
+    playerMuteBtn: document.getElementById("playerMuteBtn"),
+    playerVolume: document.getElementById("playerVolume"),
+    playerImportBtn: document.getElementById("playerImportBtn"),
+    playerSlow09Btn: document.getElementById("playerSlow09Btn"),
+    playerSlow08Btn: document.getElementById("playerSlow08Btn"),
     audioEl: document.getElementById("audioEl"),
     apiBaseInput: document.getElementById("apiBaseInput"),
     authTokenInput: document.getElementById("authTokenInput")
   };
+
+  var currentAudioAsset = null;
+
+  function fmtTime(value) {
+    if (!isFinite(value) || value < 0) return "0:00";
+    var minutes = Math.floor(value / 60);
+    var seconds = String(Math.floor(value % 60));
+    if (seconds.length < 2) seconds = "0" + seconds;
+    return minutes + ":" + seconds;
+  }
 
   function apiUrl(path) {
     return state.apiBase.replace(/\/+$/, "") + "/api" + path;
@@ -257,6 +277,7 @@
     setStatus("Preparing preview", asset.title || "Audio");
     getDirectUrl(asset, false).then(function (url) {
       els.playerTitle.textContent = asset.title || "Audio preview";
+      els.playerSubtitle.textContent = asset.creator_tag ? "Audio by " + asset.creator_tag : "Playing from Effects Academy";
       els.playerThumb.innerHTML = "";
       var thumbnailUrl = fileUrl(asset.thumbnail_url || "");
       if (thumbnailUrl) {
@@ -265,6 +286,11 @@
         image.alt = "";
         els.playerThumb.appendChild(image);
       }
+      currentAudioAsset = asset;
+      els.playerCurrent.textContent = "0:00";
+      els.playerDuration.textContent = "0:00";
+      els.playerProgress.value = "0";
+      els.playerProgress.max = "0";
       els.audioEl.src = url;
       els.player.classList.remove("hidden");
       els.audioEl.play().catch(function () {});
@@ -348,12 +374,15 @@
     });
   }
 
-  function importAsset(asset, button) {
+  function importAsset(asset, button, playbackRate) {
     if (!asset.file_url) return;
+    playbackRate = playbackRate || 1;
     state.loadingId = asset.id;
-    button.disabled = true;
-    button.textContent = "Loading…";
-    setStatus("Downloading asset", asset.title || "Asset");
+    if (button) {
+      button.disabled = true;
+      button.textContent = "Loading…";
+    }
+    setStatus("Downloading asset", playbackRate === 1 ? (asset.title || "Asset") : (asset.title || "Audio") + " at " + playbackRate + "x");
 
     getDirectUrl(asset, true)
       .then(function (url) {
@@ -362,7 +391,7 @@
       })
       .then(function (targetPath) {
         setStatus("Sending to After Effects", asset.title || "Asset");
-        var script = "EA_importAsset(" + JSON.stringify(targetPath) + "," + JSON.stringify(asset.category || "") + ")";
+        var script = "EA_importAsset(" + JSON.stringify(targetPath) + "," + JSON.stringify(asset.category || "") + "," + JSON.stringify(playbackRate) + ")";
         return evalScript(script);
       })
       .then(function (result) {
@@ -379,9 +408,19 @@
       })
       .finally(function () {
         state.loadingId = "";
-        button.disabled = false;
-        button.textContent = isAudioAsset(asset) ? "Add to comp" : "Import";
+        if (button) {
+          button.disabled = false;
+          button.textContent = isAudioAsset(asset) ? "Add to comp" : "Import";
+        }
       });
+  }
+
+  function importCurrentAudio(rate, button) {
+    if (!currentAudioAsset) {
+      setStatus("Pick an audio first", "Preview an audio before adding slowed versions.");
+      return;
+    }
+    importAsset(currentAudioAsset, button, rate);
   }
 
   function loadAssets() {
@@ -424,6 +463,40 @@
       renderAssets();
     });
     els.refreshBtn.addEventListener("click", loadAssets);
+    els.playerPlayBtn.addEventListener("click", function () {
+      if (!els.audioEl.src) return;
+      if (els.audioEl.paused) els.audioEl.play().catch(function () {});
+      else els.audioEl.pause();
+    });
+    els.playerProgress.addEventListener("input", function () {
+      els.audioEl.currentTime = parseFloat(els.playerProgress.value || "0");
+    });
+    els.playerMuteBtn.addEventListener("click", function () {
+      els.audioEl.muted = !els.audioEl.muted;
+      els.playerMuteBtn.textContent = els.audioEl.muted ? "🔇" : "🔊";
+    });
+    els.playerVolume.addEventListener("input", function () {
+      els.audioEl.volume = parseFloat(els.playerVolume.value || "1");
+      els.audioEl.muted = els.audioEl.volume === 0;
+      els.playerMuteBtn.textContent = els.audioEl.muted ? "🔇" : "🔊";
+    });
+    els.audioEl.addEventListener("play", function () {
+      els.playerPlayBtn.textContent = "Ⅱ";
+    });
+    els.audioEl.addEventListener("pause", function () {
+      els.playerPlayBtn.textContent = "▶";
+    });
+    els.audioEl.addEventListener("loadedmetadata", function () {
+      els.playerProgress.max = String(els.audioEl.duration || 0);
+      els.playerDuration.textContent = fmtTime(els.audioEl.duration);
+    });
+    els.audioEl.addEventListener("timeupdate", function () {
+      els.playerProgress.value = String(els.audioEl.currentTime || 0);
+      els.playerCurrent.textContent = fmtTime(els.audioEl.currentTime);
+    });
+    els.playerImportBtn.addEventListener("click", function () { importCurrentAudio(1, els.playerImportBtn); });
+    els.playerSlow09Btn.addEventListener("click", function () { importCurrentAudio(0.9, els.playerSlow09Btn); });
+    els.playerSlow08Btn.addEventListener("click", function () { importCurrentAudio(0.8, els.playerSlow08Btn); });
     loadAssets();
   }
 
