@@ -2,8 +2,8 @@
   "use strict";
 
   var DEFAULT_API_BASE = "https://effects-academy-api.onrender.com";
-  var CATEGORIES = ["All", "Audios", "Sound FX", "Presets", "Project Files", "Overlays", "Premium"];
-  var AUDIO_CATEGORIES = { "Audios": true, "Sound FX": true };
+  var CATEGORIES = ["All", "Audios", "Presets", "Project Files", "Premium"];
+  var AUDIO_CATEGORIES = { "Audios": true };
   var STORAGE_KEYS = {
     apiBase: "ea_extension_api_base",
     authToken: "ea_extension_auth_token"
@@ -147,6 +147,7 @@
     assets.forEach(function (asset) {
       var card = document.createElement("article");
       card.className = "card";
+      card.style.animationDelay = Math.min(360, els.assetGrid.children.length * 22) + "ms";
 
       var thumb = document.createElement("div");
       thumb.className = "thumb";

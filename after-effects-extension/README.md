@@ -7,10 +7,10 @@ This extension is intentionally not a 1:1 copy of the website. It is a fast asse
 ## What it does now
 
 - Loads live assets from `https://effects-academy-api.onrender.com/api/assets`
-- Filters to editor-friendly categories: Audios, Sound FX, Presets, Project Files, Overlays, Premium
+- Filters to editor-friendly categories: Audios, Presets, Project Files, Premium
 - Searches by title, creator, genre, and description
 - Shows thumbnails
-- Previews Audios and Sound FX inside the panel
+- Previews Audios inside the panel
 - Downloads/imports files into After Effects
 - Applies `.ffx` presets to selected layers
 - Adds audio/video/footage to the active comp when possible

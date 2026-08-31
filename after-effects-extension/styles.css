@@ -11,6 +11,40 @@
   --amber: #facc15;
 }
 
+@keyframes panelRise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes cardIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes softPulse {
+  0% {
+    box-shadow: 0 0 0 rgba(82, 87, 255, 0);
+  }
+  50% {
+    box-shadow: 0 0 26px rgba(82, 87, 255, 0.18);
+  }
+  100% {
+    box-shadow: 0 0 0 rgba(82, 87, 255, 0);
+  }
+}
+
 * { box-sizing: border-box; }
 
 html,
@@ -69,6 +103,12 @@ button {
   border-radius: 14px;
   object-fit: cover;
   box-shadow: 0 0 28px rgba(82, 87, 255, 0.34);
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.brand:hover .logo {
+  transform: rotate(-4deg) scale(1.05);
+  box-shadow: 0 0 34px rgba(82, 87, 255, 0.48);
 }
 
 h1 {
@@ -101,10 +141,13 @@ p {
   color: var(--text);
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid var(--line);
+  transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
 }
 
 .icon-button:hover {
   background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px) rotate(12deg);
 }
 
 .status-card {
@@ -116,6 +159,7 @@ p {
   border: 1px solid var(--line);
   border-radius: 18px;
   background: linear-gradient(135deg, rgba(157, 77, 255, 0.13), rgba(255, 255, 255, 0.04));
+  animation: panelRise 360ms ease both, softPulse 1900ms ease 420ms 1;
 }
 
 .pill {
@@ -149,11 +193,14 @@ input {
   color: var(--text);
   padding: 0 12px;
   outline: none;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
 }
 
 input:focus {
   border-color: rgba(82, 87, 255, 0.8);
   box-shadow: 0 0 0 3px rgba(82, 87, 255, 0.16);
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-1px);
 }
 
 .tabs {
@@ -177,11 +224,21 @@ input:focus {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition: transform 150ms ease, background 150ms ease, color 150ms ease, border-color 150ms ease;
+  animation: panelRise 260ms ease both;
+}
+
+.tab:hover {
+  color: white;
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.09);
+  transform: translateY(-1px);
 }
 
 .tab.active {
   color: white;
   background: linear-gradient(135deg, var(--blue), var(--purple));
+  box-shadow: 0 8px 22px rgba(82, 87, 255, 0.22);
 }
 
 .asset-grid {
@@ -206,11 +263,15 @@ input:focus {
   border-radius: 16px;
   overflow: hidden;
   background: var(--surface);
+  animation: cardIn 320ms ease both;
+  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
 }
 
 .card:hover {
   border-color: rgba(82, 87, 255, 0.45);
   background: rgba(24, 24, 34, 0.96);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32), 0 0 30px rgba(82, 87, 255, 0.12);
+  transform: translateY(-3px);
 }
 
 .thumb {
@@ -234,6 +295,12 @@ input:focus {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform 220ms ease, filter 220ms ease;
+}
+
+.card:hover .thumb img {
+  transform: scale(1.045);
+  filter: saturate(1.08) contrast(1.04);
 }
 
 .card-body {
@@ -310,6 +377,7 @@ input:focus {
   border-radius: 12px;
   font-size: 12px;
   font-weight: 900;
+  transition: transform 150ms ease, filter 150ms ease, background 150ms ease, border-color 150ms ease;
 }
 
 .primary {
@@ -319,6 +387,7 @@ input:focus {
 
 .primary:hover {
   filter: brightness(1.08);
+  transform: translateY(-1px);
 }
 
 .secondary {
@@ -327,6 +396,12 @@ input:focus {
   color: var(--text);
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.08);
+}
+
+.secondary:hover {
+  background: rgba(255, 255, 255, 0.13);
+  border-color: rgba(255, 255, 255, 0.18);
+  transform: translateY(-1px);
 }
 
 @media (max-width: 620px) {
@@ -481,6 +556,7 @@ input:focus {
   background: var(--surface);
   padding: 24px;
   text-align: center;
+  animation: panelRise 300ms ease both;
 }
 
 .empty h2 {
@@ -496,6 +572,7 @@ input:focus {
   border-radius: 18px;
   background: var(--surface-strong);
   padding: 10px;
+  animation: panelRise 260ms ease both;
 }
 
 .player-thumb {
@@ -572,6 +649,12 @@ input:focus {
   font-size: 13px;
   font-weight: 900;
   box-shadow: 0 0 18px rgba(255, 255, 255, 0.12);
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+
+.round-button:hover {
+  transform: scale(1.06);
+  box-shadow: 0 0 24px rgba(255, 255, 255, 0.2);
 }
 
 .mini-button {
@@ -582,6 +665,12 @@ input:focus {
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.07);
   color: var(--text);
+  transition: transform 150ms ease, background 150ms ease;
+}
+
+.mini-button:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.13);
 }
 
 .range {
@@ -620,6 +709,13 @@ input:focus {
   color: #ecebff;
   font-size: 11px;
   font-weight: 900;
+  transition: transform 150ms ease, background 150ms ease, border-color 150ms ease;
+}
+
+.player-action:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.13);
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
 .primary-action {
