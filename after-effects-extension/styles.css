@@ -157,14 +157,15 @@ input:focus {
 }
 
 .tabs {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(86px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 7px;
   overflow: visible;
   padding-bottom: 2px;
 }
 
 .tab {
+  flex: 1 1 86px;
   height: 30px;
   padding: 0 8px;
   border-radius: 11px;
@@ -187,15 +188,18 @@ input:focus {
   min-height: 0;
   flex: 1;
   overflow-y: auto;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  align-content: start;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  align-items: flex-start;
   gap: 12px;
   padding: 2px 4px 8px 2px;
 }
 
 .card {
   min-width: 0;
+  width: calc(25% - 9px);
+  min-height: 238px;
   display: flex;
   flex-direction: column;
   border: 1px solid var(--line);
@@ -212,8 +216,7 @@ input:focus {
 .thumb {
   width: 100%;
   min-width: 0;
-  aspect-ratio: 16 / 9;
-  height: auto;
+  height: 118px;
   background:
     linear-gradient(135deg, rgba(82, 87, 255, 0.16), rgba(157, 77, 255, 0.12)),
     rgba(255, 255, 255, 0.04);
@@ -329,6 +332,7 @@ input:focus {
 @media (max-width: 620px) {
   .tabs {
     display: flex;
+    flex-wrap: nowrap;
     overflow-x: auto;
   }
 
@@ -339,10 +343,12 @@ input:focus {
   .asset-grid {
     display: flex;
     flex-direction: column;
+    flex-wrap: nowrap;
     gap: 9px;
   }
 
   .card {
+    width: 100%;
     min-height: 88px;
     flex-direction: row;
     align-items: stretch;
@@ -352,7 +358,6 @@ input:focus {
     width: 96px;
     min-width: 96px;
     height: 88px;
-    aspect-ratio: auto;
   }
 
   .card-body {
@@ -418,6 +423,7 @@ input:focus {
   }
 
   .card {
+    width: 100%;
     min-height: 76px;
   }
 
@@ -442,6 +448,24 @@ input:focus {
   .secondary {
     min-width: 34px;
     padding: 0 7px;
+  }
+}
+
+@media (min-width: 621px) and (max-width: 920px) {
+  .card {
+    width: calc(33.333% - 8px);
+  }
+}
+
+@media (min-width: 921px) and (max-width: 1180px) {
+  .card {
+    width: calc(25% - 9px);
+  }
+}
+
+@media (min-width: 1181px) {
+  .card {
+    width: calc(20% - 10px);
   }
 }
 
