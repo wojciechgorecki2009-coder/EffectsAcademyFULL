@@ -120,6 +120,8 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
     ? buildFileUrl(asset.file_url, isPremium && hasPremium ? getAuthToken() : "", "")
     : "";
   const isActiveAudio = Boolean(fileSrc) && globalAudio.originalSrc === fileSrc;
+  const downloadFilename = deriveDownloadFilename(asset);
+  const downloadUrl = asset.file_url ? buildDownloadUrl(asset.file_url, downloadFilename) : "";
   const displayGenre = asset.genre || (isAudio ? asset.bpm : "");
   const thumbnailIsVideo = isVideoPreview(thumbnailSrc);
 
@@ -380,6 +382,11 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
               <AudioPlayer
                 src={fileSrc}
                 title={asset.title}
+                subtitle={asset.creator_tag ? `Audio by ${asset.creator_tag}` : "Playing from EffectsAcademy"}
+                thumbnail={thumbnailSrc}
+                downloadUrl={downloadUrl}
+                downloadFilename={downloadFilename}
+                assetId={asset.id}
                 allowSlowedDownloads={!isSoundEffect}
                 onDownload={async () => {
                   toast.success("Starting download...");

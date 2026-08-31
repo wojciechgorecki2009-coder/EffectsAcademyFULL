@@ -7,6 +7,10 @@ const state = {
   originalSrc: "",
   title: "",
   subtitle: "",
+  thumbnail: "",
+  downloadUrl: "",
+  downloadFilename: "",
+  assetId: "",
   playing: false,
   loading: false,
   progress: 0,
@@ -69,7 +73,7 @@ export function useGlobalAudio() {
   return snapshot;
 }
 
-export async function playGlobalAudio({ src, originalSrc, title, subtitle }) {
+export async function playGlobalAudio({ src, originalSrc, title, subtitle, thumbnail, downloadUrl, downloadFilename, assetId }) {
   if (!audio || !src) return;
 
   const isNewTrack = audio.src !== src;
@@ -78,6 +82,10 @@ export async function playGlobalAudio({ src, originalSrc, title, subtitle }) {
     originalSrc: originalSrc || src,
     title: title || "Audio preview",
     subtitle: subtitle || "EffectsAcademy audio",
+    thumbnail: thumbnail || "",
+    downloadUrl: downloadUrl || originalSrc || src,
+    downloadFilename: downloadFilename || "",
+    assetId: assetId || "",
     loading: true,
     ...(isNewTrack ? { progress: 0, duration: 0 } : {}),
   });

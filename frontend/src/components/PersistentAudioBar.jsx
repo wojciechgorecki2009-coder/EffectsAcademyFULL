@@ -1,4 +1,6 @@
-import { Pause, Play, Volume2, VolumeX, Repeat } from "lucide-react";
+import { Download, Music2, Pause, Play, Volume2, VolumeX, Repeat } from "lucide-react";
+import { toast } from "sonner";
+import { api } from "@/lib/api";
 import {
   seekGlobalAudio,
   setGlobalLooping,
@@ -21,6 +23,22 @@ export default function PersistentAudioBar() {
   if (!audio.src) return null;
 
   const pct = audio.duration > 0 ? Math.min(100, (audio.progress / audio.duration) * 100) : 0;
+  const downloadCurrent = () => {
+    if (!audio.downloadUrl) {
+      toast.error("No download available for this audio.");
+      return;
+    }
+    const link = document.createElement("a");
+    link.href = audio.downloadUrl;
+    link.download = audio.downloadFilename || "audio";
+    link.rel = "noopener";
+    link.style.display = "none";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    if (audio.assetId) api.post(`/assets/${audio.assetId}/download`).catch(() => {});
+    toast.success("Starting download...");
+  };
 
   return (
     <div className="fixed inset-x-3 bottom-3 z-50 md:inset-x-6 pointer-events-none">
@@ -35,6 +53,14 @@ export default function PersistentAudioBar() {
             >
               {audio.playing ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
             </button>
+
+            <div className="hidden sm:flex w-12 h-12 rounded-xl overflow-hidden border border-white/10 bg-white/5 shrink-0 items-center justify-center">
+              {audio.thumbnail ? (
+                <img src={audio.thumbnail} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <Music2 className="w-5 h-5 text-zinc-500" />
+              )}
+            </div>
 
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-3 mb-2">
@@ -76,6 +102,15 @@ export default function PersistentAudioBar() {
             <div className="hidden md:flex items-center gap-3 shrink-0">
               <button
                 type="button"
+                onClick={downloadCurrent}
+                className="text-zinc-400 hover:text-white border border-white/10 rounded-lg w-9 h-9 flex items-center justify-center btn-press"
+                title="Download audio"
+                aria-label="Download audio"
+              >
+                <Download className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
                 onClick={() => setGlobalLooping(!audio.looping)}
                 className={`${audio.looping ? "text-neon bg-neon/10 border-neon/30" : "text-zinc-400 hover:text-white border-white/10"} border rounded-lg w-9 h-9 flex items-center justify-center btn-press`}
                 title={audio.looping ? "Loop is on" : "Loop is off"}
@@ -106,6 +141,14 @@ export default function PersistentAudioBar() {
           </div>
 
           <div className="mt-3 flex md:hidden items-center justify-between gap-3 border-t border-white/5 pt-3">
+            <button
+              type="button"
+              onClick={downloadCurrent}
+              className="text-zinc-400 hover:text-white border border-white/10 rounded-lg px-3 h-8 flex items-center gap-2 text-xs btn-press"
+              aria-label="Download audio"
+            >
+              <Download className="w-4 h-4" /> Download
+            </button>
             <button
               type="button"
               onClick={() => setGlobalLooping(!audio.looping)}

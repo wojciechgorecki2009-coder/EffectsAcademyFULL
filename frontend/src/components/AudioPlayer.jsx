@@ -64,7 +64,17 @@ function directUrlEndpoint(src) {
   return `/uploads/${encodeURIComponent(decodeURIComponent(match[1]))}/direct`;
 }
 
-export default function AudioPlayer({ src, title, onDownload, allowSlowedDownloads = true }) {
+export default function AudioPlayer({
+  src,
+  title,
+  subtitle,
+  thumbnail,
+  downloadUrl,
+  downloadFilename,
+  assetId,
+  onDownload,
+  allowSlowedDownloads = true,
+}) {
   const globalAudio = useGlobalAudio();
   const [generatingRate, setGeneratingRate] = useState(null);
   const [resolvingAudio, setResolvingAudio] = useState(false);
@@ -113,7 +123,11 @@ export default function AudioPlayer({ src, title, onDownload, allowSlowedDownloa
         src: resolved,
         originalSrc: src,
         title: title || "Audio preview",
-        subtitle: "Playing from EffectsAcademy",
+        subtitle: subtitle || "Playing from EffectsAcademy",
+        thumbnail,
+        downloadUrl: downloadUrl || src,
+        downloadFilename,
+        assetId,
       });
     } catch (error) {
       toast.error("Unable to play this audio yet.");
