@@ -72,7 +72,7 @@ Optional Twitch subscriber discount:
 - `TWITCH_BROADCASTER_LOGIN` — defaults to `mrbit100`
 - `TWITCH_BROADCASTER_ID` — optional, but recommended once you know your Twitch channel ID
 - `TWITCH_DISCOUNT_PERCENT` — defaults to `15`
-- `STRIPE_TWITCH_COUPON_ID` — Stripe coupon ID for the 15% subscriber discount
+- `STRIPE_TWITCH_COUPON_ID` — Stripe coupon ID for the 15% subscriber discount. Use the internal coupon ID from Stripe, not a customer-facing promotion code.
 
 Create a Twitch Developer app and set its OAuth redirect URL to:
 
@@ -80,7 +80,7 @@ Create a Twitch Developer app and set its OAuth redirect URL to:
 https://your-backend-domain.com/api/twitch/callback
 ```
 
-Use that exact URL as `TWITCH_REDIRECT_URI` in Render. In Stripe, create a repeating percent-off coupon for Twitch subscribers and paste its coupon ID into `STRIPE_TWITCH_COUPON_ID`.
+Use that exact URL as `TWITCH_REDIRECT_URI` in Render. In Stripe, create a repeating percent-off coupon for Twitch subscribers and paste its coupon ID into `STRIPE_TWITCH_COUPON_ID`. If this variable is missing, Twitch verification can succeed but Stripe Checkout will not show the discounted price.
 
 Optional manual premium access:
 

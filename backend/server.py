@@ -999,6 +999,7 @@ async def auth_config():
         "twitch_configured": twitch_configured(),
         "twitch_broadcaster_login": TWITCH_BROADCASTER_LOGIN,
         "twitch_discount_percent": TWITCH_DISCOUNT_PERCENT,
+        "stripe_twitch_coupon_configured": bool(STRIPE_TWITCH_COUPON_ID),
         "dev_login_enabled": USE_MOCK_DB,
         "object_storage_configured": USE_OBJECT_STORAGE,
         "ai_image_configured": bool(FAL_KEY),
@@ -1210,6 +1211,9 @@ async def create_checkout_session(request: Request):
     user = await sync_user_from_stripe(user)
     if has_premium_access(user):
         return {"url": f"{FRONTEND_URL}/premium?already_subscribed=1"}
+    has_twitch_discount = twitch_discount_valid(user)
+    if has_twitch_discount and not STRIPE_TWITCH_COUPON_ID:
+        raise HTTPException(status_code=503, detail="Twitch discount is verified, but the Stripe Twitch coupon is not configured yet.")
     if not STRIPE_SECRET_KEY:
         if USE_MOCK_DB:
             return {"url": f"{FRONTEND_URL}/premium?checkout=configuration-required", "demo": True}
@@ -1229,13 +1233,13 @@ async def create_checkout_session(request: Request):
         "line_items": [line_item],
         "metadata": {
             "user_id": user["id"],
-            "twitch_discount": "true" if twitch_discount_valid(user) else "false",
+            "twitch_discount": "true" if has_twitch_discount else "false",
             "twitch_login": user.get("twitch_login", ""),
         },
         "subscription_data": {
             "metadata": {
                 "user_id": user["id"],
-                "twitch_discount": "true" if twitch_discount_valid(user) else "false",
+                "twitch_discount": "true" if has_twitch_discount else "false",
                 "twitch_login": user.get("twitch_login", ""),
             }
         },
@@ -1244,7 +1248,7 @@ async def create_checkout_session(request: Request):
         "allow_promotion_codes": True,
         "billing_address_collection": "required",
     }
-    if twitch_discount_valid(user) and STRIPE_TWITCH_COUPON_ID:
+    if has_twitch_discount:
         checkout_params["discounts"] = [{"coupon": STRIPE_TWITCH_COUPON_ID}]
         checkout_params["allow_promotion_codes"] = False
     customer_id = user.get("stripe_customer_id")

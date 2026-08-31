@@ -88,7 +88,7 @@ export default function PremiumPage() {
     config.twitch_discount_percent
   );
   const twitchDiscountPercent = Number(config.twitch_discount_percent || user?.twitch_discount_percent || 15);
-  const hasTwitchDiscount = Boolean(user?.twitch_discount_eligible && !hasPremium);
+  const hasTwitchDiscount = Boolean(user?.twitch_discount_eligible && config.stripe_twitch_coupon_configured && !hasPremium);
   const discountedPrice = Math.max(0, PREMIUM_PRICE * (1 - twitchDiscountPercent / 100));
   const displayPrice = hasTwitchDiscount ? discountedPrice : PREMIUM_PRICE;
   const priceLabel = `$${displayPrice.toFixed(2)}`;
@@ -280,7 +280,11 @@ export default function PremiumPage() {
                     </p>
                     {user?.twitch_login && (
                       <p className={`text-xs mt-2 ${user.twitch_discount_eligible ? "text-emerald-300" : "text-amber-300"}`}>
-                        Linked as {user.twitch_login}. {user.twitch_discount_eligible ? "Discount eligible." : "Subscriber discount not currently verified."}
+                        Linked as {user.twitch_login}. {user.twitch_discount_eligible
+                          ? config.stripe_twitch_coupon_configured
+                            ? "Discount eligible."
+                            : "Twitch verified, but the Stripe coupon is not configured yet."
+                          : "Subscriber discount not currently verified."}
                       </p>
                     )}
                     <button
@@ -307,6 +311,11 @@ export default function PremiumPage() {
                     {!config.twitch_configured && (
                       <p className="text-xs text-zinc-500 mt-2">
                         Twitch discount is ready in the code. Add Twitch keys in Render to enable it.
+                      </p>
+                    )}
+                    {config.twitch_configured && user?.twitch_discount_eligible && !config.stripe_twitch_coupon_configured && (
+                      <p className="text-xs text-amber-300 mt-2">
+                        Add <code>STRIPE_TWITCH_COUPON_ID</code> to the backend in Render before checkout can apply the discount.
                       </p>
                     )}
                   </div>

@@ -22,6 +22,7 @@ export function AuthProvider({ children }) {
     twitch_configured: false,
     twitch_broadcaster_login: "mrbit100",
     twitch_discount_percent: 15,
+    stripe_twitch_coupon_configured: false,
     dev_login_enabled: false,
   });
   const [loading, setLoading] = useState(true);
