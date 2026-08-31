@@ -45,6 +45,27 @@
   }
 }
 
+@keyframes errorShake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  15% {
+    transform: translateX(-7px);
+  }
+  30% {
+    transform: translateX(6px);
+  }
+  45% {
+    transform: translateX(-4px);
+  }
+  60% {
+    transform: translateX(3px);
+  }
+  75% {
+    transform: translateX(-2px);
+  }
+}
+
 * { box-sizing: border-box; }
 
 html,
@@ -172,6 +193,17 @@ p {
   border-radius: 18px;
   background: linear-gradient(135deg, rgba(157, 77, 255, 0.13), rgba(255, 255, 255, 0.04));
   animation: panelRise 360ms ease both, softPulse 1900ms ease 420ms 1;
+  transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.status-card.error {
+  border-color: rgba(248, 113, 113, 0.45);
+  background: linear-gradient(135deg, rgba(248, 113, 113, 0.14), rgba(157, 77, 255, 0.07));
+  box-shadow: 0 0 28px rgba(248, 113, 113, 0.12);
+}
+
+.status-card.shake {
+  animation: errorShake 420ms ease both;
 }
 
 .pill {

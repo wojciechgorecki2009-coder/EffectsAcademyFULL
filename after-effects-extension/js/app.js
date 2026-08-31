@@ -105,6 +105,24 @@
     els.statusText.textContent = text;
   }
 
+  function showError(title, text) {
+    setStatus(title, text);
+    var card = els.statusTitle && els.statusTitle.closest ? els.statusTitle.closest(".status-card") : null;
+    if (!card) return;
+    card.classList.remove("shake");
+    card.classList.add("error");
+    void card.offsetWidth;
+    card.classList.add("shake");
+    setTimeout(function () {
+      card.classList.remove("shake");
+    }, 460);
+  }
+
+  function clearErrorState() {
+    var card = els.statusTitle && els.statusTitle.closest ? els.statusTitle.closest(".status-card") : null;
+    if (card) card.classList.remove("error", "shake");
+  }
+
   function renderTabs() {
     els.categoryTabs.innerHTML = "";
     CATEGORIES.forEach(function (category) {
@@ -272,9 +290,10 @@
 
   function previewAudio(asset) {
     if (!asset.file_url) {
-      setStatus("No preview", "This asset does not have an uploaded audio file.");
+      showError("No preview", "This asset does not have an uploaded audio file.");
       return;
     }
+    clearErrorState();
     setStatus("Preparing preview", asset.title || "Audio");
     getDirectUrl(asset, false).then(function (url) {
       els.playerTitle.textContent = asset.title || "Audio preview";
@@ -297,7 +316,7 @@
       els.audioEl.play().catch(function () {});
       setStatus("Previewing audio", asset.title || "Audio");
     }).catch(function (err) {
-      setStatus("Preview failed", err.message || "Could not preview this audio.");
+      showError("Preview failed", err.message || "Could not preview this audio.");
     });
   }
 
@@ -376,8 +395,12 @@
   }
 
   function importAsset(asset, button, playbackRate) {
-    if (!asset.file_url) return;
+    if (!asset.file_url) {
+      showError("No import file", "This asset only has an external link, so the AE panel cannot import it directly.");
+      return;
+    }
     playbackRate = playbackRate || 1;
+    clearErrorState();
     state.loadingId = asset.id;
     if (button) {
       button.disabled = true;
@@ -399,13 +422,14 @@
         var parsed = {};
         try { parsed = JSON.parse(result || "{}"); } catch (e) {}
         if (parsed.ok) {
+          clearErrorState();
           setStatus("Imported", parsed.message || (asset.title || "Asset"));
         } else {
-          setStatus("Import needs attention", parsed.message || "After Effects could not import this file.");
+          showError("Import needs attention", parsed.message || "After Effects could not import this file.");
         }
       })
       .catch(function (err) {
-        setStatus("Import failed", err.message || "Could not import this asset.");
+        showError("Import failed", err.message || "Could not import this asset.");
       })
       .finally(function () {
         state.loadingId = "";
@@ -418,13 +442,14 @@
 
   function importCurrentAudio(rate, button) {
     if (!currentAudioAsset) {
-      setStatus("Pick an audio first", "Preview an audio before adding slowed versions.");
+      showError("Pick an audio first", "Preview an audio before adding slowed versions.");
       return;
     }
     importAsset(currentAudioAsset, button, rate);
   }
 
   function loadAssets() {
+    clearErrorState();
     setStatus("Live library", "Loading assets from Effects Academy…");
     return getJson(apiUrl("/assets"))
       .then(function (assets) {
@@ -435,7 +460,7 @@
         renderAssets();
       })
       .catch(function (err) {
-        setStatus("Could not load assets", err.message || "Check the API base/settings.");
+        showError("Could not load assets", err.message || "Check the API base/settings.");
         state.assets = [];
         renderAssets();
       });
