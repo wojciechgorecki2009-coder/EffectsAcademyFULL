@@ -33,8 +33,9 @@ function EA_importAsset(filePath, category, playbackRate) {
     }
 
     if (lower.match(/\.aep$/)) {
-      app.open(file);
-      return EA_json(true, "Project opened in After Effects.");
+      var projectImportOptions = new ImportOptions(file);
+      app.project.importFile(projectImportOptions);
+      return EA_json(true, "Project imported into the current After Effects project.");
     }
 
     var importOptions = new ImportOptions(file);
