@@ -80,6 +80,7 @@ export default function PremiumPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [extensionPairingCode, setExtensionPairingCode] = useState("");
+  const [pagePromotion, setPagePromotion] = useState(null);
   const checkoutState = searchParams.get("checkout");
   const checkoutSessionId = searchParams.get("session_id");
   const twitchState = searchParams.get("twitch");
@@ -89,7 +90,7 @@ export default function PremiumPage() {
     config.twitch_discount_percent
   );
   const twitchDiscountPercent = Number(config.twitch_discount_percent || user?.twitch_discount_percent || 15);
-  const activePromotion = config.active_premium_promotion;
+  const activePromotion = pagePromotion || config.active_premium_promotion;
   const promotionPercent = Number(activePromotion?.percent_off || 0);
   const hasPromotionDiscount = Boolean(activePromotion && promotionPercent > 0);
   const hasTwitchDiscount = Boolean(user?.twitch_discount_eligible && config.stripe_twitch_coupon_configured && !hasPremium);
@@ -100,6 +101,16 @@ export default function PremiumPage() {
   const discountedPrice = Math.max(0, PREMIUM_PRICE * (1 - bestDiscountPercent / 100));
   const displayPrice = bestDiscountPercent > 0 ? discountedPrice : PREMIUM_PRICE;
   const priceLabel = `$${displayPrice.toFixed(2)}`;
+
+  useEffect(() => {
+    let active = true;
+    api.get("/auth/config")
+      .then(({ data }) => {
+        if (active) setPagePromotion(data?.active_premium_promotion || null);
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     if (checkoutState !== "success" || !checkoutSessionId) return;
