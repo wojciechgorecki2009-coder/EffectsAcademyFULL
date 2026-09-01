@@ -509,15 +509,15 @@ export default function StatsPage() {
           </form>
 
           {(data?.premium_promotions || []).length > 0 && (
-            <div className="mt-5 overflow-x-auto">
-              <table className="w-full text-sm">
+            <div className="mt-5 overflow-hidden">
+              <table className="w-full table-fixed text-sm">
                 <thead className="text-left text-xs uppercase tracking-[0.2em] text-zinc-500">
                   <tr className="border-b border-white/10">
-                    <th className="py-3 pr-4">Promotion</th>
-                    <th className="py-3 px-4">Discount</th>
-                    <th className="py-3 px-4">Dates</th>
-                    <th className="py-3 px-4">Type</th>
-                    <th className="py-3 pl-4 text-right">Status</th>
+                    <th className="w-[22%] py-3 pr-4">Promotion</th>
+                    <th className="w-[12%] py-3 px-3">Discount</th>
+                    <th className="w-[34%] py-3 px-3">Dates</th>
+                    <th className="w-[14%] py-3 px-3">Type</th>
+                    <th className="w-[18%] py-3 pl-3 text-right">Status</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -525,29 +525,31 @@ export default function StatsPage() {
                     const isActive = data?.active_premium_promotion?.id === promo.id;
                     return (
                       <tr key={promo.id} className="border-b border-white/5">
-                        <td className="py-3 pr-4 font-semibold text-white">{promo.name}</td>
-                        <td className="py-3 px-4 text-zinc-300">{promo.percent_off}%</td>
-                        <td className="py-3 px-4 text-zinc-400">
-                          <span className="inline-flex items-center gap-2">
-                            <CalendarDays className="w-4 h-4 text-zinc-500" />
-                            {formatDateTime(promo.starts_at)} → {formatDateTime(promo.ends_at)}
+                        <td className="py-3 pr-4 font-semibold text-white break-words">{promo.name}</td>
+                        <td className="py-3 px-3 text-zinc-300">{promo.percent_off}%</td>
+                        <td className="py-3 px-3 text-zinc-400">
+                          <span className="flex min-w-0 items-center gap-2 leading-relaxed">
+                            <CalendarDays className="w-4 h-4 flex-shrink-0 text-zinc-500" />
+                            <span className="min-w-0 break-words">
+                              {formatDateTime(promo.starts_at)} → {formatDateTime(promo.ends_at)}
+                            </span>
                           </span>
                         </td>
-                        <td className="py-3 px-4 text-zinc-400">{promo.duration === "forever" ? "Forever" : "First month"}</td>
-                        <td className="py-3 pl-4 text-right">
+                        <td className="py-3 px-3 text-zinc-400">{promo.duration === "forever" ? "Forever" : "First month"}</td>
+                        <td className="py-3 pl-3 text-right">
                           {promo.enabled ? (
                             <button
                               type="button"
                               onClick={() => disablePromotion(promo.id)}
                               disabled={promoBusy}
-                              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold btn-press ${
+                              className={`inline-flex max-w-full items-center justify-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold btn-press ${
                                 isActive
                                   ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-200"
                                   : "border-white/10 bg-white/[0.03] text-zinc-300 hover:bg-white/10"
                               }`}
                             >
-                              <Power className="w-3.5 h-3.5" />
-                              {isActive ? "Active · Disable" : "Scheduled · Disable"}
+                              <Power className="w-3.5 h-3.5 flex-shrink-0" />
+                              <span className="truncate">{isActive ? "Active · Disable" : "Scheduled · Disable"}</span>
                             </button>
                           ) : (
                             <span className="text-zinc-500">Disabled</span>
