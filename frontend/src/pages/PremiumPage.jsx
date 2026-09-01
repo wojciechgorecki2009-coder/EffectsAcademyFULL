@@ -89,10 +89,10 @@ export default function PremiumPage() {
     config.twitch_discount_percent
   );
   const twitchDiscountPercent = Number(config.twitch_discount_percent || user?.twitch_discount_percent || 15);
-  const hasTwitchDiscount = Boolean(user?.twitch_discount_eligible && config.stripe_twitch_coupon_configured && !hasPremium);
   const activePromotion = config.active_premium_promotion;
   const promotionPercent = Number(activePromotion?.percent_off || 0);
-  const hasPromotionDiscount = Boolean(activePromotion && promotionPercent > 0 && !hasPremium);
+  const hasPromotionDiscount = Boolean(activePromotion && promotionPercent > 0);
+  const hasTwitchDiscount = Boolean(user?.twitch_discount_eligible && config.stripe_twitch_coupon_configured && !hasPremium);
   const bestDiscountPercent = Math.max(hasTwitchDiscount ? twitchDiscountPercent : 0, hasPromotionDiscount ? promotionPercent : 0);
   const discountSource = bestDiscountPercent > 0
     ? (hasPromotionDiscount && promotionPercent >= (hasTwitchDiscount ? twitchDiscountPercent : 0) ? "promotion" : "twitch")
@@ -437,14 +437,14 @@ export default function PremiumPage() {
               </div>
             )}
 
-            {!hasPremium && hasPromotionDiscount && (
+            {hasPromotionDiscount && (
               <div className="mt-4 rounded-2xl border border-emerald-300/25 bg-emerald-400/10 px-4 py-4 text-sm text-emerald-100">
                 <p className="font-semibold text-white flex items-center gap-2">
                   <BadgePercent className="w-4 h-4 text-emerald-300" />
                   {activePromotion?.name || "Premium promotion"} is live
                 </p>
                 <p className="text-emerald-100/80 mt-1">
-                  {promotionPercent}% off {activePromotion?.duration === "forever" ? "new Premium subscriptions" : "the first Premium month"} is applied automatically at checkout.
+                  {promotionPercent}% off {activePromotion?.duration === "forever" ? "new Premium subscriptions" : "the first Premium month"} is applied automatically at checkout for new subscribers.
                 </p>
               </div>
             )}
