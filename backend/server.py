@@ -145,6 +145,19 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def parse_iso_datetime(value: str = "") -> Optional[datetime]:
+    if not value:
+        return None
+    try:
+        normalized = value.strip().replace("Z", "+00:00")
+        parsed = datetime.fromisoformat(normalized)
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc)
+    except ValueError:
+        return None
+
+
 def is_youtube_url(url: str = "") -> bool:
     return bool(re.match(r"^https?://(www\.)?(youtube\.com|youtu\.be)/", (url or "").strip(), re.IGNORECASE))
 
@@ -217,6 +230,61 @@ def twitch_discount_valid(user: Optional[dict]) -> bool:
         return False
     checked_at = float(user.get("twitch_subscription_checked_at_ts") or 0)
     return checked_at > 0 and time.time() - checked_at <= TWITCH_DISCOUNT_ELIGIBLE_SECONDS
+
+
+def public_premium_promotion(promo: Optional[dict]) -> Optional[dict]:
+    if not promo:
+        return None
+    percent = int(promo.get("percent_off") or 0)
+    if percent <= 0:
+        return None
+    return {
+        "id": promo.get("id", ""),
+        "name": promo.get("name", "Premium promotion"),
+        "percent_off": percent,
+        "starts_at": promo.get("starts_at", ""),
+        "ends_at": promo.get("ends_at", ""),
+        "duration": promo.get("duration", "once"),
+    }
+
+
+async def active_premium_promotion() -> Optional[dict]:
+    now = datetime.now(timezone.utc)
+    docs = await db.premium_promotions.find(
+        {"enabled": True},
+        {"_id": 0},
+    ).sort("created_at", -1).to_list(100)
+    for doc in docs:
+        starts_at = parse_iso_datetime(doc.get("starts_at", ""))
+        ends_at = parse_iso_datetime(doc.get("ends_at", ""))
+        if not starts_at or not ends_at:
+            continue
+        if starts_at <= now <= ends_at and int(doc.get("percent_off") or 0) > 0:
+            return doc
+    return None
+
+
+async def stripe_coupon_for_promotion(promotion: dict) -> str:
+    existing_coupon_id = (promotion.get("stripe_coupon_id") or "").strip()
+    if existing_coupon_id:
+        return existing_coupon_id
+    percent = int(promotion.get("percent_off") or 0)
+    if percent < 1 or percent > 95:
+        raise HTTPException(status_code=400, detail="Promotion percent must be between 1 and 95")
+    duration = promotion.get("duration", "once")
+    if duration not in {"once", "forever"}:
+        duration = "once"
+    coupon = stripe.Coupon.create(
+        percent_off=percent,
+        duration=duration,
+        name=promotion.get("name") or f"Effects Academy {percent}% promotion",
+        metadata={"premium_promotion_id": promotion.get("id", "")},
+    )
+    await db.premium_promotions.update_one(
+        {"id": promotion.get("id")},
+        {"$set": {"stripe_coupon_id": coupon.id, "updated_at": now_iso()}},
+    )
+    return coupon.id
 
 
 def create_session_token(user_id: str) -> str:
@@ -944,6 +1012,15 @@ class RoleUpdate(BaseModel):
     role: str
 
 
+class PremiumPromotionCreate(BaseModel):
+    name: Optional[str] = "Premium promotion"
+    percent_off: int
+    starts_at: str
+    ends_at: str
+    duration: Optional[str] = "once"  # once | forever
+    enabled: Optional[bool] = True
+
+
 class AnalyticsVisit(BaseModel):
     visitor_id: str
     path: Optional[str] = "/"
@@ -999,6 +1076,7 @@ async def verify_password(payload: PasswordCheck):
 
 @api_router.get("/auth/config")
 async def auth_config():
+    promotion = await active_premium_promotion()
     return {
         "google_client_id": GOOGLE_CLIENT_ID,
         "google_login_uri": GOOGLE_LOGIN_URI,
@@ -1007,6 +1085,7 @@ async def auth_config():
         "twitch_broadcaster_login": TWITCH_BROADCASTER_LOGIN,
         "twitch_discount_percent": TWITCH_DISCOUNT_PERCENT,
         "stripe_twitch_coupon_configured": bool(STRIPE_TWITCH_COUPON_ID),
+        "active_premium_promotion": public_premium_promotion(promotion),
         "dev_login_enabled": USE_MOCK_DB,
         "object_storage_configured": USE_OBJECT_STORAGE,
         "ai_image_configured": bool(FAL_KEY),
@@ -1339,8 +1418,16 @@ async def create_checkout_session(request: Request):
     user = await sync_user_from_stripe(user)
     if has_premium_access(user):
         return {"url": f"{FRONTEND_URL}/premium?already_subscribed=1"}
-    has_twitch_discount = twitch_discount_valid(user)
-    if has_twitch_discount and not STRIPE_TWITCH_COUPON_ID:
+    twitch_verified = twitch_discount_valid(user)
+    has_twitch_discount = twitch_verified and bool(STRIPE_TWITCH_COUPON_ID)
+    promotion = await active_premium_promotion()
+    promotion_percent = int(promotion.get("percent_off") or 0) if promotion else 0
+    automatic_discount = ""
+    if promotion and (not has_twitch_discount or promotion_percent >= TWITCH_DISCOUNT_PERCENT):
+        automatic_discount = "promotion"
+    elif has_twitch_discount:
+        automatic_discount = "twitch"
+    if twitch_verified and not STRIPE_TWITCH_COUPON_ID and automatic_discount != "promotion":
         raise HTTPException(status_code=503, detail="Twitch discount is verified, but the Stripe Twitch coupon is not configured yet.")
     if not STRIPE_SECRET_KEY:
         if USE_MOCK_DB:
@@ -1361,13 +1448,19 @@ async def create_checkout_session(request: Request):
         "line_items": [line_item],
         "metadata": {
             "user_id": user["id"],
-            "twitch_discount": "true" if has_twitch_discount else "false",
+            "automatic_discount": automatic_discount,
+            "premium_promotion_id": promotion.get("id", "") if automatic_discount == "promotion" else "",
+            "premium_promotion_percent": str(promotion_percent) if automatic_discount == "promotion" else "",
+            "twitch_discount": "true" if automatic_discount == "twitch" else "false",
             "twitch_login": user.get("twitch_login", ""),
         },
         "subscription_data": {
             "metadata": {
                 "user_id": user["id"],
-                "twitch_discount": "true" if has_twitch_discount else "false",
+                "automatic_discount": automatic_discount,
+                "premium_promotion_id": promotion.get("id", "") if automatic_discount == "promotion" else "",
+                "premium_promotion_percent": str(promotion_percent) if automatic_discount == "promotion" else "",
+                "twitch_discount": "true" if automatic_discount == "twitch" else "false",
                 "twitch_login": user.get("twitch_login", ""),
             }
         },
@@ -1376,7 +1469,10 @@ async def create_checkout_session(request: Request):
         "allow_promotion_codes": True,
         "billing_address_collection": "required",
     }
-    if has_twitch_discount:
+    if automatic_discount == "promotion":
+        checkout_params["discounts"] = [{"coupon": await stripe_coupon_for_promotion(promotion)}]
+        checkout_params.pop("allow_promotion_codes", None)
+    elif automatic_discount == "twitch":
         checkout_params["discounts"] = [{"coupon": STRIPE_TWITCH_COUPON_ID}]
         checkout_params.pop("allow_promotion_codes", None)
     customer_id = user.get("stripe_customer_id")
@@ -2255,6 +2351,52 @@ async def track_visit(request: Request):
     return {"ok": True}
 
 
+@api_router.post("/moderator/premium-promotions")
+async def create_premium_promotion(payload: PremiumPromotionCreate, request: Request):
+    user = await require_delete_access(request)
+    percent = int(payload.percent_off or 0)
+    if percent < 1 or percent > 95:
+        raise HTTPException(status_code=400, detail="Promotion percentage must be between 1 and 95")
+    starts_at = parse_iso_datetime(payload.starts_at)
+    ends_at = parse_iso_datetime(payload.ends_at)
+    if not starts_at or not ends_at:
+        raise HTTPException(status_code=400, detail="Promotion start and end dates are required")
+    if ends_at <= starts_at:
+        raise HTTPException(status_code=400, detail="Promotion end date must be after the start date")
+    duration = payload.duration or "once"
+    if duration not in {"once", "forever"}:
+        raise HTTPException(status_code=400, detail="Promotion duration must be once or forever")
+    now = now_iso()
+    record = {
+        "id": str(uuid.uuid4()),
+        "name": (payload.name or "Premium promotion").strip()[:80] or "Premium promotion",
+        "percent_off": percent,
+        "starts_at": starts_at.isoformat(),
+        "ends_at": ends_at.isoformat(),
+        "duration": duration,
+        "enabled": bool(payload.enabled),
+        "created_by": user.get("email", ""),
+        "created_at": now,
+        "updated_at": now,
+        "stripe_coupon_id": "",
+    }
+    await db.premium_promotions.insert_one(record)
+    record.pop("_id", None)
+    return record
+
+
+@api_router.post("/moderator/premium-promotions/{promotion_id}/disable")
+async def disable_premium_promotion(promotion_id: str, request: Request):
+    await require_delete_access(request)
+    result = await db.premium_promotions.update_one(
+        {"id": promotion_id},
+        {"$set": {"enabled": False, "updated_at": now_iso()}},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Promotion not found")
+    return {"ok": True}
+
+
 @api_router.get("/moderator/stats")
 async def moderator_stats(request: Request, days: int = 7):
     await require_delete_access(request)
@@ -2299,6 +2441,8 @@ async def moderator_stats(request: Request, days: int = 7):
     top_assets = sorted(asset_docs, key=lambda item: int(item.get("download_count") or 0), reverse=True)[:12]
     for asset in top_assets:
         asset["download_count"] = int(asset.get("download_count") or 0)
+    promotions = await db.premium_promotions.find({}, {"_id": 0}).sort("created_at", -1).to_list(20)
+    active_promo = await active_premium_promotion()
 
     return {
         "range_days": days,
@@ -2312,6 +2456,8 @@ async def moderator_stats(request: Request, days: int = 7):
         },
         "traffic": traffic,
         "top_assets": top_assets,
+        "premium_promotions": promotions,
+        "active_premium_promotion": public_premium_promotion(active_promo),
     }
 
 

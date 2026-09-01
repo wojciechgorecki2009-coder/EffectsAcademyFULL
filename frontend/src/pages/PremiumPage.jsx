@@ -90,8 +90,15 @@ export default function PremiumPage() {
   );
   const twitchDiscountPercent = Number(config.twitch_discount_percent || user?.twitch_discount_percent || 15);
   const hasTwitchDiscount = Boolean(user?.twitch_discount_eligible && config.stripe_twitch_coupon_configured && !hasPremium);
-  const discountedPrice = Math.max(0, PREMIUM_PRICE * (1 - twitchDiscountPercent / 100));
-  const displayPrice = hasTwitchDiscount ? discountedPrice : PREMIUM_PRICE;
+  const activePromotion = config.active_premium_promotion;
+  const promotionPercent = Number(activePromotion?.percent_off || 0);
+  const hasPromotionDiscount = Boolean(activePromotion && promotionPercent > 0 && !hasPremium);
+  const bestDiscountPercent = Math.max(hasTwitchDiscount ? twitchDiscountPercent : 0, hasPromotionDiscount ? promotionPercent : 0);
+  const discountSource = bestDiscountPercent > 0
+    ? (hasPromotionDiscount && promotionPercent >= (hasTwitchDiscount ? twitchDiscountPercent : 0) ? "promotion" : "twitch")
+    : "";
+  const discountedPrice = Math.max(0, PREMIUM_PRICE * (1 - bestDiscountPercent / 100));
+  const displayPrice = bestDiscountPercent > 0 ? discountedPrice : PREMIUM_PRICE;
   const priceLabel = `$${displayPrice.toFixed(2)}`;
 
   useEffect(() => {
@@ -254,11 +261,11 @@ export default function PremiumPage() {
               </p>
               <div className="mt-8 flex items-end gap-2">
                 <div>
-                  {hasTwitchDiscount && (
+                  {bestDiscountPercent > 0 && (
                     <div className="mb-1 flex items-center gap-2 text-sm text-purple-200">
                       <span className="line-through text-zinc-500">${PREMIUM_PRICE.toFixed(2)}</span>
                       <span className="inline-flex items-center gap-1 rounded-full border border-purple-300/20 bg-purple-300/10 px-2 py-0.5 text-xs font-semibold">
-                        <BadgePercent className="w-3 h-3" /> Twitch subscriber price
+                        <BadgePercent className="w-3 h-3" /> {discountSource === "promotion" ? activePromotion?.name || "Limited promotion" : "Twitch subscriber price"}
                       </span>
                     </div>
                   )}
@@ -266,9 +273,11 @@ export default function PremiumPage() {
                     <span className="font-display text-5xl font-black">{priceLabel}</span>
                     <span className="text-zinc-400 pb-1">USD / month</span>
                   </div>
-                  {hasTwitchDiscount && (
+                  {bestDiscountPercent > 0 && (
                     <p className="mt-2 text-sm text-purple-100">
-                      Your verified Twitch sub unlocks {twitchDiscountPercent}% off Premium.
+                      {discountSource === "promotion"
+                        ? `${activePromotion?.name || "Limited promotion"} unlocks ${bestDiscountPercent}% off ${activePromotion?.duration === "forever" ? "Premium." : "your first Premium month."}`
+                        : `Your verified Twitch sub unlocks ${bestDiscountPercent}% off Premium.`}
                     </p>
                   )}
                 </div>
@@ -427,6 +436,18 @@ export default function PremiumPage() {
                 )}
               </div>
             )}
+
+            {!hasPremium && hasPromotionDiscount && (
+              <div className="mt-4 rounded-2xl border border-emerald-300/25 bg-emerald-400/10 px-4 py-4 text-sm text-emerald-100">
+                <p className="font-semibold text-white flex items-center gap-2">
+                  <BadgePercent className="w-4 h-4 text-emerald-300" />
+                  {activePromotion?.name || "Premium promotion"} is live
+                </p>
+                <p className="text-emerald-100/80 mt-1">
+                  {promotionPercent}% off {activePromotion?.duration === "forever" ? "new Premium subscriptions" : "the first Premium month"} is applied automatically at checkout.
+                </p>
+              </div>
+            )}
             {!hasPremium && user && (
               <p className="text-xs text-zinc-500 mt-3 text-center">After subscribing, this button becomes Manage subscription.</p>
             )}
@@ -476,7 +497,7 @@ export default function PremiumPage() {
                       <Crown className="w-4 h-4" /> Premium
                     </div>
                     <div className="font-display text-xl font-black text-white mt-1">
-                      {hasTwitchDiscount ? (
+                      {bestDiscountPercent > 0 ? (
                         <span className="inline-flex items-baseline gap-2">
                           <span>{priceLabel} / month</span>
                           <span className="text-sm text-zinc-500 line-through">${PREMIUM_PRICE.toFixed(2)}</span>

@@ -23,6 +23,7 @@ export function AuthProvider({ children }) {
     twitch_broadcaster_login: "mrbit100",
     twitch_discount_percent: 15,
     stripe_twitch_coupon_configured: false,
+    active_premium_promotion: null,
     dev_login_enabled: false,
   });
   const [loading, setLoading] = useState(true);

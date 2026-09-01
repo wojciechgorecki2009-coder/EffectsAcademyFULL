@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Activity, ArrowLeft, Crown, Download, Eye, Radio, ShieldCheck } from "lucide-react";
+import { Activity, ArrowLeft, BadgePercent, CalendarDays, Crown, Download, Eye, Power, Radio, ShieldCheck } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
@@ -72,6 +72,25 @@ function formatDate(value, includeYear = false) {
   });
 }
 
+function formatDateTime(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return value;
+  return date.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function defaultDateTimeLocal(offsetDays = 0) {
+  const date = new Date();
+  date.setDate(date.getDate() + offsetDays);
+  date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+  return date.toISOString().slice(0, 16);
+}
+
 function StatCard({ icon: Icon, label, value, note, tone = "blue" }) {
   const tones = {
     blue: "from-blue-500/20 to-indigo-500/5 border-blue-300/15 text-blue-200",
@@ -113,6 +132,14 @@ export default function StatsPage() {
   const [data, setData] = useState(null);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
+  const [promoBusy, setPromoBusy] = useState(false);
+  const [promoForm, setPromoForm] = useState({
+    name: "Premium sale",
+    percent_off: 15,
+    starts_at: defaultDateTimeLocal(0),
+    ends_at: defaultDateTimeLocal(7),
+    duration: "once",
+  });
   const canView = ["Admin", "Uploader"].includes(user?.role);
 
   const load = useCallback(async (selectedRange = range, options = {}) => {
@@ -149,6 +176,33 @@ export default function StatsPage() {
       })),
     [data, range],
   );
+
+  const createPromotion = async (event) => {
+    event.preventDefault();
+    setPromoBusy(true);
+    setError("");
+    try {
+      await api.post("/moderator/premium-promotions", promoForm);
+      await load(range, { silent: true });
+    } catch (err) {
+      setError(err?.response?.data?.detail || "Could not create Premium promotion.");
+    } finally {
+      setPromoBusy(false);
+    }
+  };
+
+  const disablePromotion = async (promotionId) => {
+    setPromoBusy(true);
+    setError("");
+    try {
+      await api.post(`/moderator/premium-promotions/${promotionId}/disable`);
+      await load(range, { silent: true });
+    } catch (err) {
+      setError(err?.response?.data?.detail || "Could not disable Premium promotion.");
+    } finally {
+      setPromoBusy(false);
+    }
+  };
 
   if (loading) {
     return <section className="min-h-screen pt-28 px-6 text-center text-zinc-500">Loading stats...</section>;
@@ -219,6 +273,142 @@ export default function StatsPage() {
           <StatCard icon={Radio} label="Online now" value={data?.summary?.online_now || 0} note="Active in 5 minutes" tone="purple" />
           <StatCard icon={Crown} label="Premium users" value={data?.summary?.premium_users || 0} note="Active or trialing" tone="amber" />
           <StatCard icon={Download} label="Downloads" value={data?.summary?.total_downloads || 0} note="All-time asset total" tone="green" />
+        </div>
+
+        <div className="mb-6 rounded-3xl border border-purple-300/15 bg-[var(--site-panel)] p-5 md:p-6">
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5 mb-5">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-300/10 px-3 py-1 text-xs font-semibold text-purple-200 mb-3">
+                <BadgePercent className="w-3.5 h-3.5" /> Premium promotions
+              </div>
+              <h2 className="font-display text-2xl font-black">Run a Premium sale</h2>
+              <p className="text-sm text-zinc-400 mt-2 max-w-2xl">
+                Set a date range and discount percentage. While it is active, the Premium page and Stripe Checkout apply it automatically to new subscriptions.
+              </p>
+            </div>
+            {data?.active_premium_promotion ? (
+              <div className="rounded-2xl border border-emerald-300/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100">
+                <p className="font-semibold text-white">Active: {data.active_premium_promotion.name}</p>
+                <p>{data.active_premium_promotion.percent_off}% off until {formatDateTime(data.active_premium_promotion.ends_at)}</p>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-zinc-400">
+                No Premium sale is active right now.
+              </div>
+            )}
+          </div>
+
+          <form onSubmit={createPromotion} className="grid md:grid-cols-2 xl:grid-cols-5 gap-3">
+            <label className="block">
+              <span className="text-xs uppercase tracking-[0.2em] text-zinc-500">Name</span>
+              <input
+                value={promoForm.name}
+                onChange={(event) => setPromoForm((form) => ({ ...form, name: event.target.value }))}
+                className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm outline-none focus:border-purple-300/50"
+                placeholder="Premium sale"
+              />
+            </label>
+            <label className="block">
+              <span className="text-xs uppercase tracking-[0.2em] text-zinc-500">Discount %</span>
+              <input
+                type="number"
+                min="1"
+                max="95"
+                value={promoForm.percent_off}
+                onChange={(event) => setPromoForm((form) => ({ ...form, percent_off: Number(event.target.value) }))}
+                className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm outline-none focus:border-purple-300/50"
+              />
+            </label>
+            <label className="block">
+              <span className="text-xs uppercase tracking-[0.2em] text-zinc-500">Starts</span>
+              <input
+                type="datetime-local"
+                value={promoForm.starts_at}
+                onChange={(event) => setPromoForm((form) => ({ ...form, starts_at: event.target.value }))}
+                className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm outline-none focus:border-purple-300/50"
+              />
+            </label>
+            <label className="block">
+              <span className="text-xs uppercase tracking-[0.2em] text-zinc-500">Ends</span>
+              <input
+                type="datetime-local"
+                value={promoForm.ends_at}
+                onChange={(event) => setPromoForm((form) => ({ ...form, ends_at: event.target.value }))}
+                className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm outline-none focus:border-purple-300/50"
+              />
+            </label>
+            <label className="block">
+              <span className="text-xs uppercase tracking-[0.2em] text-zinc-500">Applies</span>
+              <select
+                value={promoForm.duration}
+                onChange={(event) => setPromoForm((form) => ({ ...form, duration: event.target.value }))}
+                className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm outline-none focus:border-purple-300/50"
+              >
+                <option className="bg-[#111018] text-white" value="once">First month only</option>
+                <option className="bg-[#111018] text-white" value="forever">Forever on that subscription</option>
+              </select>
+            </label>
+            <button
+              type="submit"
+              disabled={promoBusy}
+              className="md:col-span-2 xl:col-span-5 rounded-xl bg-neon hover:bg-neon/90 disabled:bg-white/10 disabled:text-zinc-500 text-white font-bold py-3 btn-press"
+            >
+              {promoBusy ? "Saving promotion..." : "Create Premium promotion"}
+            </button>
+          </form>
+
+          {(data?.premium_promotions || []).length > 0 && (
+            <div className="mt-5 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="text-left text-xs uppercase tracking-[0.2em] text-zinc-500">
+                  <tr className="border-b border-white/10">
+                    <th className="py-3 pr-4">Promotion</th>
+                    <th className="py-3 px-4">Discount</th>
+                    <th className="py-3 px-4">Dates</th>
+                    <th className="py-3 px-4">Type</th>
+                    <th className="py-3 pl-4 text-right">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(data?.premium_promotions || []).map((promo) => {
+                    const isActive = data?.active_premium_promotion?.id === promo.id;
+                    return (
+                      <tr key={promo.id} className="border-b border-white/5">
+                        <td className="py-3 pr-4 font-semibold text-white">{promo.name}</td>
+                        <td className="py-3 px-4 text-zinc-300">{promo.percent_off}%</td>
+                        <td className="py-3 px-4 text-zinc-400">
+                          <span className="inline-flex items-center gap-2">
+                            <CalendarDays className="w-4 h-4 text-zinc-500" />
+                            {formatDateTime(promo.starts_at)} → {formatDateTime(promo.ends_at)}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-zinc-400">{promo.duration === "forever" ? "Forever" : "First month"}</td>
+                        <td className="py-3 pl-4 text-right">
+                          {promo.enabled ? (
+                            <button
+                              type="button"
+                              onClick={() => disablePromotion(promo.id)}
+                              disabled={promoBusy}
+                              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold btn-press ${
+                                isActive
+                                  ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-200"
+                                  : "border-white/10 bg-white/[0.03] text-zinc-300 hover:bg-white/10"
+                              }`}
+                            >
+                              <Power className="w-3.5 h-3.5" />
+                              {isActive ? "Active · Disable" : "Scheduled · Disable"}
+                            </button>
+                          ) : (
+                            <span className="text-zinc-500">Disabled</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         <div className="grid xl:grid-cols-[1.4fr_.9fr] gap-6">
