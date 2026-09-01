@@ -2361,6 +2361,9 @@ async def create_premium_promotion(payload: PremiumPromotionCreate, request: Req
     ends_at = parse_iso_datetime(payload.ends_at)
     if not starts_at or not ends_at:
         raise HTTPException(status_code=400, detail="Promotion start and end dates are required")
+    utc_now = datetime.now(timezone.utc)
+    if starts_at > utc_now and (starts_at - utc_now).total_seconds() <= 10 * 60:
+        starts_at = utc_now
     if ends_at <= starts_at:
         raise HTTPException(status_code=400, detail="Promotion end date must be after the start date")
     duration = payload.duration or "once"

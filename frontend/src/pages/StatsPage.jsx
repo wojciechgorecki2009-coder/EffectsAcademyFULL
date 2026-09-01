@@ -91,6 +91,11 @@ function defaultDateTimeLocal(offsetDays = 0) {
   return date.toISOString().slice(0, 16);
 }
 
+function localDateTimeToIso(value) {
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : value;
+}
+
 function StatCard({ icon: Icon, label, value, note, tone = "blue" }) {
   const tones = {
     blue: "from-blue-500/20 to-indigo-500/5 border-blue-300/15 text-blue-200",
@@ -182,7 +187,11 @@ export default function StatsPage() {
     setPromoBusy(true);
     setError("");
     try {
-      await api.post("/moderator/premium-promotions", promoForm);
+      await api.post("/moderator/premium-promotions", {
+        ...promoForm,
+        starts_at: localDateTimeToIso(promoForm.starts_at),
+        ends_at: localDateTimeToIso(promoForm.ends_at),
+      });
       await load(range, { silent: true });
     } catch (err) {
       setError(err?.response?.data?.detail || "Could not create Premium promotion.");
