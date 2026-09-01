@@ -87,13 +87,158 @@ function formatDateTime(value) {
 function defaultDateTimeLocal(offsetDays = 0) {
   const date = new Date();
   date.setDate(date.getDate() + offsetDays);
-  date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
-  return date.toISOString().slice(0, 16);
+  return formatLocalDateTimeValue(date);
+}
+
+function formatLocalDateTimeValue(date) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-") + `T${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 }
 
 function localDateTimeToIso(value) {
   const date = new Date(value);
   return Number.isFinite(date.getTime()) ? date.toISOString() : value;
+}
+
+function formatDateTimeLocalLabel(value) {
+  if (!value) return "Choose date";
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return value;
+  return date.toLocaleString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function daysInMonth(year, month) {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+function sameCalendarDay(a, b) {
+  return a.getFullYear() === b.getFullYear()
+    && a.getMonth() === b.getMonth()
+    && a.getDate() === b.getDate();
+}
+
+function dateTimeParts(value) {
+  const fallback = new Date();
+  const date = new Date(value);
+  const safeDate = Number.isFinite(date.getTime()) ? date : fallback;
+  return {
+    date: safeDate,
+    time: `${String(safeDate.getHours()).padStart(2, "0")}:${String(safeDate.getMinutes()).padStart(2, "0")}`,
+  };
+}
+
+function toLocalDateTimeValue(date, time) {
+  const [hours = "0", minutes = "0"] = String(time || "00:00").split(":");
+  const next = new Date(date);
+  next.setHours(Number(hours) || 0, Number(minutes) || 0, 0, 0);
+  return formatLocalDateTimeValue(next);
+}
+
+function PromoDatePicker({ label, value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const { date, time } = dateTimeParts(value);
+  const [viewDate, setViewDate] = useState(() => new Date(date.getFullYear(), date.getMonth(), 1));
+  const monthLabel = viewDate.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  const firstDay = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1).getDay();
+  const monthDays = daysInMonth(viewDate.getFullYear(), viewDate.getMonth());
+  const cells = [
+    ...Array.from({ length: firstDay }, () => null),
+    ...Array.from({ length: monthDays }, (_, index) => new Date(viewDate.getFullYear(), viewDate.getMonth(), index + 1)),
+  ];
+
+  useEffect(() => {
+    const next = new Date(value);
+    if (Number.isFinite(next.getTime())) {
+      setViewDate(new Date(next.getFullYear(), next.getMonth(), 1));
+    }
+  }, [value]);
+
+  return (
+    <div className="relative">
+      <span className="text-xs uppercase tracking-[0.2em] text-zinc-500">{label}</span>
+      <button
+        type="button"
+        onClick={() => setOpen((next) => !next)}
+        className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-left text-sm text-white outline-none transition hover:border-purple-300/35 focus:border-purple-300/50 focus:ring-2 focus:ring-purple-400/20"
+      >
+        <span className="flex items-center justify-between gap-3">
+          <span>{formatDateTimeLocalLabel(value)}</span>
+          <CalendarDays className="w-4 h-4 text-purple-200" />
+        </span>
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full z-30 mt-2 w-[min(21rem,calc(100vw-3rem))] rounded-2xl border border-purple-300/20 bg-[#0d0b14]/95 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.55)] backdrop-blur-xl">
+          <div className="flex items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={() => setViewDate((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))}
+              className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm text-zinc-200 hover:bg-white/10"
+            >
+              ‹
+            </button>
+            <p className="font-semibold text-white">{monthLabel}</p>
+            <button
+              type="button"
+              onClick={() => setViewDate((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))}
+              className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm text-zinc-200 hover:bg-white/10"
+            >
+              ›
+            </button>
+          </div>
+          <div className="mt-4 grid grid-cols-7 gap-1 text-center text-[11px] uppercase tracking-[0.16em] text-zinc-500">
+            {["S", "M", "T", "W", "T", "F", "S"].map((day, index) => <span key={`${day}-${index}`}>{day}</span>)}
+          </div>
+          <div className="mt-2 grid grid-cols-7 gap-1">
+            {cells.map((day, index) => {
+              const selected = day && sameCalendarDay(day, date);
+              return day ? (
+                <button
+                  key={day.toISOString()}
+                  type="button"
+                  onClick={() => onChange(toLocalDateTimeValue(day, time))}
+                  className={`aspect-square rounded-xl text-sm font-semibold transition ${
+                    selected
+                      ? "bg-neon text-white shadow-[0_0_24px_rgba(82,87,255,0.35)]"
+                      : "bg-white/[0.035] text-zinc-300 hover:bg-purple-400/15 hover:text-white"
+                  }`}
+                >
+                  {day.getDate()}
+                </button>
+              ) : (
+                <span key={`blank-${index}`} />
+              );
+            })}
+          </div>
+          <label className="mt-4 block">
+            <span className="text-xs uppercase tracking-[0.2em] text-zinc-500">Time</span>
+            <input
+              type="time"
+              value={time}
+              onChange={(event) => onChange(toLocalDateTimeValue(date, event.target.value))}
+              className="mt-2 w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none focus:border-purple-300/50"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="mt-3 w-full rounded-xl border border-white/10 bg-white/[0.06] px-4 py-2.5 text-sm font-semibold text-zinc-100 hover:bg-white/10"
+          >
+            Done
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function StatCard({ icon: Icon, label, value, note, tone = "blue" }) {
@@ -140,7 +285,7 @@ export default function StatsPage() {
   const [promoBusy, setPromoBusy] = useState(false);
   const [promoForm, setPromoForm] = useState({
     name: "Premium sale",
-    percent_off: 15,
+    percent_off: "15",
     starts_at: defaultDateTimeLocal(0),
     ends_at: defaultDateTimeLocal(7),
     duration: "once",
@@ -189,6 +334,7 @@ export default function StatsPage() {
     try {
       await api.post("/moderator/premium-promotions", {
         ...promoForm,
+        percent_off: Number(promoForm.percent_off),
         starts_at: localDateTimeToIso(promoForm.starts_at),
         ends_at: localDateTimeToIso(promoForm.ends_at),
       });
@@ -320,32 +466,32 @@ export default function StatsPage() {
             <label className="block">
               <span className="text-xs uppercase tracking-[0.2em] text-zinc-500">Discount %</span>
               <input
-                type="number"
-                min="1"
-                max="95"
+                type="text"
+                inputMode="numeric"
                 value={promoForm.percent_off}
-                onChange={(event) => setPromoForm((form) => ({ ...form, percent_off: Number(event.target.value) }))}
+                onChange={(event) => {
+                  const next = event.target.value.replace(/[^\d]/g, "").slice(0, 2);
+                  setPromoForm((form) => ({ ...form, percent_off: next }));
+                }}
+                onBlur={() => {
+                  const value = Number(promoForm.percent_off);
+                  if (!promoForm.percent_off || value < 1) setPromoForm((form) => ({ ...form, percent_off: "1" }));
+                  else if (value > 95) setPromoForm((form) => ({ ...form, percent_off: "95" }));
+                }}
                 className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm outline-none focus:border-purple-300/50"
+                placeholder="15"
               />
             </label>
-            <label className="block">
-              <span className="text-xs uppercase tracking-[0.2em] text-zinc-500">Starts</span>
-              <input
-                type="datetime-local"
-                value={promoForm.starts_at}
-                onChange={(event) => setPromoForm((form) => ({ ...form, starts_at: event.target.value }))}
-                className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm outline-none focus:border-purple-300/50"
-              />
-            </label>
-            <label className="block">
-              <span className="text-xs uppercase tracking-[0.2em] text-zinc-500">Ends</span>
-              <input
-                type="datetime-local"
-                value={promoForm.ends_at}
-                onChange={(event) => setPromoForm((form) => ({ ...form, ends_at: event.target.value }))}
-                className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm outline-none focus:border-purple-300/50"
-              />
-            </label>
+            <PromoDatePicker
+              label="Starts"
+              value={promoForm.starts_at}
+              onChange={(value) => setPromoForm((form) => ({ ...form, starts_at: value }))}
+            />
+            <PromoDatePicker
+              label="Ends"
+              value={promoForm.ends_at}
+              onChange={(value) => setPromoForm((form) => ({ ...form, ends_at: value }))}
+            />
             <label className="block">
               <span className="text-xs uppercase tracking-[0.2em] text-zinc-500">Applies</span>
               <select
