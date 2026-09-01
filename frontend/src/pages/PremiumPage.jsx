@@ -238,7 +238,7 @@ export default function PremiumPage() {
             Payment received. Premium access is being activated for your signed-in account.
           </div>
         )}
-        {twitchNotice && (
+        {twitchNotice && !hasPremium && (
           <div className={`mb-6 rounded-xl border px-5 py-4 ${
             twitchState === "linked"
               ? "border-purple-400/30 bg-purple-400/10 text-purple-100"

@@ -235,7 +235,7 @@ def twitch_discount_valid(user: Optional[dict]) -> bool:
 def public_premium_promotion(promo: Optional[dict]) -> Optional[dict]:
     if not promo:
         return None
-    percent = int(promo.get("percent_off") or 0)
+    percent = int(promo.get("percent_off") or promo.get("percent") or 0)
     if percent <= 0:
         return None
     return {
@@ -248,18 +248,35 @@ def public_premium_promotion(promo: Optional[dict]) -> Optional[dict]:
     }
 
 
+def promotion_is_enabled(promo: dict) -> bool:
+    enabled = promo.get("enabled", True)
+    if enabled is False:
+        return False
+    if isinstance(enabled, str) and enabled.strip().lower() in {"false", "0", "no", "off", "disabled"}:
+        return False
+    return True
+
+
 async def active_premium_promotion() -> Optional[dict]:
     now = datetime.now(timezone.utc)
     docs = await db.premium_promotions.find(
-        {"enabled": True},
+        {},
         {"_id": 0},
     ).sort("created_at", -1).to_list(100)
     for doc in docs:
+        if not promotion_is_enabled(doc):
+            continue
+        percent = int(doc.get("percent_off") or doc.get("percent") or 0)
+        if percent <= 0:
+            continue
         starts_at = parse_iso_datetime(doc.get("starts_at", ""))
         ends_at = parse_iso_datetime(doc.get("ends_at", ""))
-        if not starts_at or not ends_at:
+        if not starts_at:
+            starts_at = parse_iso_datetime(doc.get("created_at", "")) or now
+        if not ends_at:
             continue
-        if starts_at <= now <= ends_at and int(doc.get("percent_off") or 0) > 0:
+        if starts_at <= now <= ends_at:
+            doc["percent_off"] = percent
             return doc
     return None
 
