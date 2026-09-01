@@ -59,8 +59,16 @@ async def create_checkout_session_with_price_fallback(request: Request):
     user = await server.sync_user_from_stripe(user)
     if server.has_premium_access(user):
         return {"url": f"{server.FRONTEND_URL}/premium?already_subscribed=1"}
-    has_twitch_discount = server.twitch_discount_valid(user)
-    if has_twitch_discount and not server.STRIPE_TWITCH_COUPON_ID:
+    twitch_verified = server.twitch_discount_valid(user)
+    has_twitch_discount = twitch_verified and bool(server.STRIPE_TWITCH_COUPON_ID)
+    promotion = await server.active_premium_promotion()
+    promotion_percent = int(promotion.get("percent_off") or 0) if promotion else 0
+    automatic_discount = ""
+    if promotion and (not has_twitch_discount or promotion_percent >= server.TWITCH_DISCOUNT_PERCENT):
+        automatic_discount = "promotion"
+    elif has_twitch_discount:
+        automatic_discount = "twitch"
+    if twitch_verified and not server.STRIPE_TWITCH_COUPON_ID and automatic_discount != "promotion":
         raise HTTPException(status_code=503, detail="Twitch discount is verified, but the Stripe Twitch coupon is not configured yet.")
     if not server.STRIPE_SECRET_KEY:
         if server.USE_MOCK_DB:
@@ -73,12 +81,20 @@ async def create_checkout_session_with_price_fallback(request: Request):
         "line_items": [premium_line_item(True)],
         "metadata": {
             "user_id": user["id"],
-            "twitch_discount": "true" if has_twitch_discount else "false",
+            "automatic_discount": automatic_discount,
+            "premium_promotion_id": promotion.get("id", "") if automatic_discount == "promotion" else "",
+            "premium_promotion_percent": str(promotion_percent) if automatic_discount == "promotion" else "",
+            "twitch_discount": "true" if automatic_discount == "twitch" else "false",
+            "twitch_login": user.get("twitch_login", ""),
         },
         "subscription_data": {
             "metadata": {
                 "user_id": user["id"],
-                "twitch_discount": "true" if has_twitch_discount else "false",
+                "automatic_discount": automatic_discount,
+                "premium_promotion_id": promotion.get("id", "") if automatic_discount == "promotion" else "",
+                "premium_promotion_percent": str(promotion_percent) if automatic_discount == "promotion" else "",
+                "twitch_discount": "true" if automatic_discount == "twitch" else "false",
+                "twitch_login": user.get("twitch_login", ""),
             }
         },
         "success_url": f"{server.FRONTEND_URL}/premium?checkout=success&session_id={{CHECKOUT_SESSION_ID}}",
@@ -87,7 +103,10 @@ async def create_checkout_session_with_price_fallback(request: Request):
         "billing_address_collection": "required",
     }
 
-    if has_twitch_discount:
+    if automatic_discount == "promotion":
+        checkout_params["discounts"] = [{"coupon": await server.stripe_coupon_for_promotion(promotion)}]
+        checkout_params.pop("allow_promotion_codes", None)
+    elif automatic_discount == "twitch":
         checkout_params["discounts"] = [{"coupon": server.STRIPE_TWITCH_COUPON_ID}]
         checkout_params.pop("allow_promotion_codes", None)
 
