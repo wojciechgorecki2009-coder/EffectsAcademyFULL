@@ -16,6 +16,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 const RANGES = [7, 28, 90, 365];
+const PROMOTION_DISCOUNTS = [1, 5, 10, 20, 25, 30, 50];
 
 function compactNumber(value = 0) {
   return new Intl.NumberFormat(undefined, { notation: value >= 10000 ? "compact" : "standard" }).format(value);
@@ -285,7 +286,7 @@ export default function StatsPage() {
   const [promoBusy, setPromoBusy] = useState(false);
   const [promoForm, setPromoForm] = useState({
     name: "Premium sale",
-    percent_off: "15",
+    percent_off: "10",
     starts_at: defaultDateTimeLocal(0),
     ends_at: defaultDateTimeLocal(7),
     duration: "once",
@@ -465,22 +466,17 @@ export default function StatsPage() {
             </label>
             <label className="block">
               <span className="text-xs uppercase tracking-[0.2em] text-zinc-500">Discount %</span>
-              <input
-                type="text"
-                inputMode="numeric"
+              <select
                 value={promoForm.percent_off}
-                onChange={(event) => {
-                  const next = event.target.value.replace(/[^\d]/g, "").slice(0, 2);
-                  setPromoForm((form) => ({ ...form, percent_off: next }));
-                }}
-                onBlur={() => {
-                  const value = Number(promoForm.percent_off);
-                  if (!promoForm.percent_off || value < 1) setPromoForm((form) => ({ ...form, percent_off: "1" }));
-                  else if (value > 95) setPromoForm((form) => ({ ...form, percent_off: "95" }));
-                }}
+                onChange={(event) => setPromoForm((form) => ({ ...form, percent_off: event.target.value }))}
                 className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm outline-none focus:border-purple-300/50"
-                placeholder="15"
-              />
+              >
+                {PROMOTION_DISCOUNTS.map((discount) => (
+                  <option key={discount} className="bg-[#111018] text-white" value={String(discount)}>
+                    {discount}% off
+                  </option>
+                ))}
+              </select>
             </label>
             <PromoDatePicker
               label="Starts"
