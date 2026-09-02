@@ -225,11 +225,15 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
         },
         {
           transform: "translate3d(0, -2px, 0) rotateX(0deg) rotateY(0deg) scale(0.955)",
-          offset: 0.28,
+          offset: 0.24,
         },
         {
-          transform: "translate3d(0, -10px, 0) rotateX(var(--asset-tilt-x, 0deg)) rotateY(var(--asset-tilt-y, 0deg)) scale(1.026)",
-          offset: 0.68,
+          transform: "translate3d(0, -10px, 0) rotateX(var(--asset-tilt-x, 0deg)) rotateY(var(--asset-tilt-y, 0deg)) scale(1.032)",
+          offset: 0.62,
+        },
+        {
+          transform: "translate3d(0, -7px, 0) rotateX(var(--asset-tilt-x, 0deg)) rotateY(var(--asset-tilt-y, 0deg)) scale(1.006)",
+          offset: 0.82,
         },
         {
           transform: "translate3d(0, -6px, 0) rotateX(var(--asset-tilt-x, 0deg)) rotateY(var(--asset-tilt-y, 0deg)) scale(1.01)",
@@ -237,8 +241,8 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
         },
       ],
       {
-        duration: 520,
-        easing: "cubic-bezier(0.2, 1.28, 0.32, 1)",
+        duration: 980,
+        easing: "cubic-bezier(0.18, 1.05, 0.22, 1)",
         fill: "none",
       }
     );
