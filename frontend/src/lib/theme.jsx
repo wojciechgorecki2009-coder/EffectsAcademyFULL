@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 const ThemeContext = createContext(null);
 const THEMES = new Set(["dark", "blue", "gray"]);
 const FONTS = new Set(["space", "outfit", "mono"]);
+const SITE_STYLES = new Set(["default", "apple", "sleek"]);
 
 export function ThemeProvider({ children }) {
   const [theme, setThemeState] = useState(() => {
@@ -12,6 +13,10 @@ export function ThemeProvider({ children }) {
   const [font, setFontState] = useState(() => {
     const saved = localStorage.getItem("ea_font_v2");
     return FONTS.has(saved) ? saved : "outfit";
+  });
+  const [siteStyle, setSiteStyleState] = useState(() => {
+    const saved = localStorage.getItem("ea_site_style");
+    return SITE_STYLES.has(saved) ? saved : "default";
   });
 
   useEffect(() => {
@@ -24,6 +29,11 @@ export function ThemeProvider({ children }) {
     localStorage.setItem("ea_font_v2", font);
   }, [font]);
 
+  useEffect(() => {
+    document.documentElement.dataset.siteStyle = siteStyle;
+    localStorage.setItem("ea_site_style", siteStyle);
+  }, [siteStyle]);
+
   const value = useMemo(() => ({
     theme,
     setTheme: (nextTheme) => {
@@ -33,7 +43,11 @@ export function ThemeProvider({ children }) {
     setFont: (nextFont) => {
       if (FONTS.has(nextFont)) setFontState(nextFont);
     },
-  }), [theme, font]);
+    siteStyle,
+    setSiteStyle: (nextStyle) => {
+      if (SITE_STYLES.has(nextStyle)) setSiteStyleState(nextStyle);
+    },
+  }), [theme, font, siteStyle]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

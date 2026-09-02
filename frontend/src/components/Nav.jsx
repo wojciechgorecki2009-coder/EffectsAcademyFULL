@@ -31,6 +31,12 @@ const FONT_OPTIONS = [
   { value: "mono", label: "JetBrains Mono" },
 ];
 
+const STYLE_OPTIONS = [
+  { value: "default", label: "Default" },
+  { value: "apple", label: "Apple" },
+  { value: "sleek", label: "Sleek" },
+];
+
 const PRIMARY_TABS = [
   { to: "/", label: "Browse" },
   { to: "/category/premium", label: "Premium" },
@@ -52,7 +58,7 @@ const MORE_TABS = [
 export default function Nav() {
   const { isUploader, lock, localPasswordEnabled } = useUploadAccess();
   const { user, hasPremium, logout } = useAuth();
-  const { theme, setTheme, font, setFont } = useTheme();
+  const { theme, setTheme, font, setFont, siteStyle, setSiteStyle } = useTheme();
   const [accessOpen, setAccessOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -129,6 +135,19 @@ export default function Nav() {
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="glass border-white/10 text-white min-w-44" align="end">
+              <div className="px-2 py-1.5 text-[10px] uppercase tracking-wider text-zinc-500">Website style</div>
+              {STYLE_OPTIONS.map((option) => (
+                <DropdownMenuItem
+                  key={option.value}
+                  onClick={() => setSiteStyle(option.value)}
+                  className="cursor-pointer hover:bg-white/10 focus:bg-white/10 flex items-center justify-between gap-4"
+                  data-testid={`site-style-${option.value}`}
+                >
+                  <span>{option.label}</span>
+                  {siteStyle === option.value && <Check className="w-4 h-4 text-neon" />}
+                </DropdownMenuItem>
+              ))}
+              <div className="mx-2 my-1 border-t border-white/10" />
               <div className="px-2 py-1.5 text-[10px] uppercase tracking-wider text-zinc-500">Site theme</div>
               {THEME_OPTIONS.map((option) => (
                 <DropdownMenuItem
@@ -269,6 +288,18 @@ export default function Nav() {
             </NavLink>
           ))}
           <div className="w-full mt-2 pt-3 border-t border-white/5 flex items-center gap-2">
+            <span className="text-xs text-zinc-500 mr-1 flex items-center gap-1.5"><Settings className="w-3.5 h-3.5" /> Style</span>
+            {STYLE_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => setSiteStyle(option.value)}
+                className={`px-3 py-1.5 rounded-lg text-xs border btn-press ${siteStyle === option.value ? "bg-neon/20 border-neon/40 text-white" : "bg-white/5 border-white/10 text-zinc-400"}`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <div className="w-full pt-2 flex items-center gap-2">
             <span className="text-xs text-zinc-500 mr-1 flex items-center gap-1.5"><Settings className="w-3.5 h-3.5" /> Theme</span>
             {THEME_OPTIONS.map((option) => (
               <button

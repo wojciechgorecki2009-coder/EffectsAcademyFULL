@@ -91,6 +91,40 @@ body {
     --border: 220 6% 25%;
     --input: 220 6% 25%;
   }
+
+  :root[data-site-style="apple"] {
+    --site-font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    --site-bg: #f5f5f7;
+    --site-surface: rgba(255, 255, 255, 0.72);
+    --site-panel: rgba(255, 255, 255, 0.82);
+    --site-glass: rgba(255, 255, 255, 0.66);
+    --site-hero-overlay: rgba(245, 245, 247, 0.16);
+    --site-hero-end: #f5f5f7;
+    --background: 240 14% 96%;
+    --foreground: 240 4% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 4% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 4% 12%;
+    --primary: 211 100% 45%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 12% 92%;
+    --secondary-foreground: 240 4% 12%;
+    --muted: 240 10% 90%;
+    --muted-foreground: 240 4% 44%;
+    --accent: 211 100% 45%;
+    --accent-foreground: 0 0% 100%;
+    --border: 240 8% 84%;
+    --input: 240 8% 84%;
+    --ring: 211 100% 45%;
+    --radius: 1.25rem;
+  }
+
+  :root[data-site-style="sleek"] {
+    --site-surface: rgba(9, 10, 16, 0.86);
+    --site-panel: rgba(8, 9, 14, 0.96);
+    --site-glass: rgba(9, 10, 18, 0.78);
+  }
 }
 
 @layer base {
@@ -100,6 +134,262 @@ body {
 }
 
 .font-display, .font-body { font-family: var(--site-font) !important; }
+
+:root[data-site-style="apple"] {
+  scroll-behavior: smooth;
+  color-scheme: light;
+}
+
+:root[data-site-style="apple"] body {
+  background:
+    radial-gradient(circle at 18% 8%, rgba(255, 255, 255, 0.92), transparent 30rem),
+    radial-gradient(circle at 82% 0%, rgba(0, 113, 227, 0.12), transparent 34rem),
+    linear-gradient(180deg, #ffffff 0%, #f5f5f7 48%, #eeeeef 100%);
+  color: #1d1d1f;
+  letter-spacing: -0.012em;
+}
+
+:root[data-site-style="apple"] .App {
+  background:
+    radial-gradient(circle at calc(50% + (var(--mx, 0) * 5rem)) 0%, rgba(0, 113, 227, 0.13), transparent 34rem),
+    linear-gradient(180deg, rgba(255,255,255,0.96), rgba(245,245,247,0.96));
+  color: #1d1d1f !important;
+}
+
+:root[data-site-style="apple"] ::selection {
+  background: rgba(0, 113, 227, 0.24);
+  color: #000;
+}
+
+:root[data-site-style="apple"] .font-display,
+:root[data-site-style="apple"] .font-body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif !important;
+}
+
+:root[data-site-style="apple"] .font-display {
+  letter-spacing: -0.05em;
+}
+
+:root[data-site-style="apple"] .font-mono {
+  font-family: "SF Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  letter-spacing: 0.08em;
+}
+
+:root[data-site-style="apple"] .glass {
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.88), rgba(255,255,255,0.58)),
+    rgba(255,255,255,0.68);
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  box-shadow:
+    0 20px 70px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+}
+
+:root[data-site-style="apple"] header.glass {
+  top: 0.75rem;
+  left: 1rem;
+  right: 1rem;
+  inset-inline: 1rem;
+  border-radius: 999px;
+}
+
+:root[data-site-style="apple"] header.glass > div {
+  height: 4.35rem;
+}
+
+:root[data-site-style="apple"] main {
+  animation: apple-page-settle 680ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+:root[data-site-style="apple"] .hero-theme-gradient {
+  background:
+    linear-gradient(to bottom, rgba(255,255,255,0.5), transparent 40%, #f5f5f7),
+    radial-gradient(circle at 50% 4%, rgba(0, 113, 227, 0.14), transparent 36rem);
+}
+
+:root[data-site-style="apple"] .text-gradient-neon {
+  background: linear-gradient(90deg, #1d1d1f 0%, #0071e3 54%, #86868b 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+:root[data-site-style="apple"] .text-white,
+:root[data-site-style="apple"] .text-zinc-100,
+:root[data-site-style="apple"] .text-zinc-200 {
+  color: #1d1d1f !important;
+}
+
+:root[data-site-style="apple"] .text-zinc-300,
+:root[data-site-style="apple"] .text-zinc-400,
+:root[data-site-style="apple"] .text-zinc-500,
+:root[data-site-style="apple"] .text-purple-200,
+:root[data-site-style="apple"] .text-purple-300 {
+  color: #6e6e73 !important;
+}
+
+:root[data-site-style="apple"] .text-neon {
+  color: #0071e3 !important;
+}
+
+:root[data-site-style="apple"] .bg-neon {
+  background-color: #0071e3 !important;
+  color: #fff !important;
+}
+
+:root[data-site-style="apple"] [class*="border-white"],
+:root[data-site-style="apple"] [class*="border-purple"] {
+  border-color: rgba(0, 0, 0, 0.09) !important;
+}
+
+:root[data-site-style="apple"] [class*="bg-white/"],
+:root[data-site-style="apple"] [class*="bg-black/"],
+:root[data-site-style="apple"] [class*="bg-purple-950"],
+:root[data-site-style="apple"] [class*="from-purple-950"],
+:root[data-site-style="apple"] [class*="to-black"] {
+  background-color: rgba(255, 255, 255, 0.72) !important;
+}
+
+:root[data-site-style="apple"] [class*="bg-gradient-to"] {
+  background-image:
+    linear-gradient(145deg, rgba(255,255,255,0.94), rgba(255,255,255,0.58)) !important;
+}
+
+:root[data-site-style="apple"] [class*="shadow-black"],
+:root[data-site-style="apple"] [class*="shadow-purple"] {
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.08) !important;
+}
+
+:root[data-site-style="apple"] .bg-discord,
+:root[data-site-style="apple"] .bg-\[\#9146FF\],
+:root[data-site-style="apple"] .bg-purple-500,
+:root[data-site-style="apple"] .bg-purple-600 {
+  background: #1d1d1f !important;
+  color: #fff !important;
+}
+
+:root[data-site-style="apple"] .text-black,
+:root[data-site-style="apple"] .text-\[\#05050A\] {
+  color: #fff !important;
+}
+
+:root[data-site-style="apple"] .bg-emerald-400,
+:root[data-site-style="apple"] .bg-amber-300 {
+  color: #1d1d1f !important;
+}
+
+:root[data-site-style="apple"] .rounded-2xl,
+:root[data-site-style="apple"] .rounded-3xl {
+  border-radius: 1.65rem !important;
+}
+
+:root[data-site-style="apple"] button,
+:root[data-site-style="apple"] a,
+:root[data-site-style="apple"] input,
+:root[data-site-style="apple"] textarea,
+:root[data-site-style="apple"] select {
+  transition:
+    transform 360ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 360ms cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 360ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 360ms cubic-bezier(0.16, 1, 0.3, 1),
+    color 260ms ease !important;
+}
+
+:root[data-site-style="apple"] input,
+:root[data-site-style="apple"] textarea,
+:root[data-site-style="apple"] select {
+  background: rgba(255,255,255,0.72) !important;
+  color: #1d1d1f !important;
+  border-color: rgba(0,0,0,0.1) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
+}
+
+:root[data-site-style="apple"] input::placeholder,
+:root[data-site-style="apple"] textarea::placeholder {
+  color: #86868b !important;
+}
+
+:root[data-site-style="apple"] .btn-press:hover {
+  transform: translateY(-2px) scale(1.018);
+  filter: none;
+  box-shadow: 0 18px 45px rgba(0, 113, 227, 0.14);
+}
+
+:root[data-site-style="apple"] .btn-press:active {
+  transform: translateY(0) scale(0.985);
+}
+
+:root[data-site-style="apple"] .tilt-card {
+  background:
+    linear-gradient(145deg, rgba(255,255,255,0.92), rgba(255,255,255,0.62)),
+    rgba(255,255,255,0.74) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  box-shadow:
+    0 18px 55px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+
+:root[data-site-style="apple"] .tilt-card:hover {
+  transform: translateY(-8px) scale(1.012);
+  filter: none;
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.12),
+    0 12px 36px rgba(0, 113, 227, 0.09),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+:root[data-site-style="apple"] .asset-3d-in,
+:root[data-site-style="apple"] .fade-in {
+  animation: apple-soft-rise 720ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+:root[data-site-style="apple"] ::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+:root[data-site-style="apple"] ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+:root[data-site-style="apple"] ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.22);
+  border: 3px solid rgba(245,245,247,0.9);
+  border-radius: 999px;
+}
+
+:root[data-site-style="apple"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.34);
+}
+
+@keyframes apple-page-settle {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.992);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes apple-soft-rise {
+  from {
+    opacity: 0;
+    transform: translateY(22px) scale(0.985);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
 
 /* Hide scrollbar on horizontal scrollers */
 .no-scrollbar::-webkit-scrollbar { display: none; }
