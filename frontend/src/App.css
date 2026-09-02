@@ -77,6 +77,63 @@
   transform: translateY(1px) scale(0.98);
 }
 
+:root[data-site-style="apple"] .tilt-card {
+  perspective: 1200px;
+  transform:
+    translate3d(0, 0, 0)
+    rotateX(0deg)
+    rotateY(0deg);
+  transition:
+    transform 620ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 520ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 360ms ease,
+    background-color 360ms ease,
+    filter 360ms ease !important;
+}
+
+:root[data-site-style="apple"] .tilt-card::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    radial-gradient(
+      circle at var(--asset-glow-x, 50%) var(--asset-glow-y, 18%),
+      color-mix(in srgb, var(--apple-accent) 18%, transparent),
+      transparent 34%
+    );
+  transition: opacity 520ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+:root[data-site-style="apple"] .tilt-card:hover::before {
+  opacity: 1;
+}
+
+:root[data-site-style="apple"] .tilt-card:hover {
+  transform:
+    translate3d(0, -8px, 0)
+    rotateX(var(--asset-tilt-x, 0deg))
+    rotateY(var(--asset-tilt-y, 0deg))
+    scale(1.014);
+}
+
+:root[data-site-style="apple"] .tilt-card:hover img,
+:root[data-site-style="apple"] .tilt-card:hover video {
+  transform:
+    translate3d(
+      var(--asset-parallax-x, 0px),
+      var(--asset-parallax-y, 0px),
+      0
+    )
+    scale(1.075);
+}
+
+:root[data-site-style="apple"] .tilt-card.apple-card-pop {
+  animation: apple-card-pop 520ms cubic-bezier(0.2, 1.35, 0.32, 1) both;
+}
+
 .btn-press {
   transition:
     transform 190ms cubic-bezier(0.2, 1.15, 0.32, 1),
@@ -185,6 +242,37 @@
   }
 }
 
+@keyframes apple-card-pop {
+  0% {
+    transform:
+      translate3d(0, -6px, 0)
+      rotateX(var(--asset-tilt-x, 0deg))
+      rotateY(var(--asset-tilt-y, 0deg))
+      scale(1.012);
+  }
+  34% {
+    transform:
+      translate3d(0, -3px, 0)
+      rotateX(0deg)
+      rotateY(0deg)
+      scale(0.965);
+  }
+  68% {
+    transform:
+      translate3d(0, -10px, 0)
+      rotateX(var(--asset-tilt-x, 0deg))
+      rotateY(var(--asset-tilt-y, 0deg))
+      scale(1.026);
+  }
+  100% {
+    transform:
+      translate3d(0, -8px, 0)
+      rotateX(var(--asset-tilt-x, 0deg))
+      rotateY(var(--asset-tilt-y, 0deg))
+      scale(1.014);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .page-soft-enter,
   .fade-in,
@@ -208,6 +296,7 @@
   .tilt-card:hover video,
   .tilt-card button:hover,
   .tilt-card a:hover,
+  .tilt-card.apple-card-pop,
   .btn-press:active {
     transform: none !important;
   }

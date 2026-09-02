@@ -111,6 +111,7 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
   const [downloading, setDownloading] = useState(false);
   const [downloadCount, setDownloadCount] = useState(asset.download_count || 0);
   const [viewCount, setViewCount] = useState(asset.view_count || 0);
+  const [pressedPulse, setPressedPulse] = useState(false);
   const color = CATEGORY_COLORS[asset.category] || CATEGORY_COLORS.Overlays;
   const isAudio = asset.category === "Audios";
   const isVideo = asset.category === "Videos";
@@ -189,13 +190,37 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
     const r = ref.current.getBoundingClientRect();
     const pointerX = (e.clientX - r.left) / r.width;
     const pointerY = (e.clientY - r.top) / r.height;
+    const tiltX = (0.5 - pointerY) * 7;
+    const tiltY = (pointerX - 0.5) * 8;
+    const parallaxX = (pointerX - 0.5) * 12;
+    const parallaxY = (pointerY - 0.5) * 12;
     ref.current.style.setProperty("--asset-glow-x", `${Math.round(pointerX * 100)}%`);
     ref.current.style.setProperty("--asset-glow-y", `${Math.round(pointerY * 100)}%`);
+    ref.current.style.setProperty("--asset-tilt-x", `${tiltX.toFixed(2)}deg`);
+    ref.current.style.setProperty("--asset-tilt-y", `${tiltY.toFixed(2)}deg`);
+    ref.current.style.setProperty("--asset-parallax-x", `${parallaxX.toFixed(2)}px`);
+    ref.current.style.setProperty("--asset-parallax-y", `${parallaxY.toFixed(2)}px`);
   };
   const onLeave = () => {
     if (!ref.current) return;
     ref.current.style.setProperty("--asset-glow-x", "50%");
     ref.current.style.setProperty("--asset-glow-y", "18%");
+    ref.current.style.setProperty("--asset-tilt-x", "0deg");
+    ref.current.style.setProperty("--asset-tilt-y", "0deg");
+    ref.current.style.setProperty("--asset-parallax-x", "0px");
+    ref.current.style.setProperty("--asset-parallax-y", "0px");
+  };
+
+  const triggerPressPulse = (event) => {
+    const interactive = event.target instanceof Element
+      ? event.target.closest("button, a, input, textarea, select, [role='button']")
+      : null;
+    if (interactive && interactive !== event.currentTarget) return;
+    setPressedPulse(false);
+    window.requestAnimationFrame(() => {
+      setPressedPulse(true);
+      window.setTimeout(() => setPressedPulse(false), 520);
+    });
   };
 
   const download = async () => {
@@ -342,11 +367,12 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
         ref={ref}
         onMouseMove={onMove}
         onMouseLeave={onLeave}
+        onPointerDown={triggerPressPulse}
         onClick={handleCardClick}
         role={isLockedPremium || hasAudioPlayback ? "button" : undefined}
         tabIndex={isLockedPremium || hasAudioPlayback ? 0 : undefined}
         onKeyDown={handleCardKeyDown}
-        className={`tilt-card group rounded-2xl overflow-hidden bg-[var(--site-surface)] backdrop-blur-xl border transition-all duration-300 fade-in ${isPremium ? "border-purple-300/20 shadow-[0_0_32px_rgba(168,85,247,0.13)] hover:border-purple-300/40" : "border-white/5 hover:border-white/15 hover:shadow-[0_18px_50px_rgba(0,0,0,0.28)]"} ${isLockedPremium || hasAudioPlayback ? "cursor-pointer" : ""}`}
+        className={`tilt-card group rounded-2xl overflow-hidden bg-[var(--site-surface)] backdrop-blur-xl border transition-all duration-300 fade-in ${pressedPulse ? "apple-card-pop" : ""} ${isPremium ? "border-purple-300/20 shadow-[0_0_32px_rgba(168,85,247,0.13)] hover:border-purple-300/40" : "border-white/5 hover:border-white/15 hover:shadow-[0_18px_50px_rgba(0,0,0,0.28)]"} ${isLockedPremium || hasAudioPlayback ? "cursor-pointer" : ""}`}
         data-testid={`asset-card-${asset.id}`}
       >
         <div className="aspect-video w-full bg-black/40 overflow-hidden relative">
