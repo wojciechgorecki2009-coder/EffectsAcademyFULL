@@ -875,6 +875,7 @@ class Asset(BaseModel):
     is_updated: bool = False
     updated_at: Optional[str] = ""
     download_count: int = 0
+    view_count: int = 0
     has_external_url: Optional[bool] = False
     created_at: str = Field(default_factory=now_iso)
 
@@ -1892,6 +1893,27 @@ async def increment_download(asset_id: str, request: Request):
     })
     doc = await db.assets.find_one({"id": asset_id}, {"_id": 0})
     return {"download_count": doc["download_count"]}
+
+
+@api_router.post("/assets/{asset_id}/view")
+async def increment_video_view(asset_id: str, request: Request):
+    asset = await db.assets.find_one({"id": asset_id}, {"_id": 0})
+    if not asset:
+        raise HTTPException(404, "Asset not found")
+    if asset.get("category") != "Videos":
+        raise HTTPException(400, "Views can only be tracked for video assets")
+    res = await db.assets.update_one({"id": asset_id}, {"$inc": {"view_count": 1}})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Asset not found")
+    await db.analytics_video_views.insert_one({
+        "asset_id": asset_id,
+        "title": asset.get("title", ""),
+        "category": asset.get("category", ""),
+        "timestamp": time.time(),
+        "date": utc_day_from_ts(),
+    })
+    doc = await db.assets.find_one({"id": asset_id}, {"_id": 0})
+    return {"view_count": int(doc.get("view_count") or 0)}
 
 
 @api_router.post("/assets/{asset_id}/premium-download-link", response_model=PremiumDownloadLink)

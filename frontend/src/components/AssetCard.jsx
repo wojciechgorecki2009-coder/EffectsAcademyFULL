@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Crown, Copy, Download, ImageIcon, Link as LinkIcon, LockKeyhole, Pencil, Play, RefreshCw, Sparkles, Trash2 } from "lucide-react";
+import { Crown, Copy, Download, Eye, ImageIcon, Link as LinkIcon, LockKeyhole, Pencil, Play, RefreshCw, Sparkles, Trash2 } from "lucide-react";
 import { CATEGORY_COLORS, FILE_BASE, api, buildFileUrl, buildDownloadUrl, deriveDownloadFilename, getAuthToken } from "@/lib/api";
 import { useUploadAccess } from "@/lib/uploadAccess";
 import { useAuth } from "@/lib/auth";
@@ -110,6 +110,7 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
   const [duplicating, setDuplicating] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [downloadCount, setDownloadCount] = useState(asset.download_count || 0);
+  const [viewCount, setViewCount] = useState(asset.view_count || 0);
   const color = CATEGORY_COLORS[asset.category] || CATEGORY_COLORS.Overlays;
   const isAudio = asset.category === "Audios";
   const isVideo = asset.category === "Videos";
@@ -135,6 +136,10 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
   useEffect(() => {
     setDownloadCount(asset.download_count || 0);
   }, [asset.download_count]);
+
+  useEffect(() => {
+    setViewCount(asset.view_count || 0);
+  }, [asset.view_count]);
 
   const relatedAssets = useMemo(() => {
     if (!allAssets?.length) return [];
@@ -169,6 +174,16 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
     setDownloadCount((count) => count + 1);
   };
 
+  const recordVideoView = () => {
+    if (!isVideo) return;
+    api.post(`/assets/${asset.id}/view`)
+      .then(({ data }) => {
+        if (typeof data?.view_count === "number") setViewCount(data.view_count);
+      })
+      .catch(() => {});
+    setViewCount((count) => count + 1);
+  };
+
   const onMove = (e) => {
     if (!ref.current) return;
     const r = ref.current.getBoundingClientRect();
@@ -190,6 +205,7 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
     }
     if (isVideo) {
       setPreviewOpen(true);
+      recordVideoView();
       return;
     }
     setDownloading(true);
@@ -263,8 +279,12 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
     event.preventDefault();
     event.stopPropagation();
     if (isLockedPremium) return openPremium(event);
-    if (isVideo && youtubeEmbed) setPreviewOpen(true);
-    else if (!isAudio && thumbnailSrc) setPreviewOpen(true);
+    if (isVideo && youtubeEmbed) {
+      setPreviewOpen(true);
+      recordVideoView();
+    } else if (!isAudio && thumbnailSrc) {
+      setPreviewOpen(true);
+    }
   };
 
   const playAudio = async () => {
@@ -428,6 +448,12 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
             <p className="text-xs text-zinc-500">
               {asset.category === "Audios" ? "Audio by " : "By "}
               <span className="text-zinc-300">{asset.creator_tag}</span>
+            </p>
+          )}
+          {isVideo && (
+            <p className="text-xs text-zinc-500 flex items-center gap-1.5">
+              <Eye className="w-3.5 h-3.5" />
+              Views: <span className="text-zinc-300 font-mono">{viewCount}</span>
             </p>
           )}
           {asset.ae_version && (
