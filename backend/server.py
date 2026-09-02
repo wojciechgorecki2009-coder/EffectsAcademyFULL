@@ -74,6 +74,18 @@ SMTP_USE_SSL = os.environ.get("SMTP_USE_SSL", "0") == "1"
 UPLOADER_EMAILS = {item.strip().lower() for item in os.environ.get("UPLOADER_EMAILS", "").split(",") if item.strip()}
 ADMIN_EMAILS = {item.strip().lower() for item in os.environ.get("ADMIN_EMAILS", "").split(",") if item.strip()}
 MANUAL_PREMIUM_EMAILS = {item.strip().lower() for item in os.environ.get("MANUAL_PREMIUM_EMAILS", "").split(",") if item.strip()}
+DEFAULT_STATS_PREMIUM_EXCLUDED_EMAILS = {
+    "limetelly200@gmail.com",
+    "wojciechgorecki2009@gmail.com",
+    "rockstarsc1981@gmail.com",
+    "mrbitisrich@gmail.com",
+    "mrbityt2000@gmail.com",
+}
+STATS_PREMIUM_EXCLUDED_EMAILS = DEFAULT_STATS_PREMIUM_EXCLUDED_EMAILS | {
+    item.strip().lower()
+    for item in os.environ.get("STATS_PREMIUM_EXCLUDED_EMAILS", "").split(",")
+    if item.strip()
+}
 TEMP_MOD_EMAILS = {item.strip().lower() for item in os.environ.get("TEMP_MOD_EMAILS", "").split(",") if item.strip()}
 MAX_UPLOAD_BYTES = int(os.environ.get("MAX_UPLOAD_BYTES", str(100 * 1024 * 1024)))
 S3_BUCKET = os.environ.get("S3_BUCKET", "")
@@ -100,6 +112,7 @@ PREMIUM_DOWNLOAD_LINK_TTL_SECONDS = int(os.environ.get("PREMIUM_DOWNLOAD_LINK_TT
 PREMIUM_MONTHLY_CURRENCY = os.environ.get("PREMIUM_MONTHLY_CURRENCY", "usd").lower()
 STRIPE_REVENUE_CACHE_SECONDS = int(os.environ.get("STRIPE_REVENUE_CACHE_SECONDS", str(5 * 60)))
 STRIPE_SUBSCRIPTION_REVENUE_CACHE = {}
+STRIPE_USER_SUBSCRIPTION_STATS_CACHE = {}
 
 s3 = None
 if USE_OBJECT_STORAGE:
@@ -218,6 +231,10 @@ def role_for_email(email: str, existing_role: str = "Viewer") -> str:
 
 def email_has_manual_premium(email: str = "") -> bool:
     return (email or "").strip().lower() in MANUAL_PREMIUM_EMAILS
+
+
+def email_excluded_from_premium_stats(email: str = "") -> bool:
+    return (email or "").strip().lower() in STATS_PREMIUM_EXCLUDED_EMAILS
 
 
 def twitch_redirect_uri() -> str:
@@ -430,6 +447,49 @@ async def retrieve_subscription_monthly_revenue(subscription_id: str = "") -> tu
     except stripe.error.StripeError:
         logging.warning("Unable to retrieve Stripe subscription %s for revenue stats", subscription_id)
         return 0, PREMIUM_MONTHLY_CURRENCY
+
+
+async def retrieve_stats_subscription_for_user(user: dict) -> Optional[dict]:
+    if not STRIPE_SECRET_KEY:
+        return None
+    cache_key = user.get("stripe_subscription_id") or user.get("stripe_customer_id") or user.get("email") or user.get("id")
+    if cache_key:
+        cached = STRIPE_USER_SUBSCRIPTION_STATS_CACHE.get(cache_key)
+        if cached and cached["expires_at"] > time.time():
+            return cached["subscription"]
+
+    subscription = None
+    subscription_id = user.get("stripe_subscription_id", "")
+    customer_id = user.get("stripe_customer_id", "")
+    try:
+        if subscription_id:
+            candidate = stripe.Subscription.retrieve(subscription_id, expand=["items.data.price"])
+            if subscription_grants_premium(candidate):
+                subscription = candidate
+
+        customer_ids = []
+        if customer_id:
+            customer_ids.append(customer_id)
+        if not subscription and user.get("email"):
+            escaped_email = user["email"].replace("'", "\\'")
+            customers = stripe.Customer.search(query=f"email:'{escaped_email}'", limit=5)
+            customer_ids.extend([customer.id for customer in customers.data if customer.id not in customer_ids])
+
+        for candidate_customer_id in customer_ids:
+            if subscription:
+                break
+            subscriptions = stripe.Subscription.list(customer=candidate_customer_id, status="all", limit=20, expand=["data.items.data.price"])
+            subscription = next((item for item in subscriptions.data if subscription_grants_premium(item)), None)
+
+        if cache_key:
+            STRIPE_USER_SUBSCRIPTION_STATS_CACHE[cache_key] = {
+                "expires_at": time.time() + STRIPE_REVENUE_CACHE_SECONDS,
+                "subscription": subscription,
+            }
+        return subscription
+    except stripe.error.StripeError:
+        logging.warning("Unable to retrieve Stripe subscription for premium stats user %s", user.get("id") or user.get("email"))
+        return None
 
 
 def user_is_staff(user: Optional[dict]) -> bool:
@@ -2541,31 +2601,43 @@ async def moderator_stats(request: Request, days: int = 7):
     ]
 
     online_now = await db.analytics_visitors.count_documents({"last_seen": {"$gte": time.time() - 300}})
-    premium_user_docs = await db.users.find(
+    premium_candidate_docs = await db.users.find(
         {
-            "premium_status": {"$in": ["active", "trialing"]},
-            "premium_cancelled": {"$ne": True},
+            "$or": [
+                {"premium_status": {"$in": ["active", "trialing"]}},
+                {"stripe_subscription_id": {"$exists": True, "$ne": ""}},
+                {"stripe_customer_id": {"$exists": True, "$ne": ""}},
+                {"email": {"$in": list(MANUAL_PREMIUM_EMAILS)}},
+            ],
         },
-        {"_id": 0, "email": 1, "premium_status": 1, "stripe_subscription_id": 1},
+        {"_id": 0, "id": 1, "email": 1, "premium_status": 1, "stripe_subscription_id": 1, "stripe_customer_id": 1},
     ).to_list(5000)
-    manual_premium_users = sum(1 for item in premium_user_docs if email_has_manual_premium(item.get("email", "")))
-    paid_premium_docs = [
-        item
-        for item in premium_user_docs
-        if not email_has_manual_premium(item.get("email", "")) and item.get("stripe_subscription_id")
-    ]
-    premium_active_users = sum(1 for item in paid_premium_docs if item.get("premium_status") == "active")
-    premium_trialing_users = sum(1 for item in paid_premium_docs if item.get("premium_status") == "trialing")
-    premium_users = premium_active_users + premium_trialing_users
+    manual_premium_users = 0
+    premium_active_users = 0
+    premium_trialing_users = 0
     premium_monthly_revenue_cents = 0
     premium_revenue_currency = PREMIUM_MONTHLY_CURRENCY
-    for paid_user in paid_premium_docs:
-        if paid_user.get("premium_status") != "active":
+    for premium_user in premium_candidate_docs:
+        if email_excluded_from_premium_stats(premium_user.get("email", "")):
             continue
-        revenue_cents, revenue_currency = await retrieve_subscription_monthly_revenue(paid_user.get("stripe_subscription_id", ""))
-        premium_monthly_revenue_cents += revenue_cents
-        if revenue_cents:
-            premium_revenue_currency = revenue_currency
+
+        subscription = await retrieve_stats_subscription_for_user(premium_user)
+        if subscription:
+            status = subscription.get("status", "")
+            if status == "active":
+                premium_active_users += 1
+                revenue_cents, revenue_currency = subscription_monthly_revenue_cents(subscription)
+                premium_monthly_revenue_cents += revenue_cents
+                if revenue_cents:
+                    premium_revenue_currency = revenue_currency
+            elif status == "trialing":
+                premium_trialing_users += 1
+            continue
+
+        if email_has_manual_premium(premium_user.get("email", "")):
+            manual_premium_users += 1
+
+    premium_users = premium_active_users + premium_trialing_users
     asset_docs = await db.assets.find(
         {},
         {"_id": 0, "id": 1, "title": 1, "category": 1, "creator_tag": 1, "download_count": 1},
