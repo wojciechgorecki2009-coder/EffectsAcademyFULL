@@ -445,10 +445,10 @@ export default function StatsPage() {
             icon={Crown}
             label="Premium users"
             value={data?.summary?.premium_users || 0}
-            note={`${data?.summary?.premium_active_users || 0} active · ${data?.summary?.premium_trialing_users || 0} trialing`}
+            note={`${data?.summary?.premium_active_users || 0} paid active · ${data?.summary?.premium_trialing_users || 0} trialing${data?.summary?.manual_premium_users ? ` · ${data.summary.manual_premium_users} manual` : ""}`}
             tone="amber"
             sideValue={`${formatMoney(data?.summary?.premium_monthly_revenue_cents || 0, data?.summary?.premium_monthly_revenue_currency)}/mo`}
-            sideLabel="Estimated revenue"
+            sideLabel="Stripe revenue"
           />
           <StatCard icon={Download} label="Downloads" value={data?.summary?.total_downloads || 0} note="All-time asset total" tone="green" />
         </div>

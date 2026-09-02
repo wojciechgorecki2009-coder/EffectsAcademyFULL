@@ -97,8 +97,9 @@ FAL_STATUS_POLL_SECONDS = float(os.environ.get("FAL_STATUS_POLL_SECONDS", "1.5")
 FAL_STATUS_MAX_POLLS = int(os.environ.get("FAL_STATUS_MAX_POLLS", "80"))
 AI_IMAGE_MAX_BYTES = int(os.environ.get("AI_IMAGE_MAX_BYTES", str(8 * 1024 * 1024)))
 PREMIUM_DOWNLOAD_LINK_TTL_SECONDS = int(os.environ.get("PREMIUM_DOWNLOAD_LINK_TTL_SECONDS", str(10 * 60)))
-PREMIUM_MONTHLY_AMOUNT_CENTS = int(os.environ.get("PREMIUM_MONTHLY_AMOUNT_CENTS", "999"))
 PREMIUM_MONTHLY_CURRENCY = os.environ.get("PREMIUM_MONTHLY_CURRENCY", "usd").lower()
+STRIPE_REVENUE_CACHE_SECONDS = int(os.environ.get("STRIPE_REVENUE_CACHE_SECONDS", str(5 * 60)))
+STRIPE_SUBSCRIPTION_REVENUE_CACHE = {}
 
 s3 = None
 if USE_OBJECT_STORAGE:
@@ -362,6 +363,73 @@ def subscription_grants_premium(subscription: Optional[dict]) -> bool:
     if not subscription:
         return False
     return stripe_active_status(subscription.get("status", ""))
+
+
+def subscription_monthly_revenue_cents(subscription: Optional[dict]) -> tuple[int, str]:
+    if not subscription or not subscription_grants_premium(subscription):
+        return 0, PREMIUM_MONTHLY_CURRENCY
+
+    total_cents = 0
+    currency = PREMIUM_MONTHLY_CURRENCY
+    items = ((subscription.get("items") or {}).get("data") or [])
+    for item in items:
+        price = item.get("price") or item.get("plan") or {}
+        unit_amount = price.get("unit_amount")
+        if unit_amount is None and price.get("unit_amount_decimal") is not None:
+            try:
+                unit_amount = int(float(price.get("unit_amount_decimal")))
+            except (TypeError, ValueError):
+                unit_amount = 0
+        unit_amount = int(unit_amount or 0)
+        quantity = int(item.get("quantity") or 1)
+        recurring = price.get("recurring") or {}
+        interval = recurring.get("interval") or price.get("interval") or "month"
+        interval_count = int(recurring.get("interval_count") or price.get("interval_count") or 1)
+        if price.get("currency"):
+            currency = price.get("currency")
+
+        monthly_cents = unit_amount * quantity
+        if interval == "year":
+            monthly_cents = round(monthly_cents / (12 * max(interval_count, 1)))
+        elif interval == "week":
+            monthly_cents = round(monthly_cents * 52 / (12 * max(interval_count, 1)))
+        elif interval == "day":
+            monthly_cents = round(monthly_cents * 365 / (12 * max(interval_count, 1)))
+        elif interval == "month":
+            monthly_cents = round(monthly_cents / max(interval_count, 1))
+
+        total_cents += monthly_cents
+
+    discount = subscription.get("discount")
+    coupon = (discount or {}).get("coupon") if isinstance(discount, dict) else {}
+    coupon = coupon if isinstance(coupon, dict) else {}
+    if total_cents and coupon:
+        if coupon.get("percent_off") is not None:
+            total_cents = round(total_cents * (1 - float(coupon.get("percent_off") or 0) / 100))
+        elif coupon.get("amount_off") is not None and (coupon.get("currency") or currency) == currency:
+            total_cents = max(0, total_cents - int(coupon.get("amount_off") or 0))
+
+    return max(0, total_cents), currency
+
+
+async def retrieve_subscription_monthly_revenue(subscription_id: str = "") -> tuple[int, str]:
+    if not STRIPE_SECRET_KEY or not subscription_id:
+        return 0, PREMIUM_MONTHLY_CURRENCY
+    cached = STRIPE_SUBSCRIPTION_REVENUE_CACHE.get(subscription_id)
+    if cached and cached["expires_at"] > time.time():
+        return cached["cents"], cached["currency"]
+    try:
+        subscription = stripe.Subscription.retrieve(subscription_id, expand=["items.data.price"])
+        cents, currency = subscription_monthly_revenue_cents(subscription)
+        STRIPE_SUBSCRIPTION_REVENUE_CACHE[subscription_id] = {
+            "expires_at": time.time() + STRIPE_REVENUE_CACHE_SECONDS,
+            "cents": cents,
+            "currency": currency,
+        }
+        return cents, currency
+    except stripe.error.StripeError:
+        logging.warning("Unable to retrieve Stripe subscription %s for revenue stats", subscription_id)
+        return 0, PREMIUM_MONTHLY_CURRENCY
 
 
 def user_is_staff(user: Optional[dict]) -> bool:
@@ -2473,19 +2541,31 @@ async def moderator_stats(request: Request, days: int = 7):
     ]
 
     online_now = await db.analytics_visitors.count_documents({"last_seen": {"$gte": time.time() - 300}})
-    premium_active_users = await db.users.count_documents({
-        "premium_status": "active",
-        "premium_cancelled": {"$ne": True},
-    })
-    premium_trialing_users = await db.users.count_documents({
-        "premium_status": "trialing",
-        "premium_cancelled": {"$ne": True},
-    })
-    premium_users = await db.users.count_documents({
-        "premium_status": {"$in": ["active", "trialing"]},
-        "premium_cancelled": {"$ne": True},
-    })
-    premium_monthly_revenue_cents = premium_active_users * PREMIUM_MONTHLY_AMOUNT_CENTS
+    premium_user_docs = await db.users.find(
+        {
+            "premium_status": {"$in": ["active", "trialing"]},
+            "premium_cancelled": {"$ne": True},
+        },
+        {"_id": 0, "email": 1, "premium_status": 1, "stripe_subscription_id": 1},
+    ).to_list(5000)
+    manual_premium_users = sum(1 for item in premium_user_docs if email_has_manual_premium(item.get("email", "")))
+    paid_premium_docs = [
+        item
+        for item in premium_user_docs
+        if not email_has_manual_premium(item.get("email", "")) and item.get("stripe_subscription_id")
+    ]
+    premium_active_users = sum(1 for item in paid_premium_docs if item.get("premium_status") == "active")
+    premium_trialing_users = sum(1 for item in paid_premium_docs if item.get("premium_status") == "trialing")
+    premium_users = premium_active_users + premium_trialing_users
+    premium_monthly_revenue_cents = 0
+    premium_revenue_currency = PREMIUM_MONTHLY_CURRENCY
+    for paid_user in paid_premium_docs:
+        if paid_user.get("premium_status") != "active":
+            continue
+        revenue_cents, revenue_currency = await retrieve_subscription_monthly_revenue(paid_user.get("stripe_subscription_id", ""))
+        premium_monthly_revenue_cents += revenue_cents
+        if revenue_cents:
+            premium_revenue_currency = revenue_currency
     asset_docs = await db.assets.find(
         {},
         {"_id": 0, "id": 1, "title": 1, "category": 1, "creator_tag": 1, "download_count": 1},
@@ -2506,8 +2586,9 @@ async def moderator_stats(request: Request, days: int = 7):
             "premium_users": premium_users,
             "premium_active_users": premium_active_users,
             "premium_trialing_users": premium_trialing_users,
+            "manual_premium_users": manual_premium_users,
             "premium_monthly_revenue_cents": premium_monthly_revenue_cents,
-            "premium_monthly_revenue_currency": PREMIUM_MONTHLY_CURRENCY,
+            "premium_monthly_revenue_currency": premium_revenue_currency,
             "total_downloads": total_downloads,
             "total_assets": len(asset_docs),
         },
