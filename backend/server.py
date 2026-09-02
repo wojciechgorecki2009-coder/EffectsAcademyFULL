@@ -383,50 +383,54 @@ def subscription_grants_premium(subscription: Optional[dict]) -> bool:
 
 
 def subscription_monthly_revenue_cents(subscription: Optional[dict]) -> tuple[int, str]:
-    if not subscription or not subscription_grants_premium(subscription):
+    try:
+        if not subscription or not subscription_grants_premium(subscription):
+            return 0, PREMIUM_MONTHLY_CURRENCY
+
+        total_cents = 0
+        currency = PREMIUM_MONTHLY_CURRENCY
+        items = ((subscription.get("items") or {}).get("data") or [])
+        for item in items:
+            price = item.get("price") or item.get("plan") or {}
+            unit_amount = price.get("unit_amount")
+            if unit_amount is None and price.get("unit_amount_decimal") is not None:
+                try:
+                    unit_amount = int(float(price.get("unit_amount_decimal")))
+                except (TypeError, ValueError):
+                    unit_amount = 0
+            unit_amount = int(unit_amount or 0)
+            quantity = int(item.get("quantity") or 1)
+            recurring = price.get("recurring") or {}
+            interval = recurring.get("interval") or price.get("interval") or "month"
+            interval_count = int(recurring.get("interval_count") or price.get("interval_count") or 1)
+            if price.get("currency"):
+                currency = price.get("currency")
+
+            monthly_cents = unit_amount * quantity
+            if interval == "year":
+                monthly_cents = round(monthly_cents / (12 * max(interval_count, 1)))
+            elif interval == "week":
+                monthly_cents = round(monthly_cents * 52 / (12 * max(interval_count, 1)))
+            elif interval == "day":
+                monthly_cents = round(monthly_cents * 365 / (12 * max(interval_count, 1)))
+            elif interval == "month":
+                monthly_cents = round(monthly_cents / max(interval_count, 1))
+
+            total_cents += monthly_cents
+
+        discount = subscription.get("discount")
+        coupon = (discount or {}).get("coupon") if isinstance(discount, dict) else {}
+        coupon = coupon if isinstance(coupon, dict) else {}
+        if total_cents and coupon:
+            if coupon.get("percent_off") is not None:
+                total_cents = round(total_cents * (1 - float(coupon.get("percent_off") or 0) / 100))
+            elif coupon.get("amount_off") is not None and (coupon.get("currency") or currency) == currency:
+                total_cents = max(0, total_cents - int(coupon.get("amount_off") or 0))
+
+        return max(0, total_cents), currency
+    except Exception:
+        logging.exception("Unable to calculate Stripe subscription revenue")
         return 0, PREMIUM_MONTHLY_CURRENCY
-
-    total_cents = 0
-    currency = PREMIUM_MONTHLY_CURRENCY
-    items = ((subscription.get("items") or {}).get("data") or [])
-    for item in items:
-        price = item.get("price") or item.get("plan") or {}
-        unit_amount = price.get("unit_amount")
-        if unit_amount is None and price.get("unit_amount_decimal") is not None:
-            try:
-                unit_amount = int(float(price.get("unit_amount_decimal")))
-            except (TypeError, ValueError):
-                unit_amount = 0
-        unit_amount = int(unit_amount or 0)
-        quantity = int(item.get("quantity") or 1)
-        recurring = price.get("recurring") or {}
-        interval = recurring.get("interval") or price.get("interval") or "month"
-        interval_count = int(recurring.get("interval_count") or price.get("interval_count") or 1)
-        if price.get("currency"):
-            currency = price.get("currency")
-
-        monthly_cents = unit_amount * quantity
-        if interval == "year":
-            monthly_cents = round(monthly_cents / (12 * max(interval_count, 1)))
-        elif interval == "week":
-            monthly_cents = round(monthly_cents * 52 / (12 * max(interval_count, 1)))
-        elif interval == "day":
-            monthly_cents = round(monthly_cents * 365 / (12 * max(interval_count, 1)))
-        elif interval == "month":
-            monthly_cents = round(monthly_cents / max(interval_count, 1))
-
-        total_cents += monthly_cents
-
-    discount = subscription.get("discount")
-    coupon = (discount or {}).get("coupon") if isinstance(discount, dict) else {}
-    coupon = coupon if isinstance(coupon, dict) else {}
-    if total_cents and coupon:
-        if coupon.get("percent_off") is not None:
-            total_cents = round(total_cents * (1 - float(coupon.get("percent_off") or 0) / 100))
-        elif coupon.get("amount_off") is not None and (coupon.get("currency") or currency) == currency:
-            total_cents = max(0, total_cents - int(coupon.get("amount_off") or 0))
-
-    return max(0, total_cents), currency
 
 
 async def retrieve_subscription_monthly_revenue(subscription_id: str = "") -> tuple[int, str]:
@@ -444,8 +448,8 @@ async def retrieve_subscription_monthly_revenue(subscription_id: str = "") -> tu
             "currency": currency,
         }
         return cents, currency
-    except stripe.error.StripeError:
-        logging.warning("Unable to retrieve Stripe subscription %s for revenue stats", subscription_id)
+    except Exception:
+        logging.exception("Unable to retrieve Stripe subscription %s for revenue stats", subscription_id)
         return 0, PREMIUM_MONTHLY_CURRENCY
 
 
@@ -487,8 +491,8 @@ async def retrieve_stats_subscription_for_user(user: dict) -> Optional[dict]:
                 "subscription": subscription,
             }
         return subscription
-    except stripe.error.StripeError:
-        logging.warning("Unable to retrieve Stripe subscription for premium stats user %s", user.get("id") or user.get("email"))
+    except Exception:
+        logging.exception("Unable to retrieve Stripe subscription for premium stats user %s", user.get("id") or user.get("email"))
         return None
 
 
@@ -2618,24 +2622,28 @@ async def moderator_stats(request: Request, days: int = 7):
     premium_monthly_revenue_cents = 0
     premium_revenue_currency = PREMIUM_MONTHLY_CURRENCY
     for premium_user in premium_candidate_docs:
-        if email_excluded_from_premium_stats(premium_user.get("email", "")):
-            continue
+        try:
+            if email_excluded_from_premium_stats(premium_user.get("email", "")):
+                continue
 
-        subscription = await retrieve_stats_subscription_for_user(premium_user)
-        if subscription:
-            status = subscription.get("status", "")
-            if status == "active":
-                premium_active_users += 1
-                revenue_cents, revenue_currency = subscription_monthly_revenue_cents(subscription)
-                premium_monthly_revenue_cents += revenue_cents
-                if revenue_cents:
-                    premium_revenue_currency = revenue_currency
-            elif status == "trialing":
-                premium_trialing_users += 1
-            continue
+            subscription = await retrieve_stats_subscription_for_user(premium_user)
+            if subscription:
+                status = subscription.get("status", "")
+                if status == "active":
+                    premium_active_users += 1
+                    revenue_cents, revenue_currency = subscription_monthly_revenue_cents(subscription)
+                    premium_monthly_revenue_cents += revenue_cents
+                    if revenue_cents:
+                        premium_revenue_currency = revenue_currency
+                elif status == "trialing":
+                    premium_trialing_users += 1
+                continue
 
-        if email_has_manual_premium(premium_user.get("email", "")):
-            manual_premium_users += 1
+            if email_has_manual_premium(premium_user.get("email", "")):
+                manual_premium_users += 1
+        except Exception:
+            logging.exception("Skipping premium stats user after unexpected stats error")
+            continue
 
     premium_users = premium_active_users + premium_trialing_users
     asset_docs = await db.assets.find(
