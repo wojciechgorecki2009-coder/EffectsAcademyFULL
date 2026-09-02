@@ -105,6 +105,7 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
   const globalAudio = useGlobalAudio();
   const navigate = useNavigate();
   const ref = useRef(null);
+  const pressAnimationRef = useRef(null);
   const [editOpen, setEditOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
@@ -208,6 +209,39 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
     ref.current.style.setProperty("--asset-tilt-y", "0deg");
     ref.current.style.setProperty("--asset-parallax-x", "0px");
     ref.current.style.setProperty("--asset-parallax-y", "0px");
+  };
+
+  const triggerPressPulse = (event) => {
+    if (!ref.current || event.button > 0) return;
+    if (document.documentElement.dataset.siteStyle !== "apple") return;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) return;
+
+    pressAnimationRef.current?.cancel?.();
+    pressAnimationRef.current = ref.current.animate(
+      [
+        {
+          transform: "translate3d(0, -6px, 0) rotateX(var(--asset-tilt-x, 0deg)) rotateY(var(--asset-tilt-y, 0deg)) scale(1.01)",
+          offset: 0,
+        },
+        {
+          transform: "translate3d(0, -2px, 0) rotateX(0deg) rotateY(0deg) scale(0.955)",
+          offset: 0.28,
+        },
+        {
+          transform: "translate3d(0, -10px, 0) rotateX(var(--asset-tilt-x, 0deg)) rotateY(var(--asset-tilt-y, 0deg)) scale(1.026)",
+          offset: 0.68,
+        },
+        {
+          transform: "translate3d(0, -6px, 0) rotateX(var(--asset-tilt-x, 0deg)) rotateY(var(--asset-tilt-y, 0deg)) scale(1.01)",
+          offset: 1,
+        },
+      ],
+      {
+        duration: 520,
+        easing: "cubic-bezier(0.2, 1.28, 0.32, 1)",
+        fill: "none",
+      }
+    );
   };
 
   const download = async () => {
@@ -354,6 +388,7 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
         ref={ref}
         onMouseMove={onMove}
         onMouseLeave={onLeave}
+        onPointerDown={triggerPressPulse}
         onClick={handleCardClick}
         role={isLockedPremium || hasAudioPlayback ? "button" : undefined}
         tabIndex={isLockedPremium || hasAudioPlayback ? 0 : undefined}

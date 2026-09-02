@@ -121,16 +121,6 @@
     scale(1.01);
 }
 
-:root[data-site-style="apple"] .tilt-card:active {
-  transform:
-    translate3d(0, -3px, 0)
-    rotateX(0deg)
-    rotateY(0deg)
-    scale(0.985);
-  transition-duration: 95ms !important;
-  transition-timing-function: cubic-bezier(0.32, 0.72, 0, 1) !important;
-}
-
 :root[data-site-style="apple"] .tilt-card:hover img,
 :root[data-site-style="apple"] .tilt-card:hover video {
   transform:
@@ -273,7 +263,6 @@
   .tilt-card:hover video,
   .tilt-card button:hover,
   .tilt-card a:hover,
-  .tilt-card:active,
   .btn-press:active {
     transform: none !important;
   }
