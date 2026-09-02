@@ -113,6 +113,7 @@ PREMIUM_MONTHLY_CURRENCY = os.environ.get("PREMIUM_MONTHLY_CURRENCY", "usd").low
 STRIPE_REVENUE_CACHE_SECONDS = int(os.environ.get("STRIPE_REVENUE_CACHE_SECONDS", str(5 * 60)))
 STRIPE_SUBSCRIPTION_REVENUE_CACHE = {}
 STRIPE_USER_SUBSCRIPTION_STATS_CACHE = {}
+STRIPE_DIRECT_SUBSCRIPTION_STATS_CACHE = {"expires_at": 0, "stats": None}
 
 s3 = None
 if USE_OBJECT_STORAGE:
@@ -494,6 +495,74 @@ async def retrieve_stats_subscription_for_user(user: dict) -> Optional[dict]:
     except Exception:
         logging.exception("Unable to retrieve Stripe subscription for premium stats user %s", user.get("id") or user.get("email"))
         return None
+
+
+def stripe_customer_email(subscription: dict) -> str:
+    customer = subscription.get("customer") if subscription else None
+    if hasattr(customer, "get"):
+        return (customer.get("email") or "").strip().lower()
+    return ""
+
+
+def subscription_counts_as_current_stripe_premium(subscription: Optional[dict]) -> bool:
+    if not subscription:
+        return False
+    if subscription.get("cancel_at_period_end"):
+        return False
+    return stripe_active_status(subscription.get("status", ""))
+
+
+async def direct_stripe_premium_stats() -> dict:
+    if not STRIPE_SECRET_KEY:
+        return {
+            "active": 0,
+            "trialing": 0,
+            "monthly_revenue_cents": 0,
+            "currency": PREMIUM_MONTHLY_CURRENCY,
+        }
+    cached = STRIPE_DIRECT_SUBSCRIPTION_STATS_CACHE.get("stats")
+    if cached and STRIPE_DIRECT_SUBSCRIPTION_STATS_CACHE.get("expires_at", 0) > time.time():
+        return cached
+
+    stats = {
+        "active": 0,
+        "trialing": 0,
+        "monthly_revenue_cents": 0,
+        "currency": PREMIUM_MONTHLY_CURRENCY,
+        "emails": set(),
+    }
+    try:
+        response = stripe.Subscription.list(
+            status="all",
+            limit=100,
+            expand=["data.customer", "data.items.data.price"],
+        )
+        subscriptions = response.auto_paging_iter() if hasattr(response, "auto_paging_iter") else response.data
+        for subscription in subscriptions:
+            if not subscription_counts_as_current_stripe_premium(subscription):
+                continue
+            customer_email = stripe_customer_email(subscription)
+            if customer_email and email_excluded_from_premium_stats(customer_email):
+                continue
+            if customer_email:
+                stats["emails"].add(customer_email)
+
+            status = subscription.get("status", "")
+            if status == "active":
+                stats["active"] += 1
+                revenue_cents, revenue_currency = subscription_monthly_revenue_cents(subscription)
+                stats["monthly_revenue_cents"] += revenue_cents
+                if revenue_cents:
+                    stats["currency"] = revenue_currency
+            elif status == "trialing":
+                stats["trialing"] += 1
+
+        STRIPE_DIRECT_SUBSCRIPTION_STATS_CACHE["stats"] = stats
+        STRIPE_DIRECT_SUBSCRIPTION_STATS_CACHE["expires_at"] = time.time() + STRIPE_REVENUE_CACHE_SECONDS
+        return stats
+    except Exception:
+        logging.exception("Unable to retrieve direct Stripe premium stats")
+        return stats
 
 
 def user_is_staff(user: Optional[dict]) -> bool:
@@ -2605,47 +2674,18 @@ async def moderator_stats(request: Request, days: int = 7):
     ]
 
     online_now = await db.analytics_visitors.count_documents({"last_seen": {"$gte": time.time() - 300}})
-    premium_candidate_docs = await db.users.find(
-        {
-            "$or": [
-                {"premium_status": {"$in": ["active", "trialing"]}},
-                {"stripe_subscription_id": {"$exists": True, "$ne": ""}},
-                {"stripe_customer_id": {"$exists": True, "$ne": ""}},
-                {"email": {"$in": list(MANUAL_PREMIUM_EMAILS)}},
-            ],
-        },
-        {"_id": 0, "id": 1, "email": 1, "premium_status": 1, "stripe_subscription_id": 1, "stripe_customer_id": 1},
-    ).to_list(5000)
-    manual_premium_users = 0
-    premium_active_users = 0
-    premium_trialing_users = 0
-    stripe_active_subscriptions = 0
-    premium_monthly_revenue_cents = 0
-    premium_revenue_currency = PREMIUM_MONTHLY_CURRENCY
-    for premium_user in premium_candidate_docs:
-        try:
-            if email_excluded_from_premium_stats(premium_user.get("email", "")):
-                continue
-
-            subscription = await retrieve_stats_subscription_for_user(premium_user)
-            if subscription:
-                status = subscription.get("status", "")
-                if status == "active":
-                    premium_active_users += 1
-                    stripe_active_subscriptions += 1
-                    revenue_cents, revenue_currency = subscription_monthly_revenue_cents(subscription)
-                    premium_monthly_revenue_cents += revenue_cents
-                    if revenue_cents:
-                        premium_revenue_currency = revenue_currency
-                elif status == "trialing":
-                    premium_trialing_users += 1
-                continue
-
-            if email_has_manual_premium(premium_user.get("email", "")):
-                manual_premium_users += 1
-        except Exception:
-            logging.exception("Skipping premium stats user after unexpected stats error")
-            continue
+    stripe_subscription_stats = await direct_stripe_premium_stats()
+    premium_active_users = int(stripe_subscription_stats.get("active") or 0)
+    premium_trialing_users = int(stripe_subscription_stats.get("trialing") or 0)
+    stripe_active_subscriptions = premium_active_users
+    premium_monthly_revenue_cents = int(stripe_subscription_stats.get("monthly_revenue_cents") or 0)
+    premium_revenue_currency = stripe_subscription_stats.get("currency") or PREMIUM_MONTHLY_CURRENCY
+    stripe_premium_emails = stripe_subscription_stats.get("emails") or set()
+    manual_premium_users = len([
+        email
+        for email in MANUAL_PREMIUM_EMAILS
+        if not email_excluded_from_premium_stats(email) and email not in stripe_premium_emails
+    ])
 
     premium_users = premium_active_users + premium_trialing_users + manual_premium_users
     asset_docs = await db.assets.find(
