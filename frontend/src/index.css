@@ -100,6 +100,26 @@ body {
     --site-glass: rgba(255, 255, 255, 0.66);
     --site-hero-overlay: rgba(245, 245, 247, 0.16);
     --site-hero-end: #f5f5f7;
+    --apple-bg-top: #ffffff;
+    --apple-bg-mid: #f5f5f7;
+    --apple-bg-bottom: #eeeeef;
+    --apple-bg-wash: rgba(255, 255, 255, 0.96);
+    --apple-app-wash: rgba(245, 245, 247, 0.96);
+    --apple-text: #1d1d1f;
+    --apple-muted: #6e6e73;
+    --apple-faint: #86868b;
+    --apple-card: rgba(255, 255, 255, 0.72);
+    --apple-card-strong: rgba(255, 255, 255, 0.88);
+    --apple-card-soft: rgba(255, 255, 255, 0.58);
+    --apple-border: rgba(0, 0, 0, 0.09);
+    --apple-shadow: rgba(0, 0, 0, 0.08);
+    --apple-shadow-strong: rgba(0, 0, 0, 0.12);
+    --apple-accent: #0071e3;
+    --apple-accent-soft: rgba(0, 113, 227, 0.14);
+    --apple-accent-glow: rgba(0, 113, 227, 0.09);
+    --apple-control: #1d1d1f;
+    --apple-control-text: #ffffff;
+    --apple-scrollbar-border: rgba(245,245,247,0.9);
     --background: 240 14% 96%;
     --foreground: 240 4% 12%;
     --card: 0 0% 100%;
@@ -118,6 +138,90 @@ body {
     --input: 240 8% 84%;
     --ring: 211 100% 45%;
     --radius: 1.25rem;
+  }
+
+  :root[data-site-style="apple"][data-theme="dark"] {
+    --site-bg: #000000;
+    --site-surface: rgba(28, 28, 30, 0.72);
+    --site-panel: rgba(22, 22, 24, 0.86);
+    --site-glass: rgba(22, 22, 24, 0.68);
+    --site-hero-overlay: rgba(0, 0, 0, 0.24);
+    --site-hero-end: #000000;
+    --apple-bg-top: #000000;
+    --apple-bg-mid: #111113;
+    --apple-bg-bottom: #000000;
+    --apple-bg-wash: rgba(0, 0, 0, 0.95);
+    --apple-app-wash: rgba(12, 12, 14, 0.96);
+    --apple-text: #f5f5f7;
+    --apple-muted: #a1a1a6;
+    --apple-faint: #86868b;
+    --apple-card: rgba(28, 28, 30, 0.72);
+    --apple-card-strong: rgba(44, 44, 46, 0.74);
+    --apple-card-soft: rgba(28, 28, 30, 0.52);
+    --apple-border: rgba(255, 255, 255, 0.12);
+    --apple-shadow: rgba(0, 0, 0, 0.38);
+    --apple-shadow-strong: rgba(0, 0, 0, 0.52);
+    --apple-accent: #0a84ff;
+    --apple-accent-soft: rgba(10, 132, 255, 0.2);
+    --apple-accent-glow: rgba(10, 132, 255, 0.18);
+    --apple-control: #f5f5f7;
+    --apple-control-text: #000000;
+    --apple-scrollbar-border: rgba(0,0,0,0.88);
+    --background: 0 0% 0%;
+    --foreground: 240 11% 96%;
+    --card: 240 4% 12%;
+    --card-foreground: 240 11% 96%;
+    --popover: 240 4% 10%;
+    --popover-foreground: 240 11% 96%;
+    --secondary: 240 4% 16%;
+    --secondary-foreground: 240 11% 96%;
+    --muted: 240 4% 16%;
+    --muted-foreground: 240 4% 64%;
+    --accent: 211 100% 52%;
+    --border: 240 4% 20%;
+    --input: 240 4% 20%;
+    --ring: 211 100% 52%;
+  }
+
+  :root[data-site-style="apple"][data-theme="gray"] {
+    --site-bg: #e9e9ed;
+    --site-surface: rgba(246, 246, 248, 0.74);
+    --site-panel: rgba(242, 242, 244, 0.84);
+    --site-glass: rgba(245, 245, 247, 0.7);
+    --site-hero-overlay: rgba(233, 233, 237, 0.2);
+    --site-hero-end: #e9e9ed;
+    --apple-bg-top: #f9f9fb;
+    --apple-bg-mid: #ececf0;
+    --apple-bg-bottom: #dfdfe5;
+    --apple-bg-wash: rgba(249, 249, 251, 0.94);
+    --apple-app-wash: rgba(233, 233, 237, 0.96);
+    --apple-text: #242428;
+    --apple-muted: #6b6b72;
+    --apple-faint: #85858d;
+    --apple-card: rgba(250, 250, 252, 0.72);
+    --apple-card-strong: rgba(255, 255, 255, 0.82);
+    --apple-card-soft: rgba(242, 242, 246, 0.58);
+    --apple-border: rgba(42, 42, 48, 0.11);
+    --apple-shadow: rgba(42, 42, 48, 0.09);
+    --apple-shadow-strong: rgba(42, 42, 48, 0.14);
+    --apple-accent: #0071e3;
+    --apple-accent-soft: rgba(0, 113, 227, 0.13);
+    --apple-accent-glow: rgba(0, 113, 227, 0.1);
+    --apple-control: #242428;
+    --apple-control-text: #ffffff;
+    --apple-scrollbar-border: rgba(233,233,237,0.92);
+    --background: 240 11% 92%;
+    --foreground: 240 6% 15%;
+    --card: 240 14% 98%;
+    --card-foreground: 240 6% 15%;
+    --popover: 240 14% 98%;
+    --popover-foreground: 240 6% 15%;
+    --secondary: 240 9% 88%;
+    --secondary-foreground: 240 6% 15%;
+    --muted: 240 8% 86%;
+    --muted-foreground: 240 4% 43%;
+    --border: 240 7% 78%;
+    --input: 240 7% 78%;
   }
 
   :root[data-site-style="sleek"] {
@@ -140,20 +244,24 @@ body {
   color-scheme: light;
 }
 
+:root[data-site-style="apple"][data-theme="dark"] {
+  color-scheme: dark;
+}
+
 :root[data-site-style="apple"] body {
   background:
-    radial-gradient(circle at 18% 8%, rgba(255, 255, 255, 0.92), transparent 30rem),
-    radial-gradient(circle at 82% 0%, rgba(0, 113, 227, 0.12), transparent 34rem),
-    linear-gradient(180deg, #ffffff 0%, #f5f5f7 48%, #eeeeef 100%);
-  color: #1d1d1f;
+    radial-gradient(circle at 18% 8%, var(--apple-card-strong), transparent 30rem),
+    radial-gradient(circle at 82% 0%, var(--apple-accent-soft), transparent 34rem),
+    linear-gradient(180deg, var(--apple-bg-top) 0%, var(--apple-bg-mid) 48%, var(--apple-bg-bottom) 100%);
+  color: var(--apple-text);
   letter-spacing: -0.012em;
 }
 
 :root[data-site-style="apple"] .App {
   background:
-    radial-gradient(circle at calc(50% + (var(--mx, 0) * 5rem)) 0%, rgba(0, 113, 227, 0.13), transparent 34rem),
-    linear-gradient(180deg, rgba(255,255,255,0.96), rgba(245,245,247,0.96));
-  color: #1d1d1f !important;
+    radial-gradient(circle at calc(50% + (var(--mx, 0) * 5rem)) 0%, var(--apple-accent-soft), transparent 34rem),
+    linear-gradient(180deg, var(--apple-bg-wash), var(--apple-app-wash));
+  color: var(--apple-text) !important;
 }
 
 :root[data-site-style="apple"] ::selection {
@@ -177,12 +285,12 @@ body {
 
 :root[data-site-style="apple"] .glass {
   background:
-    linear-gradient(135deg, rgba(255,255,255,0.88), rgba(255,255,255,0.58)),
-    rgba(255,255,255,0.68);
-  border-color: rgba(0, 0, 0, 0.08) !important;
+    linear-gradient(135deg, var(--apple-card-strong), var(--apple-card-soft)),
+    var(--site-glass);
+  border-color: var(--apple-border) !important;
   box-shadow:
-    0 20px 70px rgba(0, 0, 0, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+    0 20px 70px var(--apple-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.34);
   backdrop-filter: blur(28px) saturate(180%);
   -webkit-backdrop-filter: blur(28px) saturate(180%);
 }
@@ -205,12 +313,12 @@ body {
 
 :root[data-site-style="apple"] .hero-theme-gradient {
   background:
-    linear-gradient(to bottom, rgba(255,255,255,0.5), transparent 40%, #f5f5f7),
-    radial-gradient(circle at 50% 4%, rgba(0, 113, 227, 0.14), transparent 36rem);
+    linear-gradient(to bottom, color-mix(in srgb, var(--apple-bg-top) 52%, transparent), transparent 40%, var(--apple-bg-mid)),
+    radial-gradient(circle at 50% 4%, var(--apple-accent-soft), transparent 36rem);
 }
 
 :root[data-site-style="apple"] .text-gradient-neon {
-  background: linear-gradient(90deg, #1d1d1f 0%, #0071e3 54%, #86868b 100%);
+  background: linear-gradient(90deg, var(--apple-text) 0%, var(--apple-accent) 54%, var(--apple-faint) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -219,7 +327,7 @@ body {
 :root[data-site-style="apple"] .text-white,
 :root[data-site-style="apple"] .text-zinc-100,
 :root[data-site-style="apple"] .text-zinc-200 {
-  color: #1d1d1f !important;
+  color: var(--apple-text) !important;
 }
 
 :root[data-site-style="apple"] .text-zinc-300,
@@ -227,21 +335,21 @@ body {
 :root[data-site-style="apple"] .text-zinc-500,
 :root[data-site-style="apple"] .text-purple-200,
 :root[data-site-style="apple"] .text-purple-300 {
-  color: #6e6e73 !important;
+  color: var(--apple-muted) !important;
 }
 
 :root[data-site-style="apple"] .text-neon {
-  color: #0071e3 !important;
+  color: var(--apple-accent) !important;
 }
 
 :root[data-site-style="apple"] .bg-neon {
-  background-color: #0071e3 !important;
+  background-color: var(--apple-accent) !important;
   color: #fff !important;
 }
 
 :root[data-site-style="apple"] [class*="border-white"],
 :root[data-site-style="apple"] [class*="border-purple"] {
-  border-color: rgba(0, 0, 0, 0.09) !important;
+  border-color: var(--apple-border) !important;
 }
 
 :root[data-site-style="apple"] [class*="bg-white/"],
@@ -249,30 +357,30 @@ body {
 :root[data-site-style="apple"] [class*="bg-purple-950"],
 :root[data-site-style="apple"] [class*="from-purple-950"],
 :root[data-site-style="apple"] [class*="to-black"] {
-  background-color: rgba(255, 255, 255, 0.72) !important;
+  background-color: var(--apple-card) !important;
 }
 
 :root[data-site-style="apple"] [class*="bg-gradient-to"] {
   background-image:
-    linear-gradient(145deg, rgba(255,255,255,0.94), rgba(255,255,255,0.58)) !important;
+    linear-gradient(145deg, var(--apple-card-strong), var(--apple-card-soft)) !important;
 }
 
 :root[data-site-style="apple"] [class*="shadow-black"],
 :root[data-site-style="apple"] [class*="shadow-purple"] {
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 24px 70px var(--apple-shadow) !important;
 }
 
 :root[data-site-style="apple"] .bg-discord,
 :root[data-site-style="apple"] .bg-\[\#9146FF\],
 :root[data-site-style="apple"] .bg-purple-500,
 :root[data-site-style="apple"] .bg-purple-600 {
-  background: #1d1d1f !important;
-  color: #fff !important;
+  background: var(--apple-control) !important;
+  color: var(--apple-control-text) !important;
 }
 
 :root[data-site-style="apple"] .text-black,
 :root[data-site-style="apple"] .text-\[\#05050A\] {
-  color: #fff !important;
+  color: var(--apple-control-text) !important;
 }
 
 :root[data-site-style="apple"] .bg-emerald-400,
@@ -301,21 +409,21 @@ body {
 :root[data-site-style="apple"] input,
 :root[data-site-style="apple"] textarea,
 :root[data-site-style="apple"] select {
-  background: rgba(255,255,255,0.72) !important;
-  color: #1d1d1f !important;
-  border-color: rgba(0,0,0,0.1) !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
+  background: var(--apple-card) !important;
+  color: var(--apple-text) !important;
+  border-color: var(--apple-border) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.28);
 }
 
 :root[data-site-style="apple"] input::placeholder,
 :root[data-site-style="apple"] textarea::placeholder {
-  color: #86868b !important;
+  color: var(--apple-faint) !important;
 }
 
 :root[data-site-style="apple"] .btn-press:hover {
   transform: translateY(-2px) scale(1.018);
   filter: none;
-  box-shadow: 0 18px 45px rgba(0, 113, 227, 0.14);
+  box-shadow: 0 18px 45px var(--apple-accent-soft);
 }
 
 :root[data-site-style="apple"] .btn-press:active {
@@ -324,21 +432,21 @@ body {
 
 :root[data-site-style="apple"] .tilt-card {
   background:
-    linear-gradient(145deg, rgba(255,255,255,0.92), rgba(255,255,255,0.62)),
-    rgba(255,255,255,0.74) !important;
-  border-color: rgba(0, 0, 0, 0.08) !important;
+    linear-gradient(145deg, var(--apple-card-strong), var(--apple-card-soft)),
+    var(--apple-card) !important;
+  border-color: var(--apple-border) !important;
   box-shadow:
-    0 18px 55px rgba(0, 0, 0, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.82);
+    0 18px 55px var(--apple-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.26);
 }
 
 :root[data-site-style="apple"] .tilt-card:hover {
   transform: translateY(-8px) scale(1.012);
   filter: none;
   box-shadow:
-    0 30px 80px rgba(0, 0, 0, 0.12),
-    0 12px 36px rgba(0, 113, 227, 0.09),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    0 30px 80px var(--apple-shadow-strong),
+    0 12px 36px var(--apple-accent-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 
 :root[data-site-style="apple"] .asset-3d-in,
@@ -356,13 +464,13 @@ body {
 }
 
 :root[data-site-style="apple"] ::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.22);
-  border: 3px solid rgba(245,245,247,0.9);
+  background: color-mix(in srgb, var(--apple-text) 22%, transparent);
+  border: 3px solid var(--apple-scrollbar-border);
   border-radius: 999px;
 }
 
 :root[data-site-style="apple"] ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.34);
+  background: color-mix(in srgb, var(--apple-text) 34%, transparent);
 }
 
 @keyframes apple-page-settle {

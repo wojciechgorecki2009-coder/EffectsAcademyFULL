@@ -25,6 +25,12 @@ const THEME_OPTIONS = [
   { value: "gray", label: "Gray" },
 ];
 
+const APPLE_THEME_OPTIONS = [
+  { value: "dark", label: "Dark" },
+  { value: "blue", label: "Light", note: "Default" },
+  { value: "gray", label: "Gray" },
+];
+
 const FONT_OPTIONS = [
   { value: "space", label: "Space Grotesk" },
   { value: "outfit", label: "Outfit", note: "Default" },
@@ -64,6 +70,7 @@ export default function Nav() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
   const canViewStats = ["Admin", "Uploader"].includes(user?.role);
+  const themeOptions = siteStyle === "apple" ? APPLE_THEME_OPTIONS : THEME_OPTIONS;
 
   const tabClass = ({ isActive }) =>
     `relative whitespace-nowrap px-2.5 py-1.5 text-sm font-medium rounded-lg btn-press ${
@@ -149,7 +156,7 @@ export default function Nav() {
               ))}
               <div className="mx-2 my-1 border-t border-white/10" />
               <div className="px-2 py-1.5 text-[10px] uppercase tracking-wider text-zinc-500">Site theme</div>
-              {THEME_OPTIONS.map((option) => (
+              {themeOptions.map((option) => (
                 <DropdownMenuItem
                   key={option.value}
                   onClick={() => setTheme(option.value)}
@@ -301,7 +308,7 @@ export default function Nav() {
           </div>
           <div className="w-full pt-2 flex items-center gap-2">
             <span className="text-xs text-zinc-500 mr-1 flex items-center gap-1.5"><Settings className="w-3.5 h-3.5" /> Theme</span>
-            {THEME_OPTIONS.map((option) => (
+            {themeOptions.map((option) => (
               <button
                 key={option.value}
                 onClick={() => setTheme(option.value)}
