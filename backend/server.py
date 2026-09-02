@@ -519,6 +519,10 @@ async def direct_stripe_premium_stats() -> dict:
             "trialing": 0,
             "monthly_revenue_cents": 0,
             "currency": PREMIUM_MONTHLY_CURRENCY,
+            "emails": set(),
+            "stripe_configured": False,
+            "stripe_checked": False,
+            "stripe_error": "Stripe secret key is not configured",
         }
     cached = STRIPE_DIRECT_SUBSCRIPTION_STATS_CACHE.get("stats")
     if cached and STRIPE_DIRECT_SUBSCRIPTION_STATS_CACHE.get("expires_at", 0) > time.time():
@@ -530,37 +534,41 @@ async def direct_stripe_premium_stats() -> dict:
         "monthly_revenue_cents": 0,
         "currency": PREMIUM_MONTHLY_CURRENCY,
         "emails": set(),
+        "stripe_configured": True,
+        "stripe_checked": True,
+        "stripe_error": "",
     }
     try:
-        response = stripe.Subscription.list(
-            status="all",
-            limit=100,
-            expand=["data.customer", "data.items.data.price"],
-        )
-        subscriptions = response.auto_paging_iter() if hasattr(response, "auto_paging_iter") else response.data
-        for subscription in subscriptions:
-            if not subscription_counts_as_current_stripe_premium(subscription):
-                continue
-            customer_email = stripe_customer_email(subscription)
-            if customer_email and email_excluded_from_premium_stats(customer_email):
-                continue
-            if customer_email:
-                stats["emails"].add(customer_email)
+        for wanted_status in ("active", "trialing"):
+            response = stripe.Subscription.list(
+                status=wanted_status,
+                limit=100,
+                expand=["data.customer", "data.items.data.price"],
+            )
+            subscriptions = response.auto_paging_iter() if hasattr(response, "auto_paging_iter") else response.data
+            for subscription in subscriptions:
+                if subscription.get("cancel_at_period_end"):
+                    continue
+                customer_email = stripe_customer_email(subscription)
+                if customer_email and email_excluded_from_premium_stats(customer_email):
+                    continue
+                if customer_email:
+                    stats["emails"].add(customer_email)
 
-            status = subscription.get("status", "")
-            if status == "active":
-                stats["active"] += 1
-                revenue_cents, revenue_currency = subscription_monthly_revenue_cents(subscription)
-                stats["monthly_revenue_cents"] += revenue_cents
-                if revenue_cents:
-                    stats["currency"] = revenue_currency
-            elif status == "trialing":
-                stats["trialing"] += 1
+                if wanted_status == "active":
+                    stats["active"] += 1
+                    revenue_cents, revenue_currency = subscription_monthly_revenue_cents(subscription)
+                    stats["monthly_revenue_cents"] += revenue_cents
+                    if revenue_cents:
+                        stats["currency"] = revenue_currency
+                else:
+                    stats["trialing"] += 1
 
         STRIPE_DIRECT_SUBSCRIPTION_STATS_CACHE["stats"] = stats
         STRIPE_DIRECT_SUBSCRIPTION_STATS_CACHE["expires_at"] = time.time() + STRIPE_REVENUE_CACHE_SECONDS
         return stats
-    except Exception:
+    except Exception as exc:
+        stats["stripe_error"] = str(exc)[:240]
         logging.exception("Unable to retrieve direct Stripe premium stats")
         return stats
 
@@ -2710,6 +2718,10 @@ async def moderator_stats(request: Request, days: int = 7):
             "premium_trialing_users": premium_trialing_users,
             "manual_premium_users": manual_premium_users,
             "stripe_active_subscriptions": stripe_active_subscriptions,
+            "stripe_trialing_subscriptions": premium_trialing_users,
+            "stripe_stats_configured": bool(stripe_subscription_stats.get("stripe_configured")),
+            "stripe_stats_checked": bool(stripe_subscription_stats.get("stripe_checked")),
+            "stripe_stats_error": stripe_subscription_stats.get("stripe_error", ""),
             "premium_monthly_revenue_cents": premium_monthly_revenue_cents,
             "premium_monthly_revenue_currency": premium_revenue_currency,
             "total_downloads": total_downloads,

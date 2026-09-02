@@ -250,7 +250,7 @@ function PromoDatePicker({ label, value, onChange }) {
   );
 }
 
-function StatCard({ icon: Icon, label, value, note, tone = "blue", sideValue, sideLabel }) {
+function StatCard({ icon: Icon, label, value, note, tone = "blue", sideValue, sideLabel, warning }) {
   const tones = {
     blue: "from-blue-500/20 to-indigo-500/5 border-blue-300/15 text-blue-200",
     green: "from-emerald-500/20 to-teal-500/5 border-emerald-300/15 text-emerald-200",
@@ -275,6 +275,7 @@ function StatCard({ icon: Icon, label, value, note, tone = "blue", sideValue, si
         </div>
       )}
       {note && <p className="text-xs text-zinc-500 mt-1">{note}</p>}
+      {warning && <p className="mt-2 text-[11px] leading-snug text-amber-300">{warning}</p>}
     </div>
   );
 }
@@ -449,6 +450,7 @@ export default function StatsPage() {
             tone="amber"
             sideValue={`${formatMoney(data?.summary?.premium_monthly_revenue_cents || 0, data?.summary?.premium_monthly_revenue_currency)}/mo`}
             sideLabel={`${data?.summary?.stripe_active_subscriptions || 0} active Stripe subs`}
+            warning={data?.summary?.stripe_stats_error ? `Stripe stats issue: ${data.summary.stripe_stats_error}` : ""}
           />
           <StatCard icon={Download} label="Downloads" value={data?.summary?.total_downloads || 0} note="All-time asset total" tone="green" />
         </div>
