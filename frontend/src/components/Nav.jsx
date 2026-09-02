@@ -1,6 +1,6 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useState } from "react";
-import { Lock, Menu, Upload, LogOut, UserCircle, Crown, Settings, Check, BarChart3 } from "lucide-react";
+import { Lock, Menu, Upload, LogOut, UserCircle, Crown, Settings, Check, BarChart3, BadgePercent } from "lucide-react";
 import DiscordIcon from "@/components/DiscordIcon";
 import TwitchIcon from "@/components/TwitchIcon";
 import {
@@ -63,7 +63,7 @@ const MORE_TABS = [
 
 export default function Nav() {
   const { isUploader, lock, localPasswordEnabled } = useUploadAccess();
-  const { user, hasPremium, logout } = useAuth();
+  const { user, hasPremium, logout, config } = useAuth();
   const { theme, setTheme, font, setFont, siteStyle, setSiteStyle } = useTheme();
   const [accessOpen, setAccessOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -71,6 +71,9 @@ export default function Nav() {
   const navigate = useNavigate();
   const canViewStats = ["Admin", "Uploader"].includes(user?.role);
   const themeOptions = siteStyle === "apple" ? APPLE_THEME_OPTIONS : THEME_OPTIONS;
+  const activePromotion = config?.active_premium_promotion;
+  const promotionPercent = Number(activePromotion?.percent_off || 0);
+  const showPromotionBanner = Boolean(activePromotion && promotionPercent > 0);
 
   const tabClass = ({ isActive }) =>
     `relative whitespace-nowrap px-2.5 py-1.5 text-sm font-medium rounded-lg btn-press ${
@@ -84,8 +87,21 @@ export default function Nav() {
   };
 
   return (
+    <>
+      {showPromotionBanner && (
+        <Link
+          to="/premium"
+          className="promo-sale-banner fixed top-0 inset-x-0 z-[60] h-8 flex items-center justify-center gap-2 px-4 text-center text-[11px] sm:text-xs font-black uppercase tracking-[0.16em] text-white bg-gradient-to-r from-purple-600 via-fuchsia-500 to-indigo-500 shadow-[0_10px_35px_rgba(168,85,247,0.32)]"
+          data-testid="premium-promotion-banner"
+        >
+          <BadgePercent className="w-3.5 h-3.5 shrink-0" />
+          <span className="truncate">
+            {activePromotion.name || "Premium sale"} Premium promotion · {promotionPercent}% off
+          </span>
+        </Link>
+      )}
     <header
-      className="fixed top-0 inset-x-0 z-50 glass"
+      className={`fixed ${showPromotionBanner ? "top-8 promo-nav-offset" : "top-0"} inset-x-0 z-50 glass`}
       data-testid="main-nav"
     >
       <div className="relative max-w-[1500px] mx-auto px-4 md:px-7 h-16 flex items-center justify-between gap-3">
@@ -336,5 +352,6 @@ export default function Nav() {
       <AccessUploadModal open={accessOpen} onOpenChange={setAccessOpen} />
       <UploadModal open={uploadOpen} onOpenChange={setUploadOpen} onSaved={notifyAssetsChanged} />
     </header>
+    </>
   );
 }

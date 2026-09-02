@@ -305,8 +305,21 @@ body {
   border-radius: 999px;
 }
 
+:root[data-site-style="apple"] header.glass.promo-nav-offset {
+  top: 2.75rem;
+}
+
 :root[data-site-style="apple"] header.glass > div {
   height: 4.35rem;
+}
+
+:root[data-site-style="apple"] .promo-sale-banner {
+  height: 2.05rem;
+  background:
+    linear-gradient(90deg, rgba(29, 29, 31, 0.96), rgba(0, 113, 227, 0.92), rgba(29, 29, 31, 0.96)) !important;
+  box-shadow: 0 16px 45px var(--apple-accent-soft);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
 }
 
 :root[data-site-style="apple"] main {
