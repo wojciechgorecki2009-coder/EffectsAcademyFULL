@@ -445,10 +445,10 @@ export default function StatsPage() {
             icon={Crown}
             label="Premium users"
             value={data?.summary?.premium_users || 0}
-            note={`${data?.summary?.premium_active_users || 0} paid active · ${data?.summary?.premium_trialing_users || 0} trialing${data?.summary?.manual_premium_users ? ` · ${data.summary.manual_premium_users} manual` : ""}`}
+            note={`${data?.summary?.premium_active_users || 0} paid active · ${data?.summary?.premium_trialing_users || 0} trialing · ${data?.summary?.manual_premium_users || 0} manual`}
             tone="amber"
             sideValue={`${formatMoney(data?.summary?.premium_monthly_revenue_cents || 0, data?.summary?.premium_monthly_revenue_currency)}/mo`}
-            sideLabel="Stripe revenue"
+            sideLabel={`${data?.summary?.stripe_active_subscriptions || 0} active Stripe subs`}
           />
           <StatCard icon={Download} label="Downloads" value={data?.summary?.total_downloads || 0} note="All-time asset total" tone="green" />
         </div>
@@ -610,7 +610,6 @@ export default function StatsPage() {
                     }}
                   />
                   <Area type="monotone" dataKey="visitors" name="Visitors" stroke="#6d72ff" fill="url(#visitorsFill)" strokeWidth={3} />
-                  <Area type="monotone" dataKey="page_views" name="Page views" stroke="#22d3ee" fill="transparent" strokeWidth={2} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>

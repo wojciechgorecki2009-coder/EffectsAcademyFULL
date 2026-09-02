@@ -2619,6 +2619,7 @@ async def moderator_stats(request: Request, days: int = 7):
     manual_premium_users = 0
     premium_active_users = 0
     premium_trialing_users = 0
+    stripe_active_subscriptions = 0
     premium_monthly_revenue_cents = 0
     premium_revenue_currency = PREMIUM_MONTHLY_CURRENCY
     for premium_user in premium_candidate_docs:
@@ -2631,6 +2632,7 @@ async def moderator_stats(request: Request, days: int = 7):
                 status = subscription.get("status", "")
                 if status == "active":
                     premium_active_users += 1
+                    stripe_active_subscriptions += 1
                     revenue_cents, revenue_currency = subscription_monthly_revenue_cents(subscription)
                     premium_monthly_revenue_cents += revenue_cents
                     if revenue_cents:
@@ -2645,7 +2647,7 @@ async def moderator_stats(request: Request, days: int = 7):
             logging.exception("Skipping premium stats user after unexpected stats error")
             continue
 
-    premium_users = premium_active_users + premium_trialing_users
+    premium_users = premium_active_users + premium_trialing_users + manual_premium_users
     asset_docs = await db.assets.find(
         {},
         {"_id": 0, "id": 1, "title": 1, "category": 1, "creator_tag": 1, "download_count": 1},
@@ -2667,6 +2669,7 @@ async def moderator_stats(request: Request, days: int = 7):
             "premium_active_users": premium_active_users,
             "premium_trialing_users": premium_trialing_users,
             "manual_premium_users": manual_premium_users,
+            "stripe_active_subscriptions": stripe_active_subscriptions,
             "premium_monthly_revenue_cents": premium_monthly_revenue_cents,
             "premium_monthly_revenue_currency": premium_revenue_currency,
             "total_downloads": total_downloads,
