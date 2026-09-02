@@ -22,6 +22,14 @@ function compactNumber(value = 0) {
   return new Intl.NumberFormat(undefined, { notation: value >= 10000 ? "compact" : "standard" }).format(value);
 }
 
+function formatMoney(cents = 0, currency = "usd") {
+  return new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency: (currency || "usd").toUpperCase(),
+    maximumFractionDigits: 2,
+  }).format((Number(cents) || 0) / 100);
+}
+
 function AnimatedNumber({ value = 0 }) {
   const nextValue = Number(value) || 0;
   const [displayValue, setDisplayValue] = useState(nextValue);
@@ -242,7 +250,7 @@ function PromoDatePicker({ label, value, onChange }) {
   );
 }
 
-function StatCard({ icon: Icon, label, value, note, tone = "blue" }) {
+function StatCard({ icon: Icon, label, value, note, tone = "blue", sideValue, sideLabel }) {
   const tones = {
     blue: "from-blue-500/20 to-indigo-500/5 border-blue-300/15 text-blue-200",
     green: "from-emerald-500/20 to-teal-500/5 border-emerald-300/15 text-emerald-200",
@@ -260,6 +268,12 @@ function StatCard({ icon: Icon, label, value, note, tone = "blue" }) {
       <p className="font-display text-3xl font-black mt-4 text-white">
         <AnimatedNumber value={value} />
       </p>
+      {sideValue && (
+        <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
+          <p className="font-display text-lg font-black text-white leading-none">{sideValue}</p>
+          <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-zinc-500">{sideLabel}</p>
+        </div>
+      )}
       {note && <p className="text-xs text-zinc-500 mt-1">{note}</p>}
     </div>
   );
@@ -427,7 +441,15 @@ export default function StatsPage() {
           <StatCard icon={Eye} label="Visitors" value={data?.summary?.unique_visitors || 0} note={`Last ${range} days`} />
           <StatCard icon={Activity} label="Page views" value={data?.summary?.page_views || 0} note={`Last ${range} days`} tone="green" />
           <StatCard icon={Radio} label="Online now" value={data?.summary?.online_now || 0} note="Active in 5 minutes" tone="purple" />
-          <StatCard icon={Crown} label="Premium users" value={data?.summary?.premium_users || 0} note="Active or trialing" tone="amber" />
+          <StatCard
+            icon={Crown}
+            label="Premium users"
+            value={data?.summary?.premium_users || 0}
+            note={`${data?.summary?.premium_active_users || 0} active · ${data?.summary?.premium_trialing_users || 0} trialing`}
+            tone="amber"
+            sideValue={`${formatMoney(data?.summary?.premium_monthly_revenue_cents || 0, data?.summary?.premium_monthly_revenue_currency)}/mo`}
+            sideLabel="Estimated revenue"
+          />
           <StatCard icon={Download} label="Downloads" value={data?.summary?.total_downloads || 0} note="All-time asset total" tone="green" />
         </div>
 

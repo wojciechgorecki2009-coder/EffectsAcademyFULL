@@ -97,6 +97,8 @@ FAL_STATUS_POLL_SECONDS = float(os.environ.get("FAL_STATUS_POLL_SECONDS", "1.5")
 FAL_STATUS_MAX_POLLS = int(os.environ.get("FAL_STATUS_MAX_POLLS", "80"))
 AI_IMAGE_MAX_BYTES = int(os.environ.get("AI_IMAGE_MAX_BYTES", str(8 * 1024 * 1024)))
 PREMIUM_DOWNLOAD_LINK_TTL_SECONDS = int(os.environ.get("PREMIUM_DOWNLOAD_LINK_TTL_SECONDS", str(10 * 60)))
+PREMIUM_MONTHLY_AMOUNT_CENTS = int(os.environ.get("PREMIUM_MONTHLY_AMOUNT_CENTS", "999"))
+PREMIUM_MONTHLY_CURRENCY = os.environ.get("PREMIUM_MONTHLY_CURRENCY", "usd").lower()
 
 s3 = None
 if USE_OBJECT_STORAGE:
@@ -2471,10 +2473,19 @@ async def moderator_stats(request: Request, days: int = 7):
     ]
 
     online_now = await db.analytics_visitors.count_documents({"last_seen": {"$gte": time.time() - 300}})
+    premium_active_users = await db.users.count_documents({
+        "premium_status": "active",
+        "premium_cancelled": {"$ne": True},
+    })
+    premium_trialing_users = await db.users.count_documents({
+        "premium_status": "trialing",
+        "premium_cancelled": {"$ne": True},
+    })
     premium_users = await db.users.count_documents({
         "premium_status": {"$in": ["active", "trialing"]},
         "premium_cancelled": {"$ne": True},
     })
+    premium_monthly_revenue_cents = premium_active_users * PREMIUM_MONTHLY_AMOUNT_CENTS
     asset_docs = await db.assets.find(
         {},
         {"_id": 0, "id": 1, "title": 1, "category": 1, "creator_tag": 1, "download_count": 1},
@@ -2493,6 +2504,10 @@ async def moderator_stats(request: Request, days: int = 7):
             "page_views": len(page_views),
             "online_now": online_now,
             "premium_users": premium_users,
+            "premium_active_users": premium_active_users,
+            "premium_trialing_users": premium_trialing_users,
+            "premium_monthly_revenue_cents": premium_monthly_revenue_cents,
+            "premium_monthly_revenue_currency": PREMIUM_MONTHLY_CURRENCY,
             "total_downloads": total_downloads,
             "total_assets": len(asset_docs),
         },
