@@ -33,6 +33,71 @@
         <div id="categoryTabs" class="tabs"></div>
       </section>
 
+      <section id="settingsPanel" class="settings-panel hidden" aria-label="Panel settings">
+        <div class="settings-panel-header">
+          <span class="eyebrow">Panel settings</span>
+          <h2>Make the extension feel yours.</h2>
+          <p>Switch the panel into the same Apple-inspired style from the website, or keep the original Effects Academy look.</p>
+        </div>
+
+        <div class="settings-grid">
+          <label>
+            UI style
+            <select id="uiStyleInput">
+              <option value="default">Default</option>
+              <option value="apple">Apple Style</option>
+            </select>
+          </label>
+          <label>
+            Layout
+            <select id="layoutModeInput">
+              <option value="auto">Auto</option>
+              <option value="grid">Grid cards</option>
+              <option value="list">Vertical list</option>
+            </select>
+          </label>
+          <label>
+            Density
+            <select id="densityInput">
+              <option value="comfortable">Comfortable</option>
+              <option value="compact">Compact</option>
+            </select>
+          </label>
+          <label>
+            Accent
+            <select id="accentInput">
+              <option value="violet">Violet</option>
+              <option value="blue">Blue</option>
+              <option value="emerald">Emerald</option>
+              <option value="rose">Rose</option>
+            </select>
+          </label>
+          <label>
+            Motion
+            <select id="motionInput">
+              <option value="premium">Premium</option>
+              <option value="calm">Calm</option>
+            </select>
+          </label>
+          <label>
+            Font
+            <select id="fontInput">
+              <option value="modern">Modern</option>
+              <option value="mono">Editor mono</option>
+              <option value="system">System</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="settings-preview-card">
+          <div class="preview-orb"></div>
+          <div>
+            <strong>Apple Style</strong>
+            <p>Cleaner cards, SF-style typography, liquid glass surfaces, slower hover motion, and the soft press/bounce animation on assets.</p>
+          </div>
+        </div>
+      </section>
+
       <section id="assetGrid" class="asset-grid" aria-live="polite"></section>
 
       <section id="emptyState" class="empty hidden">
@@ -72,50 +137,6 @@
       <footer class="settings">
         <details>
           <summary>Connection settings</summary>
-          <details class="display-settings">
-            <summary>Customize panel</summary>
-            <div class="settings-grid">
-              <label>
-                Layout
-                <select id="layoutModeInput">
-                  <option value="auto">Auto</option>
-                  <option value="grid">Grid cards</option>
-                  <option value="list">Vertical list</option>
-                </select>
-              </label>
-              <label>
-                Density
-                <select id="densityInput">
-                  <option value="comfortable">Comfortable</option>
-                  <option value="compact">Compact</option>
-                </select>
-              </label>
-              <label>
-                Accent
-                <select id="accentInput">
-                  <option value="violet">Violet</option>
-                  <option value="blue">Blue</option>
-                  <option value="emerald">Emerald</option>
-                  <option value="rose">Rose</option>
-                </select>
-              </label>
-              <label>
-                Motion
-                <select id="motionInput">
-                  <option value="premium">Premium</option>
-                  <option value="calm">Calm</option>
-                </select>
-              </label>
-              <label>
-                Font
-                <select id="fontInput">
-                  <option value="modern">Modern</option>
-                  <option value="mono">Editor mono</option>
-                  <option value="system">System</option>
-                </select>
-              </label>
-            </div>
-          </details>
           <label>
             Pairing code from the Premium page
             <input id="pairingCodeInput" type="text" placeholder="ABCD-1234" />

@@ -124,6 +124,18 @@ body {
     #050508;
 }
 
+body.style-apple {
+  background:
+    radial-gradient(circle at 18% 8%, rgba(44, 44, 46, 0.74), transparent 32rem),
+    radial-gradient(circle at 82% 0%, rgba(10, 132, 255, 0.16), transparent 34rem),
+    linear-gradient(180deg, #000000 0%, #111113 48%, #000000 100%);
+  letter-spacing: -0.015em;
+}
+
+body.style-apple * {
+  -webkit-font-smoothing: antialiased;
+}
+
 body.accent-blue {
   --accent: #38bdf8;
   --accent-2: #5257ff;
@@ -153,6 +165,23 @@ body.font-mono {
 body.font-system {
   --font-ui: "Segoe UI", Arial, sans-serif;
   --font-display: "Segoe UI", Arial, sans-serif;
+}
+
+body.style-apple {
+  --bg: #000000;
+  --surface: rgba(28, 28, 30, 0.72);
+  --surface-strong: rgba(44, 44, 46, 0.76);
+  --line: rgba(255, 255, 255, 0.12);
+  --text: #f5f5f7;
+  --muted: #a1a1a6;
+  --accent: #0a84ff;
+  --accent-2: #64d2ff;
+  --accent-rgb: 10, 132, 255;
+  --accent-2-rgb: 100, 210, 255;
+  --green: #30d158;
+  --amber: #ffd60a;
+  --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
 }
 
 button,
@@ -1104,6 +1133,101 @@ audio {
   box-shadow: 0 0 18px rgba(82, 87, 255, 0.22);
 }
 
+.settings-panel {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 16px;
+  background:
+    linear-gradient(145deg, rgba(255,255,255,0.055), transparent 42%),
+    var(--surface);
+  animation: panelRise 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.settings-panel-header {
+  max-width: 620px;
+  margin-bottom: 16px;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--accent-2-rgb), 0.35);
+  background: rgba(var(--accent-2-rgb), 0.12);
+  color: #dcdcff;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.settings-panel h2 {
+  margin: 10px 0 6px;
+  font-family: var(--font-display);
+  font-size: 22px;
+  line-height: 1;
+  letter-spacing: -0.045em;
+}
+
+.settings-panel p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.settings-panel label {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.settings-panel input,
+.settings-panel select {
+  margin-top: 6px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.settings-preview-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.preview-orb {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.95), rgba(100, 210, 255, 0.44) 35%, rgba(10, 132, 255, 0.2) 64%, rgba(255, 255, 255, 0.04));
+  box-shadow: 0 14px 32px rgba(var(--accent-2-rgb), 0.22);
+}
+
+.settings-preview-card strong {
+  display: block;
+  margin-bottom: 3px;
+  font-family: var(--font-display);
+  font-size: 13px;
+}
+
+body.view-settings #searchInput {
+  display: none;
+}
+
 .advanced-settings {
   margin-top: 10px;
   padding-top: 8px;
@@ -1122,4 +1246,305 @@ audio {
 
 .hidden {
   display: none !important;
+}
+
+body.style-apple {
+  scrollbar-color: rgba(245, 245, 247, 0.28) rgba(255, 255, 255, 0.04);
+}
+
+body.style-apple::-webkit-scrollbar-thumb,
+body.style-apple *::-webkit-scrollbar-thumb {
+  border: 3px solid rgba(0, 0, 0, 0.88);
+  background: rgba(245, 245, 247, 0.28);
+  box-shadow: none;
+}
+
+body.style-apple::-webkit-scrollbar-thumb:hover,
+body.style-apple *::-webkit-scrollbar-thumb:hover {
+  background: rgba(245, 245, 247, 0.4);
+}
+
+body.style-apple .shell {
+  gap: 14px;
+  padding: 16px;
+}
+
+body.style-apple .shell::before {
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 76% 0%, rgba(100, 210, 255, 0.12), transparent 34%),
+    linear-gradient(135deg, rgba(255,255,255,0.08), transparent 28%);
+  opacity: 1;
+}
+
+body.style-apple .logo {
+  border-radius: 16px;
+  box-shadow: 0 18px 42px rgba(10, 132, 255, 0.18);
+}
+
+body.style-apple h1 {
+  font-size: 17px;
+  letter-spacing: -0.045em;
+  font-weight: 800;
+}
+
+body.style-apple h1 span {
+  color: var(--text);
+  opacity: 0.74;
+}
+
+body.style-apple .brand p,
+body.style-apple .status-card p,
+body.style-apple .settings p {
+  color: var(--muted);
+}
+
+body.style-apple .icon-button,
+body.style-apple .tab,
+body.style-apple .secondary,
+body.style-apple .mini-button,
+body.style-apple .player-action,
+body.style-apple .settings-button,
+body.style-apple input,
+body.style-apple select {
+  border-radius: 999px;
+}
+
+body.style-apple input,
+body.style-apple select {
+  height: 42px;
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(58, 58, 60, 0.58);
+  color: var(--text);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset;
+}
+
+body.style-apple option {
+  background: #1c1c1e;
+  color: #f5f5f7;
+}
+
+body.style-apple input:focus,
+body.style-apple select:focus {
+  border-color: rgba(10, 132, 255, 0.7);
+  box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.16);
+  transform: none;
+}
+
+body.style-apple .status-card,
+body.style-apple .player,
+body.style-apple .settings-panel,
+body.style-apple .display-settings,
+body.style-apple .settings-preview-card {
+  border-color: rgba(255, 255, 255, 0.12);
+  background:
+    linear-gradient(145deg, rgba(72,72,74,0.62), rgba(28,28,30,0.52)),
+    rgba(28, 28, 30, 0.72);
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, 0.38),
+    0 1px 0 rgba(255, 255, 255, 0.07) inset;
+  backdrop-filter: blur(26px) saturate(1.35);
+}
+
+body.style-apple .status-card {
+  animation: panelRise 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+body.style-apple .tabs {
+  gap: 8px;
+}
+
+body.style-apple .tab {
+  height: 32px;
+  background: rgba(58, 58, 60, 0.55);
+  color: var(--muted);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  transition:
+    transform 520ms cubic-bezier(0.2, 1.24, 0.32, 1),
+    background 360ms ease,
+    color 280ms ease,
+    box-shadow 360ms ease;
+}
+
+body.style-apple .tab:hover {
+  color: var(--text);
+  background: rgba(72, 72, 74, 0.72);
+  transform: translateY(-2px) scale(1.015);
+}
+
+body.style-apple .tab.active {
+  color: #000000;
+  background: #f5f5f7;
+  box-shadow: 0 18px 45px rgba(245, 245, 247, 0.14);
+}
+
+body.style-apple .card {
+  overflow: hidden;
+  border-radius: 24px;
+  border-color: rgba(255, 255, 255, 0.12);
+  background:
+    linear-gradient(145deg, rgba(72,72,74,0.64), rgba(28,28,30,0.54)),
+    rgba(28, 28, 30, 0.72);
+  box-shadow:
+    0 18px 55px rgba(0, 0, 0, 0.38),
+    0 1px 0 rgba(255, 255, 255, 0.08) inset;
+  transform:
+    translate3d(0, 0, 0)
+    rotateX(0deg)
+    rotateY(0deg);
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  will-change: transform, box-shadow;
+  transition:
+    transform 720ms cubic-bezier(0.2, 1.24, 0.32, 1),
+    box-shadow 620ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 420ms ease,
+    background 420ms ease,
+    filter 420ms ease;
+}
+
+body.style-apple .card::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    radial-gradient(
+      circle at var(--asset-glow-x, 50%) var(--asset-glow-y, 18%),
+      rgba(10, 132, 255, 0.18),
+      transparent 34%
+    );
+  transition: opacity 620ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body.style-apple .card:hover::before {
+  opacity: 1;
+}
+
+body.style-apple .card:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  background:
+    linear-gradient(145deg, rgba(84,84,86,0.68), rgba(36,36,38,0.58)),
+    rgba(28, 28, 30, 0.78);
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.52),
+    0 12px 36px rgba(10, 132, 255, 0.16),
+    0 1px 0 rgba(255, 255, 255, 0.08) inset;
+  filter: saturate(1.04) brightness(1.015);
+  transform:
+    translate3d(0, -6px, 0)
+    rotateX(var(--asset-tilt-x, 0deg))
+    rotateY(var(--asset-tilt-y, 0deg))
+    scale(1.01);
+}
+
+body.style-apple .card > * {
+  position: relative;
+  z-index: 2;
+}
+
+body.style-apple .thumb {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(100, 210, 255, 0.12), transparent 62%),
+    rgba(255, 255, 255, 0.06);
+}
+
+body.style-apple .thumb img {
+  transition:
+    transform 980ms cubic-bezier(0.16, 1, 0.3, 1),
+    filter 620ms ease,
+    opacity 360ms ease;
+}
+
+body.style-apple .card:hover .thumb img {
+  transform:
+    translate3d(
+      var(--asset-parallax-x, 0px),
+      var(--asset-parallax-y, 0px),
+      0
+    )
+    scale(1.075);
+  filter: contrast(1.04) saturate(1.08) brightness(1.025);
+}
+
+body.style-apple .title {
+  font-weight: 800;
+  letter-spacing: -0.045em;
+}
+
+body.style-apple .badge {
+  border-color: rgba(48, 209, 88, 0.28);
+  color: #7ee787;
+  background: rgba(48, 209, 88, 0.1);
+}
+
+body.style-apple .badge.premium {
+  color: #ffd60a;
+  border-color: rgba(255, 214, 10, 0.34);
+  background: rgba(255, 214, 10, 0.1);
+}
+
+body.style-apple .primary,
+body.style-apple .settings-button,
+body.style-apple .primary-action {
+  background: #f5f5f7;
+  color: #000000;
+  border-color: transparent;
+  box-shadow: 0 16px 40px rgba(245, 245, 247, 0.12);
+}
+
+body.style-apple .primary,
+body.style-apple .secondary,
+body.style-apple .player-action,
+body.style-apple .round-button,
+body.style-apple .mini-button,
+body.style-apple .settings-button {
+  transition:
+    transform 360ms cubic-bezier(0.2, 1.24, 0.32, 1),
+    box-shadow 300ms ease,
+    background 280ms ease,
+    border-color 280ms ease,
+    filter 280ms ease;
+}
+
+body.style-apple .primary:hover,
+body.style-apple .secondary:hover,
+body.style-apple .player-action:hover,
+body.style-apple .mini-button:hover,
+body.style-apple .settings-button:hover {
+  transform: translateY(-1px) scale(1.01);
+  filter: none;
+}
+
+body.style-apple .primary:active,
+body.style-apple .secondary:active,
+body.style-apple .player-action:active,
+body.style-apple .round-button:active,
+body.style-apple .mini-button:active,
+body.style-apple .settings-button:active {
+  transform: translateY(1px) scale(0.965);
+}
+
+body.style-apple .player {
+  border-radius: 24px;
+}
+
+body.style-apple .range {
+  height: 5px;
+  background: rgba(245, 245, 247, 0.16);
+  accent-color: #0a84ff;
+}
+
+body.style-apple .settings-panel h2 {
+  font-size: 25px;
+  font-weight: 800;
+}
+
+body.style-apple .eyebrow {
+  border-color: rgba(100, 210, 255, 0.24);
+  background: rgba(100, 210, 255, 0.12);
+  color: #b9e9ff;
 }

@@ -2,12 +2,14 @@
   "use strict";
 
   var DEFAULT_API_BASE = "https://effects-academy-api.onrender.com";
-  var CATEGORIES = ["All", "Audios", "Presets", "Project Files", "Premium"];
+  var CATEGORIES = ["All", "Audios", "Presets", "Project Files", "Premium", "Settings"];
+  var ASSET_CATEGORIES = ["All", "Audios", "Presets", "Project Files", "Premium"];
   var AUDIO_CATEGORIES = { "Audios": true };
   var STORAGE_KEYS = {
     apiBase: "ea_extension_api_base",
     authToken: "ea_extension_auth_token",
     deviceId: "ea_extension_device_id",
+    uiStyle: "ea_extension_ui_style",
     layoutMode: "ea_extension_layout_mode",
     density: "ea_extension_density",
     accent: "ea_extension_accent",
@@ -19,6 +21,7 @@
     apiBase: localStorage.getItem(STORAGE_KEYS.apiBase) || DEFAULT_API_BASE,
     authToken: localStorage.getItem(STORAGE_KEYS.authToken) || "",
     deviceId: localStorage.getItem(STORAGE_KEYS.deviceId) || "",
+    uiStyle: localStorage.getItem(STORAGE_KEYS.uiStyle) || "default",
     layoutMode: localStorage.getItem(STORAGE_KEYS.layoutMode) || "auto",
     density: localStorage.getItem(STORAGE_KEYS.density) || "comfortable",
     accent: localStorage.getItem(STORAGE_KEYS.accent) || "violet",
@@ -37,6 +40,7 @@
     assetCount: document.getElementById("assetCount"),
     searchInput: document.getElementById("searchInput"),
     categoryTabs: document.getElementById("categoryTabs"),
+    settingsPanel: document.getElementById("settingsPanel"),
     assetGrid: document.getElementById("assetGrid"),
     emptyState: document.getElementById("emptyState"),
     player: document.getElementById("player"),
@@ -54,6 +58,7 @@
     playerSlow08Btn: document.getElementById("playerSlow08Btn"),
     audioEl: document.getElementById("audioEl"),
     apiBaseInput: document.getElementById("apiBaseInput"),
+    uiStyleInput: document.getElementById("uiStyleInput"),
     layoutModeInput: document.getElementById("layoutModeInput"),
     densityInput: document.getElementById("densityInput"),
     accentInput: document.getElementById("accentInput"),
@@ -181,6 +186,9 @@
   }
 
   function applyPreferences() {
+    setBodyClass("style-", state.uiStyle);
+    document.documentElement.setAttribute("data-ui-style", state.uiStyle);
+    document.body.setAttribute("data-ui-style", state.uiStyle);
     setBodyClass("layout-", state.layoutMode);
     setBodyClass("density-", state.density);
     setBodyClass("accent-", state.accent);
@@ -195,6 +203,79 @@
       state[key] = input.value;
       localStorage.setItem(storageKey, state[key]);
       applyPreferences();
+    });
+  }
+
+  function resetAppleCardMotion(card) {
+    card.style.setProperty("--asset-glow-x", "50%");
+    card.style.setProperty("--asset-glow-y", "18%");
+    card.style.setProperty("--asset-tilt-x", "0deg");
+    card.style.setProperty("--asset-tilt-y", "0deg");
+    card.style.setProperty("--asset-parallax-x", "0px");
+    card.style.setProperty("--asset-parallax-y", "0px");
+  }
+
+  function enhanceAppleCardMotion(card) {
+    resetAppleCardMotion(card);
+
+    card.addEventListener("pointermove", function (event) {
+      if (state.uiStyle !== "apple") return;
+      var rect = card.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      var pointerX = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+      var pointerY = Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height));
+      var tiltX = (0.5 - pointerY) * 7;
+      var tiltY = (pointerX - 0.5) * 8;
+      var parallaxX = (pointerX - 0.5) * 12;
+      var parallaxY = (pointerY - 0.5) * 12;
+      card.style.setProperty("--asset-glow-x", Math.round(pointerX * 100) + "%");
+      card.style.setProperty("--asset-glow-y", Math.round(pointerY * 100) + "%");
+      card.style.setProperty("--asset-tilt-x", tiltX.toFixed(2) + "deg");
+      card.style.setProperty("--asset-tilt-y", tiltY.toFixed(2) + "deg");
+      card.style.setProperty("--asset-parallax-x", parallaxX.toFixed(2) + "px");
+      card.style.setProperty("--asset-parallax-y", parallaxY.toFixed(2) + "px");
+    });
+
+    card.addEventListener("pointerleave", function () {
+      resetAppleCardMotion(card);
+    });
+
+    card.addEventListener("pointerdown", function (event) {
+      if (state.uiStyle !== "apple" || event.button > 0) return;
+      if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+      if (card.__applePressAnimation && card.__applePressAnimation.cancel) {
+        card.__applePressAnimation.cancel();
+      }
+      card.__applePressAnimation = card.animate(
+        [
+          {
+            transform: "translate3d(0, -6px, 0) rotateX(var(--asset-tilt-x, 0deg)) rotateY(var(--asset-tilt-y, 0deg)) scale(1.01)",
+            offset: 0
+          },
+          {
+            transform: "translate3d(0, -2px, 0) rotateX(0deg) rotateY(0deg) scale(0.955)",
+            offset: 0.2
+          },
+          {
+            transform: "translate3d(0, -10px, 0) rotateX(var(--asset-tilt-x, 0deg)) rotateY(var(--asset-tilt-y, 0deg)) scale(1.032)",
+            offset: 0.58
+          },
+          {
+            transform: "translate3d(0, -7px, 0) rotateX(var(--asset-tilt-x, 0deg)) rotateY(var(--asset-tilt-y, 0deg)) scale(1.006)",
+            offset: 0.8
+          },
+          {
+            transform: "translate3d(0, -6px, 0) rotateX(var(--asset-tilt-x, 0deg)) rotateY(var(--asset-tilt-y, 0deg)) scale(1.01)",
+            offset: 1
+          }
+        ],
+        {
+          duration: 1800,
+          easing: "cubic-bezier(0.16, 1, 0.22, 1)",
+          fill: "none"
+        }
+      );
     });
   }
 
@@ -236,6 +317,7 @@
   function visibleAssets() {
     var search = state.search.trim().toLowerCase();
     return state.assets.filter(function (asset) {
+      if (state.category === "Settings") return false;
       if (state.category !== "All" && asset.category !== state.category) return false;
       if (!search) return true;
       return [
@@ -250,6 +332,18 @@
   }
 
   function renderAssets() {
+    if (state.category === "Settings") {
+      document.body.classList.add("view-settings");
+      els.assetCount.textContent = "UI";
+      els.emptyState.classList.add("hidden");
+      els.assetGrid.classList.add("hidden");
+      els.settingsPanel.classList.remove("hidden");
+      return;
+    }
+
+    document.body.classList.remove("view-settings");
+    els.assetGrid.classList.remove("hidden");
+    els.settingsPanel.classList.add("hidden");
     var assets = visibleAssets();
     els.assetCount.textContent = String(assets.length);
     els.emptyState.classList.toggle("hidden", assets.length > 0);
@@ -259,6 +353,7 @@
       var card = document.createElement("article");
       card.className = "card";
       card.style.animationDelay = Math.min(360, els.assetGrid.children.length * 22) + "ms";
+      enhanceAppleCardMotion(card);
 
       var thumb = document.createElement("div");
       thumb.className = "thumb";
@@ -769,8 +864,8 @@
     setStatus("Live library", "Loading assets from Effects Academy…");
     return getJson(apiUrl("/extension/assets"))
       .then(function (assets) {
-        state.assets = (assets || []).filter(function (asset) {
-          return CATEGORIES.indexOf(asset.category) !== -1 && asset.category !== "Videos";
+      state.assets = (assets || []).filter(function (asset) {
+          return ASSET_CATEGORIES.indexOf(asset.category) !== -1 && asset.category !== "Videos";
         });
         setStatus("Premium extension unlocked", "New uploads appear here after refresh.");
         renderAssets();
@@ -786,6 +881,7 @@
     applyPreferences();
     els.apiBaseInput.value = state.apiBase;
     els.authTokenInput.value = state.authToken;
+    bindPreference(els.uiStyleInput, "uiStyle", STORAGE_KEYS.uiStyle);
     bindPreference(els.layoutModeInput, "layoutMode", STORAGE_KEYS.layoutMode);
     bindPreference(els.densityInput, "density", STORAGE_KEYS.density);
     bindPreference(els.accentInput, "accent", STORAGE_KEYS.accent);
