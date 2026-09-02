@@ -415,6 +415,48 @@ body {
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.28);
 }
 
+:root[data-site-style="apple"] input[type="range"].audio-slider {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  color: inherit !important;
+}
+
+:root[data-site-style="apple"] input[type="range"].audio-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border: 0;
+  border-radius: 999px;
+  background:
+    linear-gradient(to right, var(--apple-accent) var(--pct, 0%), color-mix(in srgb, var(--apple-text) 14%, transparent) var(--pct, 0%));
+  box-shadow: none;
+}
+
+:root[data-site-style="apple"] input[type="range"].audio-slider::-webkit-slider-thumb {
+  height: 16px;
+  width: 16px;
+  margin-top: -5px;
+  background: #fff;
+  border: 2px solid var(--apple-accent);
+  box-shadow: 0 2px 12px var(--apple-accent-soft);
+}
+
+:root[data-site-style="apple"] input[type="range"].audio-slider::-moz-range-track {
+  height: 6px;
+  border: 0;
+  border-radius: 999px;
+  background:
+    linear-gradient(to right, var(--apple-accent) var(--pct, 0%), color-mix(in srgb, var(--apple-text) 14%, transparent) var(--pct, 0%));
+  box-shadow: none;
+}
+
+:root[data-site-style="apple"] input[type="range"].audio-slider::-moz-range-thumb {
+  height: 16px;
+  width: 16px;
+  background: #fff;
+  border: 2px solid var(--apple-accent);
+  box-shadow: 0 2px 12px var(--apple-accent-soft);
+}
+
 :root[data-site-style="apple"] input::placeholder,
 :root[data-site-style="apple"] textarea::placeholder {
   color: var(--apple-faint) !important;
