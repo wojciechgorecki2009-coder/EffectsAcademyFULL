@@ -285,7 +285,7 @@ export default function TranscribePage() {
       <div className="mb-6 rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4 text-sm text-amber-100 flex gap-3">
         <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
         <p>
-          This transcribes in your browser, so it does not cost Effects Academy API money. It can be slower or less accurate depending on your device, browser, audio length, background music, and noise.
+          This transcription is run locally on your device accuracy and speed depends on your specs
         </p>
       </div>
 
