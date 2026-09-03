@@ -13,6 +13,7 @@ This extension is intentionally not a 1:1 copy of the website. It is a fast asse
 - Searches by title, creator, genre, and description
 - Shows thumbnails
 - Previews Audios inside the panel
+- Transcribes selected clips locally and creates styled caption text layers
 - Downloads/imports files into After Effects
 - Applies `.ffx` presets to selected layers
 - Adds audio/video/footage to the active comp when possible
@@ -85,6 +86,12 @@ After Effects cannot import `.rar`, `.7z`, or `.zip` archives directly. The exte
 - `.zip` uses Windows PowerShell `Expand-Archive`.
 - `.rar` and `.7z` require either WinRAR or 7-Zip installed in the normal Program Files location.
 - If a pack has no `.aep`/`.aepx`, the extension imports supported media files from the extracted folder instead.
+
+## Auto captions and large scenepacks
+
+The Captions tab can transcribe the selected clip locally and create styled text layers in the active comp. For large video sources, the extension uses the bundled `bin/ffmpeg.exe` helper to extract only the selected timeline range audio before transcription, so users can caption short cuts from large 4K scenepacks without loading the whole file into the panel.
+
+FFmpeg is distributed under its own license. If shipping this extension publicly, keep the FFmpeg license/attribution included with the packaged release.
 
 ## Next recommended upgrades
 

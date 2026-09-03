@@ -72,6 +72,8 @@ backend/uploads/
 **/*.tar.gz
 **/*.tar
 **/*.tgz
+after-effects-extension/bin/ffmpeg.exe
+frontend/.npm-cache/
 *.pack
 *.deb
 *.dylib
