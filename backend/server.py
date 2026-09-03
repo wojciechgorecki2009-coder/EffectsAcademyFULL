@@ -368,44 +368,85 @@ def stripe_active_status(status: str = "") -> bool:
     return status in {"active", "trialing"}
 
 
-def subscription_is_cancelled(subscription: Optional[dict]) -> bool:
+def stripe_plain(value):
+    if hasattr(value, "to_dict_recursive"):
+        try:
+            return value.to_dict_recursive()
+        except Exception:
+            pass
+    if hasattr(value, "to_dict"):
+        try:
+            return value.to_dict()
+        except Exception:
+            pass
+    return value
+
+
+def stripe_get(value, key: str, default=None):
+    if value is None:
+        return default
+    if isinstance(value, dict):
+        return value.get(key, default)
+    try:
+        if hasattr(value, "get"):
+            return value.get(key, default)
+    except Exception:
+        pass
+    if hasattr(value, key):
+        try:
+            return getattr(value, key)
+        except Exception:
+            pass
+    plain = stripe_plain(value)
+    if isinstance(plain, dict):
+        return plain.get(key, default)
+    return default
+
+
+def stripe_list_data(value) -> list:
+    data = stripe_get(value, "data", [])
+    return list(data or [])
+
+
+def subscription_is_cancelled(subscription: Optional[object]) -> bool:
     if not subscription:
         return False
     return bool(
-        subscription.get("ended_at")
-        or subscription.get("status") in {"canceled", "incomplete_expired", "unpaid"}
+        stripe_get(subscription, "ended_at")
+        or stripe_get(subscription, "status") in {"canceled", "incomplete_expired", "unpaid"}
     )
 
 
-def subscription_grants_premium(subscription: Optional[dict]) -> bool:
+def subscription_grants_premium(subscription: Optional[object]) -> bool:
     if not subscription:
         return False
-    return stripe_active_status(subscription.get("status", ""))
+    return stripe_active_status(stripe_get(subscription, "status", ""))
 
 
-def subscription_monthly_revenue_cents(subscription: Optional[dict]) -> tuple[int, str]:
+def subscription_monthly_revenue_cents(subscription: Optional[object]) -> tuple[int, str]:
     try:
         if not subscription or not subscription_grants_premium(subscription):
             return 0, PREMIUM_MONTHLY_CURRENCY
 
         total_cents = 0
         currency = PREMIUM_MONTHLY_CURRENCY
-        items = ((subscription.get("items") or {}).get("data") or [])
+        items = stripe_list_data(stripe_get(subscription, "items", {}))
         for item in items:
-            price = item.get("price") or item.get("plan") or {}
-            unit_amount = price.get("unit_amount")
-            if unit_amount is None and price.get("unit_amount_decimal") is not None:
+            price = stripe_get(item, "price") or stripe_get(item, "plan") or {}
+            unit_amount = stripe_get(price, "unit_amount")
+            unit_amount_decimal = stripe_get(price, "unit_amount_decimal")
+            if unit_amount is None and unit_amount_decimal is not None:
                 try:
-                    unit_amount = int(float(price.get("unit_amount_decimal")))
+                    unit_amount = int(float(unit_amount_decimal))
                 except (TypeError, ValueError):
                     unit_amount = 0
             unit_amount = int(unit_amount or 0)
-            quantity = int(item.get("quantity") or 1)
-            recurring = price.get("recurring") or {}
-            interval = recurring.get("interval") or price.get("interval") or "month"
-            interval_count = int(recurring.get("interval_count") or price.get("interval_count") or 1)
-            if price.get("currency"):
-                currency = price.get("currency")
+            quantity = int(stripe_get(item, "quantity", 1) or 1)
+            recurring = stripe_get(price, "recurring") or {}
+            interval = stripe_get(recurring, "interval") or stripe_get(price, "interval") or "month"
+            interval_count = int(stripe_get(recurring, "interval_count") or stripe_get(price, "interval_count") or 1)
+            if stripe_get(price, "currency"):
+                currency = stripe_get(price, "currency")
 
             monthly_cents = unit_amount * quantity
             if interval == "year":
@@ -419,14 +460,13 @@ def subscription_monthly_revenue_cents(subscription: Optional[dict]) -> tuple[in
 
             total_cents += monthly_cents
 
-        discount = subscription.get("discount")
-        coupon = (discount or {}).get("coupon") if isinstance(discount, dict) else {}
-        coupon = coupon if isinstance(coupon, dict) else {}
+        discount = stripe_get(subscription, "discount")
+        coupon = stripe_get(discount, "coupon", {}) if discount else {}
         if total_cents and coupon:
-            if coupon.get("percent_off") is not None:
-                total_cents = round(total_cents * (1 - float(coupon.get("percent_off") or 0) / 100))
-            elif coupon.get("amount_off") is not None and (coupon.get("currency") or currency) == currency:
-                total_cents = max(0, total_cents - int(coupon.get("amount_off") or 0))
+            if stripe_get(coupon, "percent_off") is not None:
+                total_cents = round(total_cents * (1 - float(stripe_get(coupon, "percent_off") or 0) / 100))
+            elif stripe_get(coupon, "amount_off") is not None and (stripe_get(coupon, "currency") or currency) == currency:
+                total_cents = max(0, total_cents - int(stripe_get(coupon, "amount_off") or 0))
 
         return max(0, total_cents), currency
     except Exception:
@@ -454,7 +494,7 @@ async def retrieve_subscription_monthly_revenue(subscription_id: str = "") -> tu
         return 0, PREMIUM_MONTHLY_CURRENCY
 
 
-async def retrieve_stats_subscription_for_user(user: dict) -> Optional[dict]:
+async def retrieve_stats_subscription_for_user(user: dict) -> Optional[object]:
     if not STRIPE_SECRET_KEY:
         return None
     cache_key = user.get("stripe_subscription_id") or user.get("stripe_customer_id") or user.get("email") or user.get("id")
@@ -478,7 +518,7 @@ async def retrieve_stats_subscription_for_user(user: dict) -> Optional[dict]:
         if not subscription and user.get("email"):
             escaped_email = user["email"].replace("'", "\\'")
             customers = stripe.Customer.search(query=f"email:'{escaped_email}'", limit=5)
-            customer_ids.extend([customer.id for customer in customers.data if customer.id not in customer_ids])
+            customer_ids.extend([stripe_get(customer, "id") for customer in customers.data if stripe_get(customer, "id") not in customer_ids])
 
         for candidate_customer_id in customer_ids:
             if subscription:
@@ -497,19 +537,17 @@ async def retrieve_stats_subscription_for_user(user: dict) -> Optional[dict]:
         return None
 
 
-def stripe_customer_email(subscription: dict) -> str:
-    customer = subscription.get("customer") if subscription else None
-    if hasattr(customer, "get"):
-        return (customer.get("email") or "").strip().lower()
-    return ""
+def stripe_customer_email(subscription: object) -> str:
+    customer = stripe_get(subscription, "customer") if subscription else None
+    return (stripe_get(customer, "email", "") or "").strip().lower()
 
 
-def subscription_counts_as_current_stripe_premium(subscription: Optional[dict]) -> bool:
+def subscription_counts_as_current_stripe_premium(subscription: Optional[object]) -> bool:
     if not subscription:
         return False
-    if subscription.get("cancel_at_period_end"):
+    if stripe_get(subscription, "cancel_at_period_end"):
         return False
-    return stripe_active_status(subscription.get("status", ""))
+    return stripe_active_status(stripe_get(subscription, "status", ""))
 
 
 async def direct_stripe_premium_stats() -> dict:
@@ -547,7 +585,7 @@ async def direct_stripe_premium_stats() -> dict:
             )
             subscriptions = response.auto_paging_iter() if hasattr(response, "auto_paging_iter") else response.data
             for subscription in subscriptions:
-                if subscription.get("cancel_at_period_end"):
+                if stripe_get(subscription, "cancel_at_period_end"):
                     continue
                 customer_email = stripe_customer_email(subscription)
                 if customer_email and email_excluded_from_premium_stats(customer_email):
@@ -632,8 +670,8 @@ async def sync_user_from_stripe(user: dict) -> dict:
         if subscription_id:
             try:
                 direct_subscription = stripe.Subscription.retrieve(subscription_id)
-                if not customer_id and direct_subscription.get("customer"):
-                    customer_id = direct_subscription.get("customer")
+                if not customer_id and stripe_get(direct_subscription, "customer"):
+                    customer_id = stripe_get(direct_subscription, "customer")
             except stripe.error.InvalidRequestError:
                 subscription_missing = True
                 logging.warning("Stored Stripe subscription %s could not be retrieved", subscription_id)
@@ -672,7 +710,7 @@ async def sync_user_from_stripe(user: dict) -> dict:
 
         if not direct_subscription:
             for customer in candidate_customers:
-                subscriptions = stripe.Subscription.list(customer=customer.id, status="all", limit=20)
+                subscriptions = stripe.Subscription.list(customer=stripe_get(customer, "id"), status="all", limit=20)
                 if fallback_subscription is None and subscriptions.data:
                     fallback_subscription = subscriptions.data[0]
                 matching_subscription = next(
@@ -689,11 +727,11 @@ async def sync_user_from_stripe(user: dict) -> dict:
         grants_premium = subscription_grants_premium(selected_subscription)
         premium_cancelled = subscription_is_cancelled(selected_subscription)
         updates = {
-            "stripe_customer_id": selected_customer.id if selected_customer else (selected_subscription.get("customer") if selected_subscription else ""),
-            "premium_status": selected_subscription.status if grants_premium else "inactive",
-            "premium_cancel_at_period_end": bool(selected_subscription.get("cancel_at_period_end")) if selected_subscription else False,
+            "stripe_customer_id": stripe_get(selected_customer, "id") if selected_customer else (stripe_get(selected_subscription, "customer", "") if selected_subscription else ""),
+            "premium_status": stripe_get(selected_subscription, "status") if grants_premium else "inactive",
+            "premium_cancel_at_period_end": bool(stripe_get(selected_subscription, "cancel_at_period_end")) if selected_subscription else False,
             "premium_cancelled": premium_cancelled,
-            "stripe_subscription_id": selected_subscription.id if selected_subscription else "",
+            "stripe_subscription_id": stripe_get(selected_subscription, "id") if selected_subscription else "",
             "updated_at": now_iso(),
         }
         await db.users.update_one({"id": user["id"]}, {"$set": updates})
@@ -711,10 +749,11 @@ async def sync_user_from_stripe(user: dict) -> dict:
 
 
 async def user_filter_for_stripe_event(obj: dict) -> Optional[dict]:
-    user_id = (obj.get("metadata") or {}).get("user_id") or obj.get("client_reference_id")
+    metadata = stripe_get(obj, "metadata", {}) or {}
+    user_id = stripe_get(metadata, "user_id") or stripe_get(obj, "client_reference_id")
     if user_id:
         return {"id": user_id}
-    customer_id = obj.get("customer")
+    customer_id = stripe_get(obj, "customer")
     if customer_id:
         existing = await db.users.find_one({"stripe_customer_id": customer_id}, {"_id": 0, "id": 1})
         if existing:
@@ -1743,26 +1782,27 @@ async def confirm_checkout(payload: CheckoutConfirmation, request: Request):
         session = stripe.checkout.Session.retrieve(payload.session_id)
     except stripe.error.StripeError:
         raise HTTPException(status_code=400, detail="Unable to verify Stripe checkout")
-    session_user_id = (session.get("metadata") or {}).get("user_id") or session.get("client_reference_id")
+    session_metadata = stripe_get(session, "metadata", {}) or {}
+    session_user_id = stripe_get(session_metadata, "user_id") or stripe_get(session, "client_reference_id")
     if session_user_id != user["id"]:
         raise HTTPException(status_code=403, detail="Checkout does not belong to this account")
-    if session.get("status") != "complete":
+    if stripe_get(session, "status") != "complete":
         return {"premium_status": user.get("premium_status", "inactive"), "complete": False}
-    subscription_id = session.get("subscription")
+    subscription_id = stripe_get(session, "subscription")
     subscription_status = "active"
     subscription = None
     if subscription_id:
         subscription = stripe.Subscription.retrieve(subscription_id)
-        subscription_status = subscription.get("status", "inactive")
+        subscription_status = stripe_get(subscription, "status", "inactive")
     premium_status = subscription_status if subscription_grants_premium(subscription or {"status": subscription_status}) else "inactive"
     premium_cancelled = subscription_is_cancelled(subscription)
     await db.users.update_one(
         {"id": user["id"]},
         {"$set": {
             "premium_status": premium_status,
-            "premium_cancel_at_period_end": bool(subscription.get("cancel_at_period_end")) if subscription else False,
+            "premium_cancel_at_period_end": bool(stripe_get(subscription, "cancel_at_period_end")) if subscription else False,
             "premium_cancelled": premium_cancelled,
-            "stripe_customer_id": session.get("customer", ""),
+            "stripe_customer_id": stripe_get(session, "customer", ""),
             "stripe_subscription_id": subscription_id or "",
             "updated_at": now_iso(),
         }},
@@ -1786,21 +1826,21 @@ async def stripe_webhook(request: Request):
     user_filter = await user_filter_for_stripe_event(obj)
     if user_filter and event_type == "checkout.session.completed":
         subscription = None
-        subscription_id = obj.get("subscription", "")
+        subscription_id = stripe_get(obj, "subscription", "")
         if subscription_id:
             try:
                 subscription = stripe.Subscription.retrieve(subscription_id)
             except stripe.error.StripeError:
                 logging.exception("Unable to retrieve completed checkout subscription %s", subscription_id)
-        premium_status = subscription.get("status") if subscription_grants_premium(subscription) else "inactive"
+        premium_status = stripe_get(subscription, "status") if subscription_grants_premium(subscription) else "inactive"
         premium_cancelled = subscription_is_cancelled(subscription)
         await db.users.update_one(
             user_filter,
             {"$set": {
                 "premium_status": premium_status,
-                "premium_cancel_at_period_end": bool(subscription.get("cancel_at_period_end")) if subscription else False,
+                "premium_cancel_at_period_end": bool(stripe_get(subscription, "cancel_at_period_end")) if subscription else False,
                 "premium_cancelled": premium_cancelled,
-                "stripe_customer_id": obj.get("customer", ""),
+                "stripe_customer_id": stripe_get(obj, "customer", ""),
                 "stripe_subscription_id": subscription_id,
                 "updated_at": now_iso(),
             }},
@@ -1810,17 +1850,17 @@ async def stripe_webhook(request: Request):
         "customer.subscription.updated",
         "customer.subscription.deleted",
     }:
-        status = obj.get("status", "inactive")
+        status = stripe_get(obj, "status", "inactive")
         premium_status = status if subscription_grants_premium(obj) else "inactive"
         premium_cancelled = subscription_is_cancelled(obj)
         await db.users.update_one(
             user_filter,
             {"$set": {
                 "premium_status": premium_status,
-                "premium_cancel_at_period_end": bool(obj.get("cancel_at_period_end")),
+                "premium_cancel_at_period_end": bool(stripe_get(obj, "cancel_at_period_end")),
                 "premium_cancelled": premium_cancelled,
-                "stripe_customer_id": obj.get("customer", ""),
-                "stripe_subscription_id": obj.get("id", ""),
+                "stripe_customer_id": stripe_get(obj, "customer", ""),
+                "stripe_subscription_id": stripe_get(obj, "id", ""),
                 "updated_at": now_iso(),
             }},
         )
