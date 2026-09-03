@@ -108,9 +108,6 @@ FAL_QUEUE_BASE_URL = os.environ.get("FAL_QUEUE_BASE_URL", "https://queue.fal.run
 FAL_STATUS_POLL_SECONDS = float(os.environ.get("FAL_STATUS_POLL_SECONDS", "1.5"))
 FAL_STATUS_MAX_POLLS = int(os.environ.get("FAL_STATUS_MAX_POLLS", "80"))
 AI_IMAGE_MAX_BYTES = int(os.environ.get("AI_IMAGE_MAX_BYTES", str(8 * 1024 * 1024)))
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
-OPENAI_TRANSCRIPTION_MODEL = os.environ.get("OPENAI_TRANSCRIPTION_MODEL", "whisper-1")
-TRANSCRIBE_MAX_BYTES = int(os.environ.get("TRANSCRIBE_MAX_BYTES", str(25 * 1024 * 1024)))
 PREMIUM_DOWNLOAD_LINK_TTL_SECONDS = int(os.environ.get("PREMIUM_DOWNLOAD_LINK_TTL_SECONDS", str(10 * 60)))
 PREMIUM_MONTHLY_CURRENCY = os.environ.get("PREMIUM_MONTHLY_CURRENCY", "usd").lower()
 STRIPE_REVENUE_CACHE_SECONDS = int(os.environ.get("STRIPE_REVENUE_CACHE_SECONDS", str(5 * 60)))
@@ -972,75 +969,6 @@ def base64_size_bytes(encoded: str) -> int:
     return max(0, (len(clean) * 3) // 4 - padding)
 
 
-def format_caption_timestamp(seconds: float, separator: str = ",") -> str:
-    seconds = max(0, float(seconds or 0))
-    hours = int(seconds // 3600)
-    minutes = int((seconds % 3600) // 60)
-    whole_seconds = int(seconds % 60)
-    milliseconds = int(round((seconds - int(seconds)) * 1000))
-    if milliseconds >= 1000:
-        whole_seconds += 1
-        milliseconds -= 1000
-    return f"{hours:02d}:{minutes:02d}:{whole_seconds:02d}{separator}{milliseconds:03d}"
-
-
-def normalize_transcript_segments(payload: dict) -> List[dict]:
-    segments = []
-    for item in payload.get("segments") or []:
-        text = str(item.get("text") or "").strip()
-        if not text:
-            continue
-        start = max(0.0, float(item.get("start") or 0))
-        end = max(start + 0.01, float(item.get("end") or start + 0.01))
-        segments.append({"start": start, "end": end, "text": text})
-
-    if segments:
-        return segments
-
-    text = str(payload.get("text") or "").strip()
-    if not text:
-        return []
-
-    words = text.split()
-    chunks = []
-    current = []
-    for word in words:
-        current.append(word)
-        if len(current) >= 12 or word.endswith((".", "!", "?")):
-            chunks.append(" ".join(current))
-            current = []
-    if current:
-        chunks.append(" ".join(current))
-
-    return [
-        {"start": index * 4.0, "end": (index + 1) * 4.0, "text": chunk}
-        for index, chunk in enumerate(chunks)
-    ]
-
-
-def build_srt(segments: List[dict]) -> str:
-    lines = []
-    for index, segment in enumerate(segments, 1):
-        lines.extend([
-            str(index),
-            f"{format_caption_timestamp(segment['start'])} --> {format_caption_timestamp(segment['end'])}",
-            segment["text"],
-            "",
-        ])
-    return "\n".join(lines).strip() + ("\n" if lines else "")
-
-
-def build_vtt(segments: List[dict]) -> str:
-    lines = ["WEBVTT", ""]
-    for segment in segments:
-        lines.extend([
-            f"{format_caption_timestamp(segment['start'], '.')} --> {format_caption_timestamp(segment['end'], '.')}",
-            segment["text"],
-            "",
-        ])
-    return "\n".join(lines).strip() + "\n"
-
-
 async def require_uploader(request: Request) -> dict:
     user = await request_user(request)
     if user and can_upload_assets(user):
@@ -1364,22 +1292,6 @@ class AiImageStorageResponse(BaseModel):
     items: List[AiImageStorageItem] = []
 
 
-class TranscriptSegment(BaseModel):
-    start: float
-    end: float
-    text: str
-
-
-class AudioTranscribeResponse(BaseModel):
-    text: str
-    srt: str
-    vtt: str
-    segments: List[TranscriptSegment] = []
-    provider: str = "openai"
-    model: str = OPENAI_TRANSCRIPTION_MODEL
-    filename: Optional[str] = None
-
-
 # ---------- Routes ----------
 @api_router.get("/")
 async def root():
@@ -1407,9 +1319,6 @@ async def auth_config():
         "object_storage_configured": USE_OBJECT_STORAGE,
         "ai_image_configured": bool(FAL_KEY),
         "fal_image_configured": bool(FAL_KEY),
-        "audio_transcription_configured": bool(OPENAI_API_KEY),
-        "audio_transcription_model": OPENAI_TRANSCRIPTION_MODEL,
-        "audio_transcription_max_mb": TRANSCRIBE_MAX_BYTES // (1024 * 1024),
         "fal_image_free_model": FAL_IMAGE_FREE_MODEL,
         "fal_image_premium_model": FAL_IMAGE_PREMIUM_MODEL,
         "fal_image_output_format": FAL_IMAGE_OUTPUT_FORMAT,
@@ -2390,80 +2299,6 @@ async def submit_suggestion(payload: SuggestionCreate, request: Request):
 
 
 # AI Image Editor -------------------------------------------------------
-@api_router.post("/transcribe", response_model=AudioTranscribeResponse)
-async def transcribe_audio(
-    request: Request,
-    audio: UploadFile = File(...),
-):
-    enforce_rate_limit(request, "audio-transcribe", limit=10, window_seconds=300)
-    if not OPENAI_API_KEY:
-        raise HTTPException(
-            status_code=503,
-            detail="Audio transcription is not configured yet. Add OPENAI_API_KEY to the API service to enable this free tool.",
-        )
-
-    content_type = (audio.content_type or "").lower()
-    filename = audio.filename or "audio"
-    suffix = Path(filename).suffix.lower()
-    allowed_content_types = {
-        "audio/mpeg",
-        "audio/mp3",
-        "audio/wav",
-        "audio/x-wav",
-        "audio/wave",
-    }
-    if content_type not in allowed_content_types and suffix not in {".mp3", ".wav"}:
-        raise HTTPException(status_code=400, detail="Upload an MP3 or WAV audio file")
-
-    audio_bytes = await audio.read(TRANSCRIBE_MAX_BYTES + 1)
-    if len(audio_bytes) > TRANSCRIBE_MAX_BYTES:
-        raise HTTPException(status_code=413, detail=f"Audio must be under {TRANSCRIBE_MAX_BYTES // (1024 * 1024)}MB")
-    if not audio_bytes:
-        raise HTTPException(status_code=400, detail="Upload an audio file with sound")
-
-    safe_filename = Path(filename).name or f"audio{suffix or '.mp3'}"
-    request_content_type = content_type or ("audio/wav" if suffix == ".wav" else "audio/mpeg")
-
-    def call_openai_transcribe():
-        response = requests.post(
-            "https://api.openai.com/v1/audio/transcriptions",
-            headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
-            data={
-                "model": OPENAI_TRANSCRIPTION_MODEL,
-                "response_format": "verbose_json",
-                "timestamp_granularities[]": "segment",
-            },
-            files={"file": (safe_filename, audio_bytes, request_content_type)},
-            timeout=180,
-        )
-        try:
-            payload = response.json()
-        except ValueError:
-            payload = {}
-        if response.status_code >= 400:
-            detail = payload.get("error", {}).get("message") if isinstance(payload.get("error"), dict) else payload.get("detail")
-            raise HTTPException(status_code=502, detail=detail or "Audio transcription failed")
-        return payload
-
-    payload = await asyncio.to_thread(call_openai_transcribe)
-    text = str(payload.get("text") or "").strip()
-    segments = normalize_transcript_segments(payload)
-    if not text and segments:
-        text = " ".join(segment["text"] for segment in segments).strip()
-    if not text:
-        raise HTTPException(status_code=422, detail="No speech was detected in this audio file")
-
-    return {
-        "text": text,
-        "segments": segments,
-        "srt": build_srt(segments),
-        "vtt": build_vtt(segments),
-        "provider": "openai",
-        "model": OPENAI_TRANSCRIPTION_MODEL,
-        "filename": safe_filename,
-    }
-
-
 @api_router.get("/ai-image/usage")
 async def ai_image_usage(request: Request):
     user = await request_user(request, required=True)
@@ -2711,8 +2546,6 @@ async def health():
         "smtp": dmca_email_configured(),
         "ai_image": bool(FAL_KEY),
         "fal_image": bool(FAL_KEY),
-        "audio_transcription": bool(OPENAI_API_KEY),
-        "audio_transcription_model": OPENAI_TRANSCRIPTION_MODEL,
         "fal_image_free_model": FAL_IMAGE_FREE_MODEL,
         "fal_image_premium_model": FAL_IMAGE_PREMIUM_MODEL,
         "fal_image_output_format": FAL_IMAGE_OUTPUT_FORMAT,

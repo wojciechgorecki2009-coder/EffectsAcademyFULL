@@ -1,10 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, Captions, Check, Clipboard, Download, FileAudio, Loader2, Sparkles, UploadCloud } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { AlertCircle, Captions, Check, Clipboard, Cpu, Download, FileAudio, Loader2, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
-import { api } from "@/lib/api";
-import { useAuth } from "@/lib/auth";
 
 const ACCEPTED_AUDIO_TYPES = ["audio/mpeg", "audio/mp3", "audio/wav", "audio/x-wav", "audio/wave"];
+const MAX_AUDIO_MB = 25;
+const TARGET_SAMPLE_RATE = 16000;
+const TRANSCRIPTION_MODEL = "Xenova/whisper-tiny";
+
+let transcriberPromise = null;
 
 function formatBytes(bytes = 0) {
   if (!bytes) return "0 B";
@@ -22,6 +25,34 @@ function fileStem(name = "effects-academy-transcript") {
   return name.replace(/\.[^/.]+$/, "").replace(/[^\w\s.-]/g, "_").trim() || "effects-academy-transcript";
 }
 
+function formatCaptionTimestamp(seconds = 0, separator = ",") {
+  const safeSeconds = Math.max(0, Number(seconds) || 0);
+  const hours = Math.floor(safeSeconds / 3600);
+  const minutes = Math.floor((safeSeconds % 3600) / 60);
+  const wholeSeconds = Math.floor(safeSeconds % 60);
+  const milliseconds = Math.round((safeSeconds - Math.floor(safeSeconds)) * 1000);
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(wholeSeconds).padStart(2, "0")}${separator}${String(milliseconds).padStart(3, "0")}`;
+}
+
+function buildSrt(segments = []) {
+  return segments
+    .map((segment, index) => [
+      String(index + 1),
+      `${formatCaptionTimestamp(segment.start)} --> ${formatCaptionTimestamp(segment.end)}`,
+      segment.text,
+    ].join("\n"))
+    .join("\n\n") + (segments.length ? "\n" : "");
+}
+
+function buildVtt(segments = []) {
+  return "WEBVTT\n\n" + segments
+    .map((segment) => [
+      `${formatCaptionTimestamp(segment.start, ".")} --> ${formatCaptionTimestamp(segment.end, ".")}`,
+      segment.text,
+    ].join("\n"))
+    .join("\n\n") + (segments.length ? "\n" : "");
+}
+
 function downloadTextFile(content, filename, mimeType) {
   const blob = new Blob([content || ""], { type: mimeType });
   const url = URL.createObjectURL(blob);
@@ -34,17 +65,97 @@ function downloadTextFile(content, filename, mimeType) {
   URL.revokeObjectURL(url);
 }
 
+function resampleAudio(audioData, sourceRate, targetRate) {
+  if (sourceRate === targetRate) return audioData;
+  const ratio = sourceRate / targetRate;
+  const outputLength = Math.round(audioData.length / ratio);
+  const output = new Float32Array(outputLength);
+  for (let i = 0; i < outputLength; i += 1) {
+    const sourceIndex = i * ratio;
+    const low = Math.floor(sourceIndex);
+    const high = Math.min(low + 1, audioData.length - 1);
+    const weight = sourceIndex - low;
+    output[i] = audioData[low] * (1 - weight) + audioData[high] * weight;
+  }
+  return output;
+}
+
+async function decodeAudioFile(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextCtor) {
+    throw new Error("Your browser does not support local audio decoding.");
+  }
+  const audioContext = new AudioContextCtor();
+  const audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0));
+  const channelCount = audioBuffer.numberOfChannels;
+  const length = audioBuffer.length;
+  const mono = new Float32Array(length);
+  for (let channel = 0; channel < channelCount; channel += 1) {
+    const data = audioBuffer.getChannelData(channel);
+    for (let i = 0; i < length; i += 1) {
+      mono[i] += data[i] / channelCount;
+    }
+  }
+  await audioContext.close?.();
+  return resampleAudio(mono, audioBuffer.sampleRate, TARGET_SAMPLE_RATE);
+}
+
+async function loadBrowserTranscriber(onProgress) {
+  if (!transcriberPromise) {
+    transcriberPromise = import(/* webpackIgnore: true */ "https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2").then(async ({ env, pipeline }) => {
+      env.allowLocalModels = false;
+      env.useBrowserCache = true;
+      return pipeline("automatic-speech-recognition", TRANSCRIPTION_MODEL, {
+        progress_callback: onProgress,
+      });
+    });
+  }
+  return transcriberPromise;
+}
+
+function normalizeSegments(transcript) {
+  const chunks = Array.isArray(transcript?.chunks) ? transcript.chunks : [];
+  const segments = chunks
+    .map((chunk, index) => {
+      const timestamp = chunk.timestamp || chunk.timestamps || [];
+      const start = Number(timestamp[0] ?? index * 4);
+      const fallbackEnd = start + Math.max(2, Math.min(6, String(chunk.text || "").split(/\s+/).length * 0.45));
+      const end = Number(timestamp[1] ?? fallbackEnd);
+      return {
+        start: Math.max(0, start),
+        end: Math.max(start + 0.01, end),
+        text: String(chunk.text || "").trim(),
+      };
+    })
+    .filter((segment) => segment.text);
+
+  if (segments.length) return segments;
+
+  const text = String(transcript?.text || "").trim();
+  if (!text) return [];
+  return text
+    .replace(/([.!?])\s+/g, "$1\n")
+    .split(/\n+/)
+    .filter(Boolean)
+    .map((sentence, index) => ({
+      start: index * 4,
+      end: (index + 1) * 4,
+      text: sentence.trim(),
+    }));
+}
+
 export default function TranscribePage() {
-  const { config } = useAuth();
   const [file, setFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState("");
   const [transcribing, setTranscribing] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [modelStatus, setModelStatus] = useState("");
+  const [progress, setProgress] = useState(0);
   const [result, setResult] = useState(null);
+  const mountedRef = useRef(true);
 
-  const configured = config ? Boolean(config.audio_transcription_configured) : true;
-  const maxMb = config?.audio_transcription_max_mb || 25;
-  const canTranscribe = file && !transcribing && configured;
+  const canTranscribe = file && !transcribing;
   const baseFilename = fileStem(result?.filename || file?.name);
 
   const segmentSummary = useMemo(() => {
@@ -52,6 +163,12 @@ export default function TranscribePage() {
     if (!count) return "Text only";
     return `${count} timed caption ${count === 1 ? "segment" : "segments"}`;
   }, [result]);
+
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!file) {
@@ -79,11 +196,13 @@ export default function TranscribePage() {
       toast.error("Upload an MP3 or WAV audio file.");
       return;
     }
-    if (nextFile.size > maxMb * 1024 * 1024) {
-      toast.error(`Audio must be under ${maxMb}MB.`);
+    if (nextFile.size > MAX_AUDIO_MB * 1024 * 1024) {
+      toast.error(`Audio must be under ${MAX_AUDIO_MB}MB.`);
       return;
     }
     setResult(null);
+    setProgress(0);
+    setModelStatus("");
     setFile(nextFile);
   };
 
@@ -92,19 +211,44 @@ export default function TranscribePage() {
     if (!canTranscribe) return;
     setTranscribing(true);
     setResult(null);
+    setProgress(0);
+    setModelStatus("Preparing audio locally...");
+
     try {
-      const form = new FormData();
-      form.append("audio", file);
-      const { data } = await api.post("/transcribe", form, {
-        headers: { "Content-Type": "multipart/form-data" },
+      const audioData = await decodeAudioFile(file);
+      if (!mountedRef.current) return;
+      setModelStatus("Loading browser transcription model...");
+      const transcriber = await loadBrowserTranscriber((event) => {
+        if (!mountedRef.current) return;
+        if (event?.status) setModelStatus(event.status.replace(/_/g, " "));
+        if (typeof event?.progress === "number") setProgress(Math.round(event.progress));
       });
-      setResult(data);
-      toast.success("Transcription finished.");
+      if (!mountedRef.current) return;
+      setModelStatus("Transcribing on your device...");
+      const transcript = await transcriber(audioData, {
+        chunk_length_s: 30,
+        stride_length_s: 5,
+        return_timestamps: true,
+      });
+      const segments = normalizeSegments(transcript);
+      const text = String(transcript?.text || segments.map((segment) => segment.text).join(" ")).trim();
+      if (!text) {
+        throw new Error("No speech was detected in this audio file.");
+      }
+      setResult({
+        text,
+        segments,
+        srt: buildSrt(segments),
+        vtt: buildVtt(segments),
+        filename: file.name,
+      });
+      setModelStatus("Finished locally");
+      toast.success("Transcription finished on your device.");
     } catch (err) {
-      const message = err?.response?.data?.detail || "Unable to transcribe this audio.";
-      toast.error(message);
+      toast.error(err?.message || "Unable to transcribe this audio in the browser.");
+      setModelStatus("Transcription failed");
     } finally {
-      setTranscribing(false);
+      if (mountedRef.current) setTranscribing(false);
     }
   };
 
@@ -129,23 +273,21 @@ export default function TranscribePage() {
           </p>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 min-w-56">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 min-w-64">
           <div className="flex items-center gap-2 text-sm text-white">
-            <Sparkles className="w-4 h-4 text-neon" />
-            Free tool
+            <Cpu className="w-4 h-4 text-neon" />
+            Free browser-side tool
           </div>
-          <p className="text-xs text-zinc-500 mt-1">MP3 or WAV · up to {maxMb}MB</p>
+          <p className="text-xs text-zinc-500 mt-1">Your audio stays on your device · MP3/WAV up to {MAX_AUDIO_MB}MB</p>
         </div>
       </div>
 
-      {!configured && (
-        <div className="mb-6 rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4 text-sm text-amber-100 flex gap-3">
-          <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-          <p>
-            Audio transcription is not configured on the backend yet. Add <code>OPENAI_API_KEY</code> to the Render API service, then redeploy the backend.
-          </p>
-        </div>
-      )}
+      <div className="mb-6 rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4 text-sm text-amber-100 flex gap-3">
+        <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+        <p>
+          This transcribes in your browser, so it does not cost Effects Academy API money. It can be slower or less accurate depending on your device, browser, audio length, background music, and noise.
+        </p>
+      </div>
 
       <form onSubmit={transcribe} className="grid lg:grid-cols-[0.9fr_1.1fr] gap-6">
         <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 md:p-6 transcribe-surface">
@@ -173,7 +315,7 @@ export default function TranscribePage() {
               <div>
                 <UploadCloud className="w-12 h-12 text-neon mx-auto mb-4" />
                 <p className="font-display text-2xl font-bold text-white">Drop audio here</p>
-                <p className="text-sm text-zinc-500 mt-2">MP3 or WAV under {maxMb}MB</p>
+                <p className="text-sm text-zinc-500 mt-2">MP3 or WAV under {MAX_AUDIO_MB}MB</p>
               </div>
             )}
             <input
@@ -194,9 +336,24 @@ export default function TranscribePage() {
             )}
             <span className="relative inline-flex items-center justify-center gap-2">
               {transcribing && <Loader2 className="w-5 h-5 animate-spin" />}
-              {transcribing ? `Transcribing... ${elapsedSeconds}s` : "Transcribe audio"}
+              {transcribing ? `Transcribing locally... ${elapsedSeconds}s` : "Transcribe on my device"}
             </span>
           </button>
+
+          {(transcribing || modelStatus) && (
+            <div className="mt-4 rounded-2xl border border-white/10 bg-black/25 p-4">
+              <div className="flex items-center justify-between gap-3 text-xs text-zinc-400">
+                <span className="capitalize">{modelStatus || "Preparing..."}</span>
+                {progress > 0 && progress < 100 ? <span>{progress}%</span> : null}
+              </div>
+              <div className="mt-3 h-2 rounded-full bg-white/10 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-neon transition-all duration-300"
+                  style={{ width: `${transcribing ? Math.max(progress, 12) : progress}%` }}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 md:p-6 transcribe-surface">
@@ -222,9 +379,9 @@ export default function TranscribePage() {
             <div className="min-h-[420px] rounded-2xl border border-dashed border-neon/20 bg-black/20 flex flex-col items-center justify-center text-center px-6 overflow-hidden relative">
               <div className="absolute inset-x-10 top-1/2 h-px bg-gradient-to-r from-transparent via-neon/60 to-transparent animate-pulse" />
               <Loader2 className="relative w-10 h-10 text-neon animate-spin mb-4" />
-              <p className="relative font-display text-xl font-black text-white">Listening through the file</p>
+              <p className="relative font-display text-xl font-black text-white">Working locally in your browser</p>
               <p className="relative text-sm text-zinc-500 mt-2">
-                Building timestamped captions. Running for {elapsedSeconds}s.
+                {modelStatus || "Building timestamped captions."} Running for {elapsedSeconds}s.
               </p>
             </div>
           ) : result ? (
