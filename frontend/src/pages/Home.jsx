@@ -12,7 +12,7 @@ import {
 import AssetCard from "@/components/AssetCard";
 import CategoryPicker from "@/components/CategoryPicker";
 import Hero from "@/components/Hero";
-import { ChevronLeft, ChevronRight, Music2, Tv, Film, Sparkles } from "lucide-react";
+import { Captions, ChevronLeft, ChevronRight, Music2, Tv, Film, Sparkles } from "lucide-react";
 
 const FILTER_TABS = ["All", ...CATEGORIES];
 
@@ -205,6 +205,14 @@ export default function Home() {
               data-testid="filter-tab-ai-tools"
             >
               AI Tools
+            </Link>
+            <Link
+              to="/transcribe"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border btn-press transition-all text-white border-cyan-300/30 bg-gradient-to-r from-cyan-500/60 via-blue-500/55 to-indigo-500/65 hover:from-cyan-400 hover:via-blue-400 hover:to-indigo-400 shadow-[0_0_28px_rgba(34,211,238,0.16)]"
+              data-testid="filter-tab-transcribe"
+            >
+              <Captions className="w-4 h-4" />
+              Transcribe
             </Link>
           </div>
           <p className="text-xs font-mono uppercase tracking-widest text-zinc-500">
