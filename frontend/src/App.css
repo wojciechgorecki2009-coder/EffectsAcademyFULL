@@ -240,11 +240,90 @@
   }
 }
 
+.transcribe-surface {
+  transition:
+    transform 420ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 320ms ease,
+    box-shadow 420ms cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 320ms ease;
+}
+
+.transcribe-surface:hover {
+  transform: translateY(-3px);
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.22);
+}
+
+.transcribe-dropzone {
+  transition:
+    transform 420ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 280ms ease,
+    background-color 280ms ease;
+}
+
+.transcribe-dropzone:hover {
+  transform: scale(1.006);
+}
+
+.audio-preview {
+  color-scheme: dark;
+}
+
+:root[data-site-style="apple"] .transcribe-page {
+  animation: apple-page-settle 780ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+:root[data-site-style="apple"] .transcribe-surface {
+  background:
+    linear-gradient(145deg, var(--apple-card-strong), var(--apple-card-soft)),
+    var(--apple-card) !important;
+  border-color: var(--apple-border) !important;
+  box-shadow:
+    0 22px 70px var(--apple-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  transition:
+    transform 720ms cubic-bezier(0.2, 1.24, 0.32, 1),
+    box-shadow 620ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 420ms ease,
+    background-color 420ms ease;
+}
+
+:root[data-site-style="apple"] .transcribe-surface:hover {
+  transform: translateY(-7px) scale(1.006);
+  box-shadow:
+    0 34px 90px var(--apple-shadow-strong),
+    0 12px 36px var(--apple-accent-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+:root[data-site-style="apple"] .transcribe-dropzone {
+  border-color: color-mix(in srgb, var(--apple-text) 13%, transparent) !important;
+  background:
+    radial-gradient(circle at 50% 0%, var(--apple-accent-soft), transparent 42%),
+    color-mix(in srgb, var(--apple-card) 78%, transparent) !important;
+  transition:
+    transform 820ms cubic-bezier(0.2, 1.24, 0.32, 1),
+    background-color 480ms ease,
+    border-color 480ms ease;
+}
+
+:root[data-site-style="apple"] .transcribe-dropzone:hover {
+  transform: scale(1.012);
+  border-color: color-mix(in srgb, var(--apple-accent) 38%, transparent) !important;
+}
+
+:root[data-site-style="apple"] .audio-preview {
+  filter: saturate(0.85);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .page-soft-enter,
   .fade-in,
   .ai-view-fade-up,
-  .grid:has(> .animate-pulse)::after {
+  .grid:has(> .animate-pulse)::after,
+  .transcribe-page {
     animation: none !important;
   }
 
@@ -253,7 +332,9 @@
   .tilt-card video,
   .tilt-card button,
   .tilt-card a,
-  .btn-press {
+  .btn-press,
+  .transcribe-surface,
+  .transcribe-dropzone {
     transition: none !important;
   }
 
@@ -263,7 +344,9 @@
   .tilt-card:hover video,
   .tilt-card button:hover,
   .tilt-card a:hover,
-  .btn-press:active {
+  .btn-press:active,
+  .transcribe-surface:hover,
+  .transcribe-dropzone:hover {
     transform: none !important;
   }
 }

@@ -48,6 +48,7 @@ const PRIMARY_TABS = [
   { to: "/category/premium", label: "Premium" },
   { to: "/category/videos", label: "Videos" },
   { to: "/ai-image", label: "AI Tools" },
+  { to: "/transcribe", label: "Transcribe" },
 ];
 
 const MORE_TABS = [

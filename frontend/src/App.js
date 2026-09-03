@@ -17,6 +17,7 @@ import PremiumPage from "@/pages/PremiumPage";
 import GoogleCallbackPage from "@/pages/GoogleCallbackPage";
 import { PrivacyPage, SupportPage, TermsPage } from "@/pages/LegalPages";
 import AiImagePage from "@/pages/AiImagePage";
+import TranscribePage from "@/pages/TranscribePage";
 import DownloadAccessPage from "@/pages/DownloadAccessPage";
 import StatsPage from "@/pages/StatsPage";
 import "@/App.css";
@@ -111,6 +112,7 @@ function RefreshableRoutes() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/premium" element={<PremiumPage />} />
         <Route path="/ai-image" element={<AiImagePage />} />
+        <Route path="/transcribe" element={<TranscribePage />} />
         <Route path="/stats" element={<StatsPage />} />
         <Route path="/download/:token" element={<DownloadAccessPage />} />
         <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />
