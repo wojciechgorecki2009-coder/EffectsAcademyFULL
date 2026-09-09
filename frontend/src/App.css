@@ -476,6 +476,8 @@
   left: 50%;
   top: clamp(-6.1rem, -7vw, -4.5rem);
   z-index: 1;
+  pointer-events: none;
+  user-select: none;
   width: min(118%, 430px);
   max-height: 300px;
   object-fit: contain;
@@ -612,6 +614,8 @@
   left: 50%;
   top: clamp(-4.1rem, -5vw, -2.5rem);
   z-index: 1;
+  pointer-events: none;
+  user-select: none;
   width: min(106%, 360px);
   height: 270px;
 }
@@ -661,11 +665,22 @@
 
 .setup-product-price {
   margin-top: 0.8rem;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.5rem;
   color: #fff;
   font-size: clamp(1.55rem, 3vw, 2.1rem);
   line-height: 0.95;
   font-weight: 950;
   letter-spacing: -0.055em;
+}
+
+.setup-product-usd {
+  color: rgba(255, 255, 255, 0.54);
+  font-size: clamp(0.88rem, 1.5vw, 1rem);
+  font-weight: 850;
+  letter-spacing: -0.025em;
 }
 
 .setup-item-actions {
@@ -925,6 +940,10 @@
 
 .setup-style-apple .setup-product-price {
   color: inherit;
+}
+
+.setup-style-apple .setup-product-usd {
+  color: color-mix(in srgb, currentColor 46%, transparent);
 }
 
 .setup-style-sleek {

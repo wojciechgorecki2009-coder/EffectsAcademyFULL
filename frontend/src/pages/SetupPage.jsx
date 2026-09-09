@@ -39,10 +39,25 @@ const EMPTY_ITEM = {
   sort_order: 0,
 };
 
+const APPROX_GBP_TO_USD = 1.35;
+
 function mediaUrl(url) {
   if (!url) return "";
   if (/^https?:\/\//i.test(url) || url.startsWith("data:")) return url;
   return `${FILE_BASE}${url}`;
+}
+
+function usdEstimateFromPrice(price = "") {
+  const match = String(price).match(/£\s*([\d,]+(?:\.\d{1,2})?)/);
+  if (!match) return "";
+  const gbp = Number(match[1].replace(/,/g, ""));
+  if (!Number.isFinite(gbp)) return "";
+  const usd = gbp * APPROX_GBP_TO_USD;
+  const rounded = usd >= 100 ? Math.round(usd) : Math.round(usd * 100) / 100;
+  return `≈ $${rounded.toLocaleString("en-US", {
+    minimumFractionDigits: rounded % 1 ? 2 : 0,
+    maximumFractionDigits: rounded % 1 ? 2 : 0,
+  })}`;
 }
 
 function normalizeNumber(value) {
@@ -434,48 +449,58 @@ export default function SetupPage() {
             {visibleItems.length ? (
               <div className="setup-item-grid">
                 {visibleItems.map((item) => (
-                  <article
-                    className="setup-item-card"
-                    key={item.id}
-                    style={{
-                      background: item.background || "var(--setup-item-bg)",
-                      ...imageScaleStyle(item.image_scale),
-                    }}
-                  >
-                    {item.image_url ? (
-                      <img src={mediaUrl(item.image_url)} alt="" loading="lazy" decoding="async" />
-                    ) : (
-                      <div className="setup-image-placeholder">
-                        <PackageOpen size={44} />
-                      </div>
-                    )}
-                    <div className="setup-item-body">
-                      {item.price_note ? <span className="setup-pill">{item.price_note}</span> : null}
-                      <h3>{item.name}</h3>
-                      {item.description ? <p>{item.description}</p> : null}
-                      {item.price ? <div className="setup-product-price">{item.price}</div> : null}
-                      <div className="setup-item-actions">
-                        {item.amazon_url ? (
-                          <a href={item.amazon_url} target="_blank" rel="noreferrer">
-                            <ShoppingBag size={17} />
-                            View on Amazon
-                          </a>
+                  (() => {
+                    const usdEstimate = usdEstimateFromPrice(item.price);
+                    return (
+                      <article
+                        className="setup-item-card"
+                        key={item.id}
+                        style={{
+                          background: item.background || "var(--setup-item-bg)",
+                          ...imageScaleStyle(item.image_scale),
+                        }}
+                      >
+                        {item.image_url ? (
+                          <img src={mediaUrl(item.image_url)} alt="" loading="lazy" decoding="async" />
                         ) : (
-                          <span className="setup-muted-link">Amazon link coming soon</span>
-                        )}
-                        {canEdit ? (
-                          <div className="setup-mod-actions">
-                            <button type="button" onClick={() => editItem(item)} aria-label={`Edit ${item.name}`}>
-                              <Edit3 size={16} />
-                            </button>
-                            <button type="button" onClick={() => deleteItem(item)} aria-label={`Delete ${item.name}`}>
-                              <Trash2 size={16} />
-                            </button>
+                          <div className="setup-image-placeholder">
+                            <PackageOpen size={44} />
                           </div>
-                        ) : null}
-                      </div>
-                    </div>
-                  </article>
+                        )}
+                        <div className="setup-item-body">
+                          {item.price_note ? <span className="setup-pill">{item.price_note}</span> : null}
+                          <h3>{item.name}</h3>
+                          {item.description ? <p>{item.description}</p> : null}
+                          {item.price ? (
+                            <div className="setup-product-price">
+                              <span>{item.price}</span>
+                              {usdEstimate ? <span className="setup-product-usd">{usdEstimate}</span> : null}
+                            </div>
+                          ) : null}
+                          <div className="setup-item-actions">
+                            {item.amazon_url ? (
+                              <a href={item.amazon_url} target="_blank" rel="noreferrer">
+                                <ShoppingBag size={17} />
+                                View on Amazon
+                              </a>
+                            ) : (
+                              <span className="setup-muted-link">Amazon link coming soon</span>
+                            )}
+                            {canEdit ? (
+                              <div className="setup-mod-actions">
+                                <button type="button" onClick={() => editItem(item)} aria-label={`Edit ${item.name}`}>
+                                  <Edit3 size={16} />
+                                </button>
+                                <button type="button" onClick={() => deleteItem(item)} aria-label={`Delete ${item.name}`}>
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+                      </article>
+                    );
+                  })()
                 ))}
               </div>
             ) : (
