@@ -384,10 +384,6 @@
   padding-bottom: clamp(1.4rem, 4.2vw, 3.5rem);
 }
 
-.setup-mode-category .setup-shell {
-  padding-bottom: clamp(12rem, 18vw, 18rem);
-}
-
 .setup-hero {
   max-width: 850px;
   margin: 0 auto;
