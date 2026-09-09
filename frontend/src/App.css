@@ -321,6 +321,7 @@
 
 .setup-mini-site-shell {
   background: #000;
+  overflow-x: hidden;
 }
 
 .setup-page {
@@ -328,12 +329,24 @@
   min-height: 100dvh;
   position: relative;
   isolation: isolate;
-  overflow-x: hidden;
+  overflow-x: clip;
   color: #fff;
   background-color: #050507;
   background:
     radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--setup-accent) 42%, transparent), transparent 38%),
     linear-gradient(145deg, color-mix(in srgb, var(--setup-base) 72%, #05040a), #08070d 70%);
+}
+
+.setup-page.setup-mode-home {
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100vh;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+
+.setup-page.setup-mode-category {
+  overflow-x: clip;
 }
 
 .setup-bg-image {
@@ -362,6 +375,13 @@
   margin: 0 auto;
   padding: clamp(2.5rem, 6vw, 4.75rem) 0 5rem;
   position: relative;
+}
+
+.setup-mode-home .setup-shell {
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding-top: clamp(1.4rem, 4.2vw, 3.5rem);
+  padding-bottom: clamp(1.4rem, 4.2vw, 3.5rem);
 }
 
 .setup-hero {
