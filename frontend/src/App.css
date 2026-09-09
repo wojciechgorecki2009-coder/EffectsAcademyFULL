@@ -346,7 +346,11 @@
 }
 
 .setup-page.setup-mode-category {
+  height: 100vh;
+  height: 100dvh;
   overflow-x: clip;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .setup-bg-image {

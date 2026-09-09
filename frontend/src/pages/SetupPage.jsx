@@ -223,7 +223,7 @@ export default function SetupPage() {
     const shouldLockLanding = !selectedCategoryId;
 
     html.style.overflow = "hidden";
-    body.style.overflow = shouldLockLanding ? "hidden" : "auto";
+    body.style.overflow = "hidden";
     html.style.overflowX = "hidden";
     body.style.overflowX = "hidden";
 
