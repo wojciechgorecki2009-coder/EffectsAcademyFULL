@@ -1289,6 +1289,88 @@ class PremiumPromotionCreate(BaseModel):
     enabled: Optional[bool] = True
 
 
+class SetupPageSettings(BaseModel):
+    title: str = "PRODUCTS I USE"
+    intro: str = "People always ask me what gear I use, so I put everything in one place. Some links may be affiliate links."
+    background_url: Optional[str] = ""
+    background_color: str = "#5F438C"
+    item_background: str = "rgba(38, 38, 42, 0.82)"
+    accent_color: str = "#A78BFA"
+    updated_at: str = Field(default_factory=now_iso)
+
+
+class SetupPageSettingsUpdate(BaseModel):
+    title: Optional[str] = None
+    intro: Optional[str] = None
+    background_url: Optional[str] = None
+    background_color: Optional[str] = None
+    item_background: Optional[str] = None
+    accent_color: Optional[str] = None
+
+
+class SetupCategory(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    description: Optional[str] = ""
+    image_url: Optional[str] = ""
+    background: Optional[str] = ""
+    sort_order: int = 0
+    created_at: str = Field(default_factory=now_iso)
+    updated_at: str = Field(default_factory=now_iso)
+
+
+class SetupCategoryCreate(BaseModel):
+    name: str
+    description: Optional[str] = ""
+    image_url: Optional[str] = ""
+    background: Optional[str] = ""
+    sort_order: Optional[int] = 0
+
+
+class SetupCategoryUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    image_url: Optional[str] = None
+    background: Optional[str] = None
+    sort_order: Optional[int] = None
+
+
+class SetupItem(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    category_id: str
+    name: str
+    description: Optional[str] = ""
+    image_url: Optional[str] = ""
+    amazon_url: str
+    price_note: Optional[str] = ""
+    background: Optional[str] = ""
+    sort_order: int = 0
+    created_at: str = Field(default_factory=now_iso)
+    updated_at: str = Field(default_factory=now_iso)
+
+
+class SetupItemCreate(BaseModel):
+    category_id: str
+    name: str
+    description: Optional[str] = ""
+    image_url: Optional[str] = ""
+    amazon_url: str
+    price_note: Optional[str] = ""
+    background: Optional[str] = ""
+    sort_order: Optional[int] = 0
+
+
+class SetupItemUpdate(BaseModel):
+    category_id: Optional[str] = None
+    name: Optional[str] = None
+    description: Optional[str] = None
+    image_url: Optional[str] = None
+    amazon_url: Optional[str] = None
+    price_note: Optional[str] = None
+    background: Optional[str] = None
+    sort_order: Optional[int] = None
+
+
 class AnalyticsVisit(BaseModel):
     visitor_id: str
     path: Optional[str] = "/"
@@ -2123,6 +2205,129 @@ async def delete_asset(asset_id: str, request: Request):
     res = await db.assets.delete_one({"id": asset_id})
     if res.deleted_count == 0:
         raise HTTPException(404, "Asset not found")
+    return {"ok": True}
+
+
+# Hidden setup/products page -------------------------------------------
+async def setup_page_payload(request: Request) -> dict:
+    settings = await db.setup_page_settings.find_one({"id": "main"}, {"_id": 0})
+    if not settings:
+        settings = SetupPageSettings().model_dump()
+    categories = await db.setup_categories.find({}, {"_id": 0}).sort([("sort_order", 1), ("created_at", 1)]).to_list(500)
+    items = await db.setup_items.find({}, {"_id": 0}).sort([("sort_order", 1), ("created_at", 1)]).to_list(1000)
+    user = await request_user(request)
+    return {
+        "settings": settings,
+        "categories": categories,
+        "items": items,
+        "can_edit": can_upload_assets(user),
+    }
+
+
+@api_router.get("/setup-page")
+async def get_setup_page(request: Request):
+    return await setup_page_payload(request)
+
+
+@api_router.patch("/moderator/setup-page/settings")
+async def update_setup_page_settings(payload: SetupPageSettingsUpdate, request: Request):
+    await require_uploader(request)
+    updates = {k: v for k, v in payload.model_dump().items() if v is not None}
+    updates["updated_at"] = now_iso()
+    await db.setup_page_settings.update_one(
+        {"id": "main"},
+        {"$set": updates, "$setOnInsert": {"id": "main"}},
+        upsert=True,
+    )
+    return await setup_page_payload(request)
+
+
+@api_router.post("/moderator/setup-page/categories", response_model=SetupCategory)
+async def create_setup_category(payload: SetupCategoryCreate, request: Request):
+    await require_uploader(request)
+    data = payload.model_dump()
+    data["name"] = data.get("name", "").strip()
+    if not data["name"]:
+        raise HTTPException(400, "Category name is required")
+    category = SetupCategory(**data)
+    await db.setup_categories.insert_one(category.model_dump())
+    return category
+
+
+@api_router.patch("/moderator/setup-page/categories/{category_id}", response_model=SetupCategory)
+async def update_setup_category(category_id: str, payload: SetupCategoryUpdate, request: Request):
+    await require_uploader(request)
+    updates = {k: v for k, v in payload.model_dump().items() if v is not None}
+    if "name" in updates:
+        updates["name"] = updates["name"].strip()
+        if not updates["name"]:
+            raise HTTPException(400, "Category name is required")
+    updates["updated_at"] = now_iso()
+    res = await db.setup_categories.update_one({"id": category_id}, {"$set": updates})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Category not found")
+    doc = await db.setup_categories.find_one({"id": category_id}, {"_id": 0})
+    return doc
+
+
+@api_router.delete("/moderator/setup-page/categories/{category_id}")
+async def delete_setup_category(category_id: str, request: Request):
+    await require_uploader(request)
+    res = await db.setup_categories.delete_one({"id": category_id})
+    if res.deleted_count == 0:
+        raise HTTPException(404, "Category not found")
+    await db.setup_items.delete_many({"category_id": category_id})
+    return {"ok": True}
+
+
+@api_router.post("/moderator/setup-page/items", response_model=SetupItem)
+async def create_setup_item(payload: SetupItemCreate, request: Request):
+    await require_uploader(request)
+    data = payload.model_dump()
+    data["name"] = data.get("name", "").strip()
+    data["amazon_url"] = data.get("amazon_url", "").strip()
+    if not data["name"]:
+        raise HTTPException(400, "Item name is required")
+    if not data["amazon_url"]:
+        raise HTTPException(400, "Amazon link is required")
+    category = await db.setup_categories.find_one({"id": data.get("category_id")}, {"_id": 0, "id": 1})
+    if not category:
+        raise HTTPException(400, "Choose a valid category")
+    item = SetupItem(**data)
+    await db.setup_items.insert_one(item.model_dump())
+    return item
+
+
+@api_router.patch("/moderator/setup-page/items/{item_id}", response_model=SetupItem)
+async def update_setup_item(item_id: str, payload: SetupItemUpdate, request: Request):
+    await require_uploader(request)
+    updates = {k: v for k, v in payload.model_dump().items() if v is not None}
+    if "name" in updates:
+        updates["name"] = updates["name"].strip()
+        if not updates["name"]:
+            raise HTTPException(400, "Item name is required")
+    if "amazon_url" in updates:
+        updates["amazon_url"] = updates["amazon_url"].strip()
+        if not updates["amazon_url"]:
+            raise HTTPException(400, "Amazon link is required")
+    if "category_id" in updates:
+        category = await db.setup_categories.find_one({"id": updates["category_id"]}, {"_id": 0, "id": 1})
+        if not category:
+            raise HTTPException(400, "Choose a valid category")
+    updates["updated_at"] = now_iso()
+    res = await db.setup_items.update_one({"id": item_id}, {"$set": updates})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Item not found")
+    doc = await db.setup_items.find_one({"id": item_id}, {"_id": 0})
+    return doc
+
+
+@api_router.delete("/moderator/setup-page/items/{item_id}")
+async def delete_setup_item(item_id: str, request: Request):
+    await require_uploader(request)
+    res = await db.setup_items.delete_one({"id": item_id})
+    if res.deleted_count == 0:
+        raise HTTPException(404, "Item not found")
     return {"ok": True}
 
 

@@ -18,6 +18,7 @@ import GoogleCallbackPage from "@/pages/GoogleCallbackPage";
 import { PrivacyPage, SupportPage, TermsPage } from "@/pages/LegalPages";
 import AiImagePage from "@/pages/AiImagePage";
 import TranscribePage from "@/pages/TranscribePage";
+import SetupPage from "@/pages/SetupPage";
 import DownloadAccessPage from "@/pages/DownloadAccessPage";
 import StatsPage from "@/pages/StatsPage";
 import "@/App.css";
@@ -113,11 +114,41 @@ function RefreshableRoutes() {
         <Route path="/premium" element={<PremiumPage />} />
         <Route path="/ai-image" element={<AiImagePage />} />
         <Route path="/transcribe" element={<TranscribePage />} />
+        <Route path="/products-i-use" element={<SetupPage />} />
         <Route path="/stats" element={<StatsPage />} />
         <Route path="/download/:token" element={<DownloadAccessPage />} />
         <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />
       </Routes>
     </main>
+  );
+}
+
+function AppFrame() {
+  const { pathname } = useLocation();
+  const isSetupMiniSite = pathname === "/products-i-use";
+
+  return (
+    <MouseParallaxRoot>
+      <div className={`App min-h-screen bg-[var(--site-bg)] text-white transition-colors duration-300 ${isSetupMiniSite ? "setup-mini-site-shell" : ""}`}>
+        <ScrollToTopOnRouteChange />
+        <AnalyticsTracker />
+        {!isSetupMiniSite ? <Nav /> : null}
+        <RefreshableRoutes />
+        {!isSetupMiniSite ? <Footer /> : null}
+        {!isSetupMiniSite ? <PersistentAudioBar /> : null}
+        <Toaster
+          theme="dark"
+          position="bottom-right"
+          toastOptions={{
+            style: {
+              background: "rgba(13,13,20,0.95)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              color: "#fff",
+            },
+          }}
+        />
+      </div>
+    </MouseParallaxRoot>
   );
 }
 
@@ -127,27 +158,7 @@ export default function App() {
       <AuthProvider>
         <UploadAccessProvider>
         <BrowserRouter>
-        <MouseParallaxRoot>
-          <div className="App min-h-screen bg-[var(--site-bg)] text-white transition-colors duration-300">
-            <ScrollToTopOnRouteChange />
-            <AnalyticsTracker />
-            <Nav />
-            <RefreshableRoutes />
-            <Footer />
-            <PersistentAudioBar />
-            <Toaster
-              theme="dark"
-              position="bottom-right"
-              toastOptions={{
-                style: {
-                  background: "rgba(13,13,20,0.95)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  color: "#fff",
-                },
-              }}
-            />
-          </div>
-        </MouseParallaxRoot>
+        <AppFrame />
         </BrowserRouter>
         </UploadAccessProvider>
       </AuthProvider>
