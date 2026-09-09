@@ -581,7 +581,8 @@
 .setup-item-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1.2rem;
+  column-gap: 1.2rem;
+  row-gap: clamp(5rem, 8vw, 7.5rem);
   padding-top: clamp(2.8rem, 5vw, 4.5rem);
 }
 
