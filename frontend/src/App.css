@@ -325,19 +325,34 @@
 
 .setup-page {
   min-height: 100vh;
+  min-height: 100dvh;
   position: relative;
   isolation: isolate;
   overflow-x: hidden;
   color: #fff;
+  background-color: #050507;
   background:
     radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--setup-accent) 42%, transparent), transparent 38%),
     linear-gradient(145deg, color-mix(in srgb, var(--setup-base) 72%, #05040a), #08070d 70%);
 }
 
+.setup-page::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -1;
+  height: min(34vh, 340px);
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.42) 58%, rgba(0, 0, 0, 0.72));
+}
+
 .setup-bg-image {
-  position: fixed;
-  inset: -28px;
+  position: absolute;
+  inset: -36px -36px -96px;
   z-index: -3;
+  min-height: calc(100% + 132px);
   background-position: center;
   background-size: cover;
   filter: blur(12px) saturate(1.08);
@@ -346,12 +361,13 @@
 }
 
 .setup-bg-wash {
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: -2;
+  min-height: 100%;
   background:
     radial-gradient(circle at 16% 34%, color-mix(in srgb, var(--setup-accent) 32%, transparent), transparent 30%),
-    linear-gradient(to bottom, rgba(0, 0, 0, 0.14), rgba(0, 0, 0, 0.55));
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.14), rgba(0, 0, 0, 0.55) 72%, rgba(0, 0, 0, 0.74));
 }
 
 .setup-shell {
