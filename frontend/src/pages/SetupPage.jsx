@@ -31,6 +31,7 @@ const EMPTY_ITEM = {
   description: "",
   image_url: "",
   amazon_url: "",
+  price: "",
   price_note: "",
   background: "",
   sort_order: 0,
@@ -315,6 +316,7 @@ export default function SetupPage() {
       description: item.description || "",
       image_url: item.image_url || "",
       amazon_url: item.amazon_url || "",
+      price: item.price || "",
       price_note: item.price_note || "",
       background: item.background || "",
       sort_order: item.sort_order || 0,
@@ -337,7 +339,7 @@ export default function SetupPage() {
     return categories.filter((category) => {
       const categoryMatch = `${category.name} ${category.description}`.toLowerCase().includes(queryText);
       const itemMatch = (itemsByCategory[category.id] || []).some((item) =>
-        `${item.name} ${item.description} ${item.price_note}`.toLowerCase().includes(queryText)
+        `${item.name} ${item.description} ${item.price || ""} ${item.price_note}`.toLowerCase().includes(queryText)
       );
       return categoryMatch || itemMatch;
     });
@@ -347,7 +349,7 @@ export default function SetupPage() {
     const scoped = selectedCategory ? itemsByCategory[selectedCategory.id] || [] : [];
     if (!queryText) return scoped;
     return scoped.filter((item) =>
-      `${item.name} ${item.description} ${item.price_note}`.toLowerCase().includes(queryText)
+      `${item.name} ${item.description} ${item.price || ""} ${item.price_note}`.toLowerCase().includes(queryText)
     );
   }, [itemsByCategory, queryText, selectedCategory]);
 
@@ -425,6 +427,7 @@ export default function SetupPage() {
                       {item.price_note ? <span className="setup-pill">{item.price_note}</span> : null}
                       <h3>{item.name}</h3>
                       {item.description ? <p>{item.description}</p> : null}
+                      {item.price ? <div className="setup-product-price">{item.price}</div> : null}
                       <div className="setup-item-actions">
                         {item.amazon_url ? (
                           <a href={item.amazon_url} target="_blank" rel="noreferrer">
@@ -609,7 +612,11 @@ export default function SetupPage() {
               </label>
               <div className="setup-form-grid">
                 <label>
-                  Price/note
+                  Price
+                  <Input value={itemForm.price} placeholder="$129.99" onChange={(event) => setItemForm((form) => ({ ...form, price: event.target.value }))} />
+                </label>
+                <label>
+                  Price note
                   <Input value={itemForm.price_note} onChange={(event) => setItemForm((form) => ({ ...form, price_note: event.target.value }))} />
                 </label>
                 <label>

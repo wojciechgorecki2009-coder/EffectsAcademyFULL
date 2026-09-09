@@ -1342,6 +1342,7 @@ class SetupItem(BaseModel):
     description: Optional[str] = ""
     image_url: Optional[str] = ""
     amazon_url: str
+    price: Optional[str] = ""
     price_note: Optional[str] = ""
     background: Optional[str] = ""
     sort_order: int = 0
@@ -1355,6 +1356,7 @@ class SetupItemCreate(BaseModel):
     description: Optional[str] = ""
     image_url: Optional[str] = ""
     amazon_url: str
+    price: Optional[str] = ""
     price_note: Optional[str] = ""
     background: Optional[str] = ""
     sort_order: Optional[int] = 0
@@ -1366,6 +1368,7 @@ class SetupItemUpdate(BaseModel):
     description: Optional[str] = None
     image_url: Optional[str] = None
     amazon_url: Optional[str] = None
+    price: Optional[str] = None
     price_note: Optional[str] = None
     background: Optional[str] = None
     sort_order: Optional[int] = None
