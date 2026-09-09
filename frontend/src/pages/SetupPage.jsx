@@ -47,6 +47,58 @@ function normalizeNumber(value) {
   return Number.isFinite(next) ? next : 0;
 }
 
+async function optimizeSetupImage(file, kind = "item") {
+  if (!file?.type?.startsWith("image/") || file.type === "image/gif") return file;
+
+  const limits = {
+    background: { maxWidth: 1920, maxHeight: 1280, quality: 0.78 },
+    category: { maxWidth: 1100, maxHeight: 820, quality: 0.82 },
+    item: { maxWidth: 1000, maxHeight: 1000, quality: 0.82 },
+  };
+  const limit = limits[kind] || limits.item;
+  const sourceUrl = URL.createObjectURL(file);
+
+  try {
+    const image = await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = sourceUrl;
+    });
+
+    const scale = Math.min(1, limit.maxWidth / image.width, limit.maxHeight / image.height);
+    const width = Math.max(1, Math.round(image.width * scale));
+    const height = Math.max(1, Math.round(image.height * scale));
+
+    if (scale === 1 && file.size < 420 * 1024 && file.type === "image/webp") {
+      return file;
+    }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(image, 0, 0, width, height);
+
+    const preferredType = file.type === "image/png" && file.size < 260 * 1024 ? "image/png" : "image/webp";
+    const blob = await new Promise((resolve) =>
+      canvas.toBlob(resolve, preferredType, preferredType === "image/png" ? undefined : limit.quality)
+    );
+
+    if (!blob || blob.size >= file.size) return file;
+
+    const extension = preferredType === "image/png" ? "png" : "webp";
+    const safeName = file.name.replace(/\.[^.]+$/, "") || "setup-image";
+    return new File([blob], `${safeName}-optimized.${extension}`, { type: preferredType });
+  } catch {
+    return file;
+  } finally {
+    URL.revokeObjectURL(sourceUrl);
+  }
+}
+
 function UploadButton({ label, onUpload, disabled }) {
   return (
     <label className={`setup-upload-chip ${disabled ? "is-disabled" : ""}`}>
@@ -122,11 +174,19 @@ export default function SetupPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const uploadImage = async (file, onUrl, label) => {
+  useEffect(() => {
+    if (!settings.background_url) return;
+    const img = new Image();
+    img.decoding = "async";
+    img.src = mediaUrl(settings.background_url);
+  }, [settings.background_url]);
+
+  const uploadImage = async (file, onUrl, label, kind = "item") => {
     setUploading(label);
     try {
+      const optimizedFile = await optimizeSetupImage(file, kind);
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", optimizedFile);
       const response = await api.post("/uploads", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
@@ -355,7 +415,7 @@ export default function SetupPage() {
                     style={{ background: item.background || "var(--setup-item-bg)" }}
                   >
                     {item.image_url ? (
-                      <img src={mediaUrl(item.image_url)} alt="" />
+                      <img src={mediaUrl(item.image_url)} alt="" loading="lazy" decoding="async" />
                     ) : (
                       <div className="setup-image-placeholder">
                         <PackageOpen size={44} />
@@ -397,14 +457,22 @@ export default function SetupPage() {
           <section className="setup-content">
             {filteredCategories.length ? (
               <div className="setup-category-grid">
-                {filteredCategories.map((category) => (
+                {filteredCategories.map((category, index) => (
                   <article
                     className="setup-category-card"
                     key={category.id}
                     style={{ background: category.background || "var(--setup-item-bg)" }}
                     onClick={() => setSelectedCategoryId(category.id)}
                   >
-                    {category.image_url ? <img src={mediaUrl(category.image_url)} alt="" /> : null}
+                    {category.image_url ? (
+                      <img
+                        src={mediaUrl(category.image_url)}
+                        alt=""
+                        loading={index < 3 ? "eager" : "lazy"}
+                        decoding="async"
+                        fetchPriority={index < 3 ? "high" : "auto"}
+                      />
+                    ) : null}
                     <div className="setup-category-body">
                       <span>{(itemsByCategory[category.id] || []).length} items</span>
                       <h2>{category.name}</h2>
@@ -467,7 +535,7 @@ export default function SetupPage() {
                 <UploadButton
                   label={uploading === "page-bg" ? "Uploading..." : "Upload background"}
                   disabled={Boolean(uploading)}
-                  onUpload={(file) => uploadImage(file, (url) => setSettingsForm((form) => ({ ...form, background_url: url })), "page-bg")}
+                  onUpload={(file) => uploadImage(file, (url) => setSettingsForm((form) => ({ ...form, background_url: url })), "page-bg", "background")}
                 />
                 <Button disabled={saving} onClick={saveSettings}>
                   <Save size={16} />
@@ -502,7 +570,7 @@ export default function SetupPage() {
                 <UploadButton
                   label={uploading === "category" ? "Uploading..." : "Upload category image"}
                   disabled={Boolean(uploading)}
-                  onUpload={(file) => uploadImage(file, (url) => setCategoryForm((form) => ({ ...form, image_url: url })), "category")}
+                  onUpload={(file) => uploadImage(file, (url) => setCategoryForm((form) => ({ ...form, image_url: url })), "category", "category")}
                 />
                 <Button disabled={saving} onClick={saveCategory}>
                   <ImagePlus size={16} />
@@ -561,7 +629,7 @@ export default function SetupPage() {
                 <UploadButton
                   label={uploading === "item" ? "Uploading..." : "Upload item image"}
                   disabled={Boolean(uploading)}
-                  onUpload={(file) => uploadImage(file, (url) => setItemForm((form) => ({ ...form, image_url: url })), "item")}
+                  onUpload={(file) => uploadImage(file, (url) => setItemForm((form) => ({ ...form, image_url: url })), "item", "item")}
                 />
                 <Button disabled={saving} onClick={saveItem}>
                   <PackageOpen size={16} />
