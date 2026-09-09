@@ -587,6 +587,8 @@
 
 .setup-item-card {
   position: relative;
+  display: flex;
+  flex-direction: column;
   border-radius: 28px;
   overflow: visible;
   padding-top: 190px;
@@ -648,6 +650,9 @@
 .setup-item-body {
   position: relative;
   z-index: 2;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   border-radius: 0 0 28px 28px;
   padding: 1.25rem;
   background: linear-gradient(to bottom, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.18));
@@ -688,7 +693,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  margin-top: 1.25rem;
+  margin-top: auto;
+  padding-top: 1.25rem;
 }
 
 .setup-item-actions a,
