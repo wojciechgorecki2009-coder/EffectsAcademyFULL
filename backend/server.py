@@ -1313,6 +1313,7 @@ class SetupCategory(BaseModel):
     name: str
     description: Optional[str] = ""
     image_url: Optional[str] = ""
+    image_scale: Optional[float] = 1.0
     background: Optional[str] = ""
     sort_order: int = 0
     created_at: str = Field(default_factory=now_iso)
@@ -1323,6 +1324,7 @@ class SetupCategoryCreate(BaseModel):
     name: str
     description: Optional[str] = ""
     image_url: Optional[str] = ""
+    image_scale: Optional[float] = 1.0
     background: Optional[str] = ""
     sort_order: Optional[int] = 0
 
@@ -1331,6 +1333,7 @@ class SetupCategoryUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     image_url: Optional[str] = None
+    image_scale: Optional[float] = None
     background: Optional[str] = None
     sort_order: Optional[int] = None
 
@@ -1341,6 +1344,7 @@ class SetupItem(BaseModel):
     name: str
     description: Optional[str] = ""
     image_url: Optional[str] = ""
+    image_scale: Optional[float] = 1.0
     amazon_url: str
     price: Optional[str] = ""
     price_note: Optional[str] = ""
@@ -1355,6 +1359,7 @@ class SetupItemCreate(BaseModel):
     name: str
     description: Optional[str] = ""
     image_url: Optional[str] = ""
+    image_scale: Optional[float] = 1.0
     amazon_url: str
     price: Optional[str] = ""
     price_note: Optional[str] = ""
@@ -1367,6 +1372,7 @@ class SetupItemUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     image_url: Optional[str] = None
+    image_scale: Optional[float] = None
     amazon_url: Optional[str] = None
     price: Optional[str] = None
     price_note: Optional[str] = None

@@ -479,7 +479,7 @@
   width: min(118%, 430px);
   max-height: 300px;
   object-fit: contain;
-  transform: translateX(-50%);
+  transform: translateX(-50%) scale(var(--setup-image-scale, 1));
   filter: drop-shadow(0 28px 30px rgba(0, 0, 0, 0.38));
   -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 58%, rgba(0, 0, 0, 0.72) 76%, transparent 100%);
   mask-image: linear-gradient(to bottom, #000 0%, #000 58%, rgba(0, 0, 0, 0.72) 76%, transparent 100%);
@@ -487,7 +487,7 @@
 }
 
 .setup-category-card:hover img {
-  transform: translateX(-50%) translateY(-8px) scale(1.035);
+  transform: translateX(-50%) translateY(-8px) scale(var(--setup-image-hover-scale, 1.035));
 }
 
 .setup-category-body {
@@ -620,7 +620,7 @@
   object-fit: contain;
   padding: 0.4rem;
   background: transparent;
-  transform: translateX(-50%);
+  transform: translateX(-50%) scale(var(--setup-image-scale, 1));
   filter: drop-shadow(0 28px 30px rgba(0, 0, 0, 0.36));
   -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 62%, rgba(0, 0, 0, 0.74) 80%, transparent 100%);
   mask-image: linear-gradient(to bottom, #000 0%, #000 62%, rgba(0, 0, 0, 0.74) 80%, transparent 100%);
@@ -628,7 +628,7 @@
 }
 
 .setup-item-card:hover img {
-  transform: translateX(-50%) translateY(-8px) scale(1.035);
+  transform: translateX(-50%) translateY(-8px) scale(var(--setup-image-hover-scale, 1.035));
 }
 
 .setup-image-placeholder {

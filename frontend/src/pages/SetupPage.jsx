@@ -21,6 +21,7 @@ const EMPTY_CATEGORY = {
   name: "",
   description: "",
   image_url: "",
+  image_scale: 1,
   background: "",
   sort_order: 0,
 };
@@ -30,6 +31,7 @@ const EMPTY_ITEM = {
   name: "",
   description: "",
   image_url: "",
+  image_scale: 1,
   amazon_url: "",
   price: "",
   price_note: "",
@@ -46,6 +48,20 @@ function mediaUrl(url) {
 function normalizeNumber(value) {
   const next = Number(value);
   return Number.isFinite(next) ? next : 0;
+}
+
+function normalizeScale(value) {
+  const next = Number(value);
+  if (!Number.isFinite(next)) return 1;
+  return Math.min(2.5, Math.max(0.35, next));
+}
+
+function imageScaleStyle(value) {
+  const scale = normalizeScale(value || 1);
+  return {
+    "--setup-image-scale": scale,
+    "--setup-image-hover-scale": scale * 1.035,
+  };
 }
 
 async function optimizeSetupImage(file, kind = "item") {
@@ -224,7 +240,11 @@ export default function SetupPage() {
     if (!categoryForm.name.trim()) return toast.error("Category name is required.");
     setSaving(true);
     try {
-      const payload = { ...categoryForm, sort_order: normalizeNumber(categoryForm.sort_order) };
+      const payload = {
+        ...categoryForm,
+        image_scale: normalizeScale(categoryForm.image_scale),
+        sort_order: normalizeNumber(categoryForm.sort_order),
+      };
       if (editingCategoryId) {
         await api.patch(`/moderator/setup-page/categories/${editingCategoryId}`, payload);
         toast.success("Category updated.");
@@ -254,6 +274,7 @@ export default function SetupPage() {
       const payload = {
         ...itemForm,
         category_id: categoryId,
+        image_scale: normalizeScale(itemForm.image_scale),
         sort_order: normalizeNumber(itemForm.sort_order),
       };
       if (editingItemId) {
@@ -302,6 +323,7 @@ export default function SetupPage() {
       name: category.name || "",
       description: category.description || "",
       image_url: category.image_url || "",
+      image_scale: category.image_scale || 1,
       background: category.background || "",
       sort_order: category.sort_order || 0,
     });
@@ -315,6 +337,7 @@ export default function SetupPage() {
       name: item.name || "",
       description: item.description || "",
       image_url: item.image_url || "",
+      image_scale: item.image_scale || 1,
       amazon_url: item.amazon_url || "",
       price: item.price || "",
       price_note: item.price_note || "",
@@ -414,7 +437,10 @@ export default function SetupPage() {
                   <article
                     className="setup-item-card"
                     key={item.id}
-                    style={{ background: item.background || "var(--setup-item-bg)" }}
+                    style={{
+                      background: item.background || "var(--setup-item-bg)",
+                      ...imageScaleStyle(item.image_scale),
+                    }}
                   >
                     {item.image_url ? (
                       <img src={mediaUrl(item.image_url)} alt="" loading="lazy" decoding="async" />
@@ -464,7 +490,10 @@ export default function SetupPage() {
                   <article
                     className="setup-category-card"
                     key={category.id}
-                    style={{ background: category.background || "var(--setup-item-bg)" }}
+                    style={{
+                      background: category.background || "var(--setup-item-bg)",
+                      ...imageScaleStyle(category.image_scale),
+                    }}
                     onClick={() => setSelectedCategoryId(category.id)}
                   >
                     {category.image_url ? (
@@ -562,6 +591,17 @@ export default function SetupPage() {
                 <Input value={categoryForm.image_url} onChange={(event) => setCategoryForm((form) => ({ ...form, image_url: event.target.value }))} />
               </label>
               <label>
+                Image scale
+                <Input
+                  type="number"
+                  min="0.35"
+                  max="2.5"
+                  step="0.05"
+                  value={categoryForm.image_scale}
+                  onChange={(event) => setCategoryForm((form) => ({ ...form, image_scale: event.target.value }))}
+                />
+              </label>
+              <label>
                 Card background
                 <Input value={categoryForm.background} onChange={(event) => setCategoryForm((form) => ({ ...form, background: event.target.value }))} />
               </label>
@@ -627,6 +667,17 @@ export default function SetupPage() {
               <label>
                 Image URL
                 <Input value={itemForm.image_url} onChange={(event) => setItemForm((form) => ({ ...form, image_url: event.target.value }))} />
+              </label>
+              <label>
+                Image scale
+                <Input
+                  type="number"
+                  min="0.35"
+                  max="2.5"
+                  step="0.05"
+                  value={itemForm.image_scale}
+                  onChange={(event) => setItemForm((form) => ({ ...form, image_scale: event.target.value }))}
+                />
               </label>
               <label>
                 Card background
