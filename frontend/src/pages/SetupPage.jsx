@@ -222,8 +222,8 @@ export default function SetupPage() {
     const previousBodyOverflowX = body.style.overflowX;
     const shouldLockLanding = !selectedCategoryId;
 
-    html.style.overflow = shouldLockLanding ? "hidden" : "";
-    body.style.overflow = shouldLockLanding ? "hidden" : "";
+    html.style.overflow = "hidden";
+    body.style.overflow = shouldLockLanding ? "hidden" : "auto";
     html.style.overflowX = "hidden";
     body.style.overflowX = "hidden";
 
