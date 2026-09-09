@@ -385,7 +385,7 @@
 }
 
 .setup-mode-category .setup-shell {
-  padding-bottom: clamp(8rem, 12vw, 12rem);
+  padding-bottom: clamp(12rem, 18vw, 18rem);
 }
 
 .setup-hero {
