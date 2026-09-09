@@ -443,6 +443,14 @@
   color: rgba(255, 255, 255, 0.58);
 }
 
+:root[data-site-style="apple"] .setup-search input,
+:root[data-site-style="apple"] .setup-search input:focus,
+:root[data-site-style="apple"] .setup-search input:focus-visible {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
 .setup-content {
   margin-top: clamp(2.6rem, 5vw, 4.4rem);
 }
