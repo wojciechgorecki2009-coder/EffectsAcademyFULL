@@ -348,8 +348,10 @@
 .setup-page.setup-mode-category {
   height: 100vh;
   height: 100dvh;
+  max-height: 100vh;
+  max-height: 100dvh;
   overflow-x: clip;
-  overflow-y: auto;
+  overflow-y: hidden;
   overscroll-behavior: contain;
 }
 
@@ -386,6 +388,15 @@
   min-height: 100dvh;
   padding-top: clamp(1.4rem, 4.2vw, 3.5rem);
   padding-bottom: clamp(1.4rem, 4.2vw, 3.5rem);
+}
+
+.setup-mode-category .setup-shell {
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .setup-hero {
@@ -476,6 +487,15 @@
 
 .setup-content {
   margin-top: clamp(2.6rem, 5vw, 4.4rem);
+}
+
+.setup-mode-category .setup-content {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 0 5rem;
 }
 
 .setup-category-grid {
