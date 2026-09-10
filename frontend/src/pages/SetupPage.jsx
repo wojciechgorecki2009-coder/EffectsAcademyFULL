@@ -213,28 +213,6 @@ export default function SetupPage() {
     img.src = mediaUrl(settings.background_url);
   }, [settings.background_url]);
 
-  useEffect(() => {
-    const html = document.documentElement;
-    const body = document.body;
-    const previousHtmlOverflow = html.style.overflow;
-    const previousBodyOverflow = body.style.overflow;
-    const previousHtmlOverflowX = html.style.overflowX;
-    const previousBodyOverflowX = body.style.overflowX;
-    const shouldLockLanding = !selectedCategoryId;
-
-    html.style.overflow = "hidden";
-    body.style.overflow = "hidden";
-    html.style.overflowX = "hidden";
-    body.style.overflowX = "hidden";
-
-    return () => {
-      html.style.overflow = previousHtmlOverflow;
-      body.style.overflow = previousBodyOverflow;
-      html.style.overflowX = previousHtmlOverflowX;
-      body.style.overflowX = previousBodyOverflowX;
-    };
-  }, [selectedCategoryId]);
-
   const uploadImage = async (file, onUrl, label, kind = "item") => {
     setUploading(label);
     try {
@@ -412,11 +390,10 @@ export default function SetupPage() {
       `${item.name} ${item.description} ${item.price || ""} ${item.price_note}`.toLowerCase().includes(queryText)
     );
   }, [itemsByCategory, queryText, selectedCategory]);
-  const modeClass = selectedCategory ? "setup-mode-category" : "setup-mode-home";
 
   return (
     <section
-      className={`setup-page ${styleClass} ${themeClass} ${modeClass}`}
+      className={`setup-page ${styleClass} ${themeClass}`}
       style={{
         "--setup-accent": settings.accent_color || DEFAULT_SETTINGS.accent_color,
         "--setup-base": settings.background_color || DEFAULT_SETTINGS.background_color,
