@@ -11,7 +11,7 @@ const DEFAULT_SETTINGS = {
   title: "PRODUCTS I USE",
   intro:
     "People always ask me what gear I use, so I put everything in one place. Some links may be affiliate links.",
-  background_url: "",
+  background_url: "/media/mrbit-setup-default-bg.png",
   background_color: "#5F438C",
   item_background: "rgba(38,38,42,0.82)",
   accent_color: "#A78BFA",
@@ -45,6 +45,7 @@ const APPROX_GBP_TO_USD = 1.35;
 function mediaUrl(url) {
   if (!url) return "";
   if (/^https?:\/\//i.test(url) || url.startsWith("data:")) return url;
+  if (url.startsWith("/media/") || url.startsWith("/static/")) return url;
   return `${FILE_BASE}${url}`;
 }
 
@@ -173,6 +174,7 @@ export default function SetupPage() {
   const [editingItemId, setEditingItemId] = useState("");
 
   const settings = { ...DEFAULT_SETTINGS, ...(data.settings || {}) };
+  if (!settings.background_url) settings.background_url = DEFAULT_SETTINGS.background_url;
   const categories = data.categories || [];
   const items = data.items || [];
   const canEdit = Boolean(data.can_edit);

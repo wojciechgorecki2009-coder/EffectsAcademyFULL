@@ -1292,7 +1292,7 @@ class PremiumPromotionCreate(BaseModel):
 class SetupPageSettings(BaseModel):
     title: str = "PRODUCTS I USE"
     intro: str = "People always ask me what gear I use, so I put everything in one place. Some links may be affiliate links."
-    background_url: Optional[str] = ""
+    background_url: Optional[str] = "/media/mrbit-setup-default-bg.png"
     background_color: str = "#5F438C"
     item_background: str = "rgba(38, 38, 42, 0.82)"
     accent_color: str = "#A78BFA"
@@ -2223,8 +2223,10 @@ async def delete_asset(asset_id: str, request: Request):
 # Hidden setup/products page -------------------------------------------
 async def setup_page_payload(request: Request) -> dict:
     settings = await db.setup_page_settings.find_one({"id": "main"}, {"_id": 0})
-    if not settings:
-        settings = SetupPageSettings().model_dump()
+    defaults = SetupPageSettings().model_dump()
+    settings = {**defaults, **(settings or {})}
+    if not settings.get("background_url"):
+        settings["background_url"] = defaults["background_url"]
     categories = await db.setup_categories.find({}, {"_id": 0}).sort([("sort_order", 1), ("created_at", 1)]).to_list(500)
     items = await db.setup_items.find({}, {"_id": 0}).sort([("sort_order", 1), ("created_at", 1)]).to_list(1000)
     user = await request_user(request)
