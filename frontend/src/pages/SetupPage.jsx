@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Edit3, ExternalLink, ImagePlus, PackageOpen, Save, Search, Settings2, ShoppingBag, Trash2, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
 import { api, FILE_BASE } from "@/lib/api";
@@ -152,7 +152,8 @@ function UploadButton({ label, onUpload, disabled }) {
 }
 
 export default function SetupPage() {
-  const { siteStyle, theme } = useTheme();
+  const { theme } = useTheme();
+  const setupPageRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState("");
@@ -177,7 +178,7 @@ export default function SetupPage() {
   const canEdit = Boolean(data.can_edit);
   const selectedCategory = categories.find((category) => category.id === selectedCategoryId);
 
-  const styleClass = siteStyle === "apple" ? "setup-style-apple" : siteStyle === "sleek" ? "setup-style-sleek" : "setup-style-default";
+  const styleClass = "setup-style-apple";
   const themeClass = `setup-theme-${theme || "blue"}`;
 
   const loadPage = async () => {
@@ -395,10 +396,38 @@ export default function SetupPage() {
   const itemFormCategory = categories.find((category) => category.id === itemForm.category_id);
   const itemFormIsSoftware = Boolean(itemFormCategory?.is_software);
 
+  const handlePointerMove = (event) => {
+    const page = setupPageRef.current;
+    if (!page) return;
+    const rect = page.getBoundingClientRect();
+    const x = ((event.clientX - rect.left) / rect.width - 0.5) * 2;
+    const y = ((event.clientY - rect.top) / rect.height - 0.5) * 2;
+    page.style.setProperty("--setup-bg-shift-x", `${x * 18}px`);
+    page.style.setProperty("--setup-bg-shift-y", `${y * 14}px`);
+    page.style.setProperty("--setup-bg-wash-shift-x", `${x * -6}px`);
+    page.style.setProperty("--setup-bg-wash-shift-y", `${y * -5}px`);
+  };
+
+  const handlePointerLeave = () => {
+    const page = setupPageRef.current;
+    if (!page) return;
+    page.style.setProperty("--setup-bg-shift-x", "0px");
+    page.style.setProperty("--setup-bg-shift-y", "0px");
+    page.style.setProperty("--setup-bg-wash-shift-x", "0px");
+    page.style.setProperty("--setup-bg-wash-shift-y", "0px");
+  };
+
   return (
     <section
+      ref={setupPageRef}
       className={`setup-page ${styleClass} ${themeClass}`}
+      onPointerMove={handlePointerMove}
+      onPointerLeave={handlePointerLeave}
       style={{
+        "--setup-bg-shift-x": "0px",
+        "--setup-bg-shift-y": "0px",
+        "--setup-bg-wash-shift-x": "0px",
+        "--setup-bg-wash-shift-y": "0px",
         "--setup-accent": settings.accent_color || DEFAULT_SETTINGS.accent_color,
         "--setup-base": settings.background_color || DEFAULT_SETTINGS.background_color,
         "--setup-item-bg": settings.item_background || DEFAULT_SETTINGS.item_background,
