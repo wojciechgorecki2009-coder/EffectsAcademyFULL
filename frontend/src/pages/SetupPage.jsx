@@ -439,7 +439,6 @@ export default function SetupPage() {
           style={{ backgroundImage: `url("${mediaUrl(settings.background_url)}")` }}
         />
       ) : null}
-      <div className="setup-bg-wash" />
 
       <main className="setup-shell">
         {canEdit ? (
