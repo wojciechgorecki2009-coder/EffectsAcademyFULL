@@ -376,6 +376,13 @@ export default function SetupPage() {
     }
     return grouped;
   }, [items]);
+  const categoryById = useMemo(() => {
+    const byId = {};
+    for (const category of categories) {
+      byId[category.id] = category;
+    }
+    return byId;
+  }, [categories]);
 
   const filteredCategories = useMemo(() => {
     if (!queryText) return categories;
@@ -395,6 +402,12 @@ export default function SetupPage() {
       `${item.name} ${item.description} ${item.price || ""} ${item.price_note}`.toLowerCase().includes(queryText)
     );
   }, [itemsByCategory, queryText, selectedCategory]);
+  const matchingItems = useMemo(() => {
+    if (!queryText || selectedCategory) return [];
+    return items.filter((item) =>
+      `${item.name} ${item.description} ${item.price || ""} ${item.price_note}`.toLowerCase().includes(queryText)
+    );
+  }, [items, queryText, selectedCategory]);
   const itemFormCategory = categories.find((category) => category.id === itemForm.category_id);
   const itemFormIsSoftware = Boolean(itemFormCategory?.is_software);
 
@@ -417,6 +430,64 @@ export default function SetupPage() {
     page.style.setProperty("--setup-bg-shift-y", "0px");
     page.style.setProperty("--setup-bg-wash-shift-x", "0px");
     page.style.setProperty("--setup-bg-wash-shift-y", "0px");
+  };
+
+  const renderSetupItemCard = (item) => {
+    const itemCategory = categoryById[item.category_id];
+    const usdEstimate = usdEstimateFromPrice(item.price);
+    const isSoftwareItem = Boolean(itemCategory?.is_software);
+    const linkLabel = isSoftwareItem ? "Visit website" : "View on Amazon";
+    const missingLinkLabel = isSoftwareItem ? "Website link coming soon" : "Amazon link coming soon";
+
+    return (
+      <article
+        className="setup-item-card"
+        key={item.id}
+        style={{
+          background: item.background || "var(--setup-item-bg)",
+          ...imageScaleStyle(item.image_scale),
+        }}
+      >
+        {item.image_url ? (
+          <img src={mediaUrl(item.image_url)} alt="" loading="lazy" decoding="async" />
+        ) : (
+          <div className="setup-image-placeholder">
+            <PackageOpen size={44} />
+          </div>
+        )}
+        <div className="setup-item-body">
+          {item.price_note ? <span className="setup-pill">{item.price_note}</span> : null}
+          <h3>{item.name}</h3>
+          {item.description ? <p>{item.description}</p> : null}
+          {item.price ? (
+            <div className="setup-product-price">
+              <span>{item.price}</span>
+              {usdEstimate ? <span className="setup-product-usd">{usdEstimate}</span> : null}
+            </div>
+          ) : null}
+          <div className="setup-item-actions">
+            {item.amazon_url ? (
+              <a href={item.amazon_url} target="_blank" rel="noreferrer">
+                {isSoftwareItem ? <ExternalLink size={17} /> : <ShoppingBag size={17} />}
+                {linkLabel}
+              </a>
+            ) : (
+              <span className="setup-muted-link">{missingLinkLabel}</span>
+            )}
+            {canEdit ? (
+              <div className="setup-mod-actions">
+                <button type="button" onClick={() => editItem(item)} aria-label={`Edit ${item.name}`}>
+                  <Edit3 size={16} />
+                </button>
+                <button type="button" onClick={() => deleteItem(item)} aria-label={`Delete ${item.name}`}>
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </article>
+    );
   };
 
   return (
@@ -482,63 +553,7 @@ export default function SetupPage() {
 
             {visibleItems.length ? (
               <div className="setup-item-grid">
-                {visibleItems.map((item) => (
-                  (() => {
-                    const usdEstimate = usdEstimateFromPrice(item.price);
-                    const isSoftwareItem = Boolean(selectedCategory?.is_software);
-                    const linkLabel = isSoftwareItem ? "Visit website" : "View on Amazon";
-                    const missingLinkLabel = isSoftwareItem ? "Website link coming soon" : "Amazon link coming soon";
-                    return (
-                      <article
-                        className="setup-item-card"
-                        key={item.id}
-                        style={{
-                          background: item.background || "var(--setup-item-bg)",
-                          ...imageScaleStyle(item.image_scale),
-                        }}
-                      >
-                        {item.image_url ? (
-                          <img src={mediaUrl(item.image_url)} alt="" loading="lazy" decoding="async" />
-                        ) : (
-                          <div className="setup-image-placeholder">
-                            <PackageOpen size={44} />
-                          </div>
-                        )}
-                        <div className="setup-item-body">
-                          {item.price_note ? <span className="setup-pill">{item.price_note}</span> : null}
-                          <h3>{item.name}</h3>
-                          {item.description ? <p>{item.description}</p> : null}
-                          {item.price ? (
-                            <div className="setup-product-price">
-                              <span>{item.price}</span>
-                              {usdEstimate ? <span className="setup-product-usd">{usdEstimate}</span> : null}
-                            </div>
-                          ) : null}
-                          <div className="setup-item-actions">
-                            {item.amazon_url ? (
-                              <a href={item.amazon_url} target="_blank" rel="noreferrer">
-                                {isSoftwareItem ? <ExternalLink size={17} /> : <ShoppingBag size={17} />}
-                                {linkLabel}
-                              </a>
-                            ) : (
-                              <span className="setup-muted-link">{missingLinkLabel}</span>
-                            )}
-                            {canEdit ? (
-                              <div className="setup-mod-actions">
-                                <button type="button" onClick={() => editItem(item)} aria-label={`Edit ${item.name}`}>
-                                  <Edit3 size={16} />
-                                </button>
-                                <button type="button" onClick={() => deleteItem(item)} aria-label={`Delete ${item.name}`}>
-                                  <Trash2 size={16} />
-                                </button>
-                              </div>
-                            ) : null}
-                          </div>
-                        </div>
-                      </article>
-                    );
-                  })()
-                ))}
+                {visibleItems.map((item) => renderSetupItemCard(item))}
               </div>
             ) : (
               <div className="setup-empty">No products match this search yet.</div>
@@ -585,13 +600,27 @@ export default function SetupPage() {
                   </article>
                 ))}
               </div>
-            ) : (
+            ) : !queryText || !matchingItems.length ? (
               <div className="setup-empty">
                 {canEdit
                   ? "No setup categories yet. Open the editor and add the first one."
                   : "The setup list is being built."}
               </div>
-            )}
+            ) : null}
+            {queryText && matchingItems.length ? (
+              <div className="setup-search-products">
+                <div className="setup-search-products-head">
+                  <span>Matching products</span>
+                  <p>{matchingItems.length} result{matchingItems.length === 1 ? "" : "s"}</p>
+                </div>
+                <div className="setup-item-grid">
+                  {matchingItems.map((item) => renderSetupItemCard(item))}
+                </div>
+              </div>
+            ) : null}
+            {queryText && !filteredCategories.length && !matchingItems.length ? (
+              <div className="setup-empty">No categories or products match this search yet.</div>
+            ) : null}
           </section>
         )}
 
