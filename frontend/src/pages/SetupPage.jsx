@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Edit3, ImagePlus, PackageOpen, Save, Search, Settings2, ShoppingBag, Trash2, UploadCloud } from "lucide-react";
+import { ArrowLeft, Edit3, ExternalLink, ImagePlus, PackageOpen, Save, Search, Settings2, ShoppingBag, Trash2, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
 import { api, FILE_BASE } from "@/lib/api";
 import { useTheme } from "@/lib/theme";
@@ -22,6 +22,7 @@ const EMPTY_CATEGORY = {
   description: "",
   image_url: "",
   image_scale: 1,
+  is_software: false,
   background: "",
   sort_order: 0,
 };
@@ -339,6 +340,7 @@ export default function SetupPage() {
       description: category.description || "",
       image_url: category.image_url || "",
       image_scale: category.image_scale || 1,
+      is_software: Boolean(category.is_software),
       background: category.background || "",
       sort_order: category.sort_order || 0,
     });
@@ -390,6 +392,8 @@ export default function SetupPage() {
       `${item.name} ${item.description} ${item.price || ""} ${item.price_note}`.toLowerCase().includes(queryText)
     );
   }, [itemsByCategory, queryText, selectedCategory]);
+  const itemFormCategory = categories.find((category) => category.id === itemForm.category_id);
+  const itemFormIsSoftware = Boolean(itemFormCategory?.is_software);
 
   return (
     <section
@@ -451,6 +455,9 @@ export default function SetupPage() {
                 {visibleItems.map((item) => (
                   (() => {
                     const usdEstimate = usdEstimateFromPrice(item.price);
+                    const isSoftwareItem = Boolean(selectedCategory?.is_software);
+                    const linkLabel = isSoftwareItem ? "Visit website" : "View on Amazon";
+                    const missingLinkLabel = isSoftwareItem ? "Website link coming soon" : "Amazon link coming soon";
                     return (
                       <article
                         className="setup-item-card"
@@ -480,11 +487,11 @@ export default function SetupPage() {
                           <div className="setup-item-actions">
                             {item.amazon_url ? (
                               <a href={item.amazon_url} target="_blank" rel="noreferrer">
-                                <ShoppingBag size={17} />
-                                View on Amazon
+                                {isSoftwareItem ? <ExternalLink size={17} /> : <ShoppingBag size={17} />}
+                                {linkLabel}
                               </a>
                             ) : (
-                              <span className="setup-muted-link">Amazon link coming soon</span>
+                              <span className="setup-muted-link">{missingLinkLabel}</span>
                             )}
                             {canEdit ? (
                               <div className="setup-mod-actions">
@@ -626,6 +633,17 @@ export default function SetupPage() {
                   onChange={(event) => setCategoryForm((form) => ({ ...form, image_scale: event.target.value }))}
                 />
               </label>
+              <label className="setup-checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={Boolean(categoryForm.is_software)}
+                  onChange={(event) => setCategoryForm((form) => ({ ...form, is_software: event.target.checked }))}
+                />
+                <span>
+                  <strong>Software</strong>
+                  <small>Use website links instead of Amazon buttons for items in this category.</small>
+                </span>
+              </label>
               <label>
                 Card background
                 <Input value={categoryForm.background} onChange={(event) => setCategoryForm((form) => ({ ...form, background: event.target.value }))} />
@@ -672,7 +690,7 @@ export default function SetupPage() {
                 <Textarea value={itemForm.description} onChange={(event) => setItemForm((form) => ({ ...form, description: event.target.value }))} />
               </label>
               <label>
-                Amazon link
+                {itemFormIsSoftware ? "Website link" : "Amazon link"}
                 <Input value={itemForm.amazon_url} onChange={(event) => setItemForm((form) => ({ ...form, amazon_url: event.target.value }))} />
               </label>
               <div className="setup-form-grid">

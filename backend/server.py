@@ -1314,6 +1314,7 @@ class SetupCategory(BaseModel):
     description: Optional[str] = ""
     image_url: Optional[str] = ""
     image_scale: Optional[float] = 1.0
+    is_software: bool = False
     background: Optional[str] = ""
     sort_order: int = 0
     created_at: str = Field(default_factory=now_iso)
@@ -1325,6 +1326,7 @@ class SetupCategoryCreate(BaseModel):
     description: Optional[str] = ""
     image_url: Optional[str] = ""
     image_scale: Optional[float] = 1.0
+    is_software: Optional[bool] = False
     background: Optional[str] = ""
     sort_order: Optional[int] = 0
 
@@ -1334,6 +1336,7 @@ class SetupCategoryUpdate(BaseModel):
     description: Optional[str] = None
     image_url: Optional[str] = None
     image_scale: Optional[float] = None
+    is_software: Optional[bool] = None
     background: Optional[str] = None
     sort_order: Optional[int] = None
 
@@ -2298,7 +2301,7 @@ async def create_setup_item(payload: SetupItemCreate, request: Request):
     if not data["name"]:
         raise HTTPException(400, "Item name is required")
     if not data["amazon_url"]:
-        raise HTTPException(400, "Amazon link is required")
+        raise HTTPException(400, "Link is required")
     category = await db.setup_categories.find_one({"id": data.get("category_id")}, {"_id": 0, "id": 1})
     if not category:
         raise HTTPException(400, "Choose a valid category")
@@ -2318,7 +2321,7 @@ async def update_setup_item(item_id: str, payload: SetupItemUpdate, request: Req
     if "amazon_url" in updates:
         updates["amazon_url"] = updates["amazon_url"].strip()
         if not updates["amazon_url"]:
-            raise HTTPException(400, "Amazon link is required")
+            raise HTTPException(400, "Link is required")
     if "category_id" in updates:
         category = await db.setup_categories.find_one({"id": updates["category_id"]}, {"_id": 0, "id": 1})
         if not category:
