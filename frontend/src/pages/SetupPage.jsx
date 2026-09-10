@@ -609,10 +609,6 @@ export default function SetupPage() {
             ) : null}
             {queryText && matchingItems.length ? (
               <div className="setup-search-products">
-                <div className="setup-search-products-head">
-                  <span>Matching products</span>
-                  <p>{matchingItems.length} result{matchingItems.length === 1 ? "" : "s"}</p>
-                </div>
                 <div className="setup-item-grid">
                   {matchingItems.map((item) => renderSetupItemCard(item))}
                 </div>

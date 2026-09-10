@@ -471,27 +471,6 @@
   margin-top: clamp(3.5rem, 7vw, 5.8rem);
 }
 
-.setup-search-products-head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1.35rem;
-  color: rgba(255, 255, 255, 0.8);
-}
-
-.setup-search-products-head span {
-  font-size: clamp(1.45rem, 2.6vw, 2.2rem);
-  font-weight: 950;
-  letter-spacing: -0.045em;
-}
-
-.setup-search-products-head p {
-  margin: 0;
-  color: rgba(255, 255, 255, 0.58);
-  font-weight: 850;
-}
-
 .setup-category-card,
 .setup-item-card,
 .setup-editor-card,
