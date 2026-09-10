@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Edit3, ExternalLink, ImagePlus, PackageOpen, Save, Search, Settings2, ShoppingBag, Trash2, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
 import { api, FILE_BASE } from "@/lib/api";
@@ -154,7 +154,6 @@ function UploadButton({ label, onUpload, disabled }) {
 
 export default function SetupPage() {
   const { theme } = useTheme();
-  const setupPageRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState("");
@@ -411,28 +410,6 @@ export default function SetupPage() {
   const itemFormCategory = categories.find((category) => category.id === itemForm.category_id);
   const itemFormIsSoftware = Boolean(itemFormCategory?.is_software);
 
-  const handlePointerMove = (event) => {
-    const page = setupPageRef.current;
-    if (!page) return;
-    const viewportWidth = window.innerWidth || 1;
-    const viewportHeight = window.innerHeight || 1;
-    const x = (event.clientX / viewportWidth - 0.5) * 2;
-    const y = (event.clientY / viewportHeight - 0.5) * 2;
-    page.style.setProperty("--setup-bg-shift-x", `${x * 18}px`);
-    page.style.setProperty("--setup-bg-shift-y", `${y * 14}px`);
-    page.style.setProperty("--setup-bg-wash-shift-x", `${x * -6}px`);
-    page.style.setProperty("--setup-bg-wash-shift-y", `${y * -5}px`);
-  };
-
-  const handlePointerLeave = () => {
-    const page = setupPageRef.current;
-    if (!page) return;
-    page.style.setProperty("--setup-bg-shift-x", "0px");
-    page.style.setProperty("--setup-bg-shift-y", "0px");
-    page.style.setProperty("--setup-bg-wash-shift-x", "0px");
-    page.style.setProperty("--setup-bg-wash-shift-y", "0px");
-  };
-
   const renderSetupItemCard = (item) => {
     const itemCategory = categoryById[item.category_id];
     const usdEstimate = usdEstimateFromPrice(item.price);
@@ -493,27 +470,14 @@ export default function SetupPage() {
 
   return (
     <section
-      ref={setupPageRef}
       className={`setup-page ${styleClass} ${themeClass}`}
-      onPointerMove={handlePointerMove}
-      onPointerLeave={handlePointerLeave}
       style={{
-        "--setup-bg-shift-x": "0px",
-        "--setup-bg-shift-y": "0px",
-        "--setup-bg-wash-shift-x": "0px",
-        "--setup-bg-wash-shift-y": "0px",
+        "--setup-bg-image": settings.background_url ? `url("${mediaUrl(settings.background_url)}")` : "none",
         "--setup-accent": settings.accent_color || DEFAULT_SETTINGS.accent_color,
         "--setup-base": settings.background_color || DEFAULT_SETTINGS.background_color,
         "--setup-item-bg": settings.item_background || DEFAULT_SETTINGS.item_background,
       }}
     >
-      {settings.background_url ? (
-        <div
-          className="setup-bg-image"
-          style={{ backgroundImage: `url("${mediaUrl(settings.background_url)}")` }}
-        />
-      ) : null}
-
       <main className="setup-shell">
         {canEdit ? (
           <Button className="setup-edit-float" onClick={() => setEditOpen((open) => !open)}>
