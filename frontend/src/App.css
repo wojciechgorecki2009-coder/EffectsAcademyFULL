@@ -338,7 +338,11 @@
 
 .setup-bg-image {
   position: fixed;
-  inset: -48px;
+  top: -48px;
+  left: -48px;
+  width: calc(100vw + 96px);
+  height: calc(100vh + 96px);
+  height: calc(100dvh + 96px);
   z-index: -3;
   background-position: center;
   background-size: cover;
