@@ -414,9 +414,10 @@ export default function SetupPage() {
   const handlePointerMove = (event) => {
     const page = setupPageRef.current;
     if (!page) return;
-    const rect = page.getBoundingClientRect();
-    const x = ((event.clientX - rect.left) / rect.width - 0.5) * 2;
-    const y = ((event.clientY - rect.top) / rect.height - 0.5) * 2;
+    const viewportWidth = window.innerWidth || 1;
+    const viewportHeight = window.innerHeight || 1;
+    const x = (event.clientX / viewportWidth - 0.5) * 2;
+    const y = (event.clientY / viewportHeight - 0.5) * 2;
     page.style.setProperty("--setup-bg-shift-x", `${x * 18}px`);
     page.style.setProperty("--setup-bg-shift-y", `${y * 14}px`);
     page.style.setProperty("--setup-bg-wash-shift-x", `${x * -6}px`);
