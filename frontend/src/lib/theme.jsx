@@ -16,7 +16,12 @@ export function ThemeProvider({ children }) {
   });
   const [siteStyle, setSiteStyleState] = useState(() => {
     const saved = localStorage.getItem("ea_site_style");
-    return SITE_STYLES.has(saved) ? saved : "default";
+    const migratedToAppleDefault = localStorage.getItem("ea_site_style_apple_default_v1");
+    if (!migratedToAppleDefault && (!saved || saved === "default")) {
+      localStorage.setItem("ea_site_style_apple_default_v1", "1");
+      return "apple";
+    }
+    return SITE_STYLES.has(saved) ? saved : "apple";
   });
 
   useEffect(() => {
