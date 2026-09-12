@@ -8,7 +8,12 @@ const SITE_STYLES = new Set(["default", "apple", "sleek"]);
 export function ThemeProvider({ children }) {
   const [theme, setThemeState] = useState(() => {
     const saved = localStorage.getItem("ea_theme");
-    return THEMES.has(saved) ? saved : "blue";
+    const migratedToDarkDefault = localStorage.getItem("ea_theme_dark_default_v1");
+    if (!migratedToDarkDefault && (!saved || saved === "blue")) {
+      localStorage.setItem("ea_theme_dark_default_v1", "1");
+      return "dark";
+    }
+    return THEMES.has(saved) ? saved : "dark";
   });
   const [font, setFontState] = useState(() => {
     const saved = localStorage.getItem("ea_font_v2");
