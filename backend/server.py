@@ -3033,8 +3033,17 @@ async def upsert_category_override(
         raise HTTPException(400, "Category name must be 120 characters or less")
     field_name = "creator_tag" if kind == "creator" else "show_group"
     if target_name != name:
+        source_name = name.strip()
+        source_name_pattern = f"^{re.escape(source_name)}$"
         await db.assets.update_many(
-            {"category": "Audios" if kind == "creator" else "Torrents", field_name: name},
+            {
+                "category": "Audios" if kind == "creator" else "Torrents",
+                "$or": [
+                    {field_name: name},
+                    {field_name: source_name},
+                    {field_name: {"$regex": source_name_pattern, "$options": "i"}},
+                ],
+            },
             {"$set": {field_name: target_name, "updated_at": now_iso()}},
         )
         await db.category_overrides.delete_one({"kind": kind, "name": target_name})

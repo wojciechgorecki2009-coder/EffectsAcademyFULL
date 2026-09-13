@@ -247,7 +247,9 @@ export default function CategoryPage() {
                   images={{}}
                   overrides={overrides.creator}
                   kind="creator"
-                  onChanged={loadOverrides}
+                  onChanged={async () => {
+                    await Promise.all([loadOverrides(), load()]);
+                  }}
                   getCount={(cr) => categorySearchFilteredAssets.filter((a) => a.creator_tag === cr).length}
                   onPick={setSub}
                   testIdPrefix="creator"
@@ -314,7 +316,9 @@ export default function CategoryPage() {
                   images={SHOW_IMAGES}
                   overrides={overrides.show}
                   kind="show"
-                  onChanged={loadOverrides}
+                  onChanged={async () => {
+                    await Promise.all([loadOverrides(), load()]);
+                  }}
                   getCount={(s) => showAssets.filter((a) => a.show_group === s).length}
                   onPick={setSub}
                   testIdPrefix="show"

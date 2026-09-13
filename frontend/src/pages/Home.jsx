@@ -410,7 +410,9 @@ function FilteredView({
           images={filter === "Audios" ? {} : SHOW_IMAGES}
           overrides={filter === "Audios" ? overrides.creator : overrides.show}
           kind={filter === "Audios" ? "creator" : "show"}
-          onChanged={loadOverrides}
+          onChanged={async () => {
+            await Promise.all([loadOverrides(), load()]);
+          }}
           getCount={(label) =>
             assets.filter(
               (a) =>
