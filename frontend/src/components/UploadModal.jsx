@@ -42,6 +42,7 @@ const initial = {
 };
 
 const UPDATE_MARKABLE_CATEGORIES = new Set(["Overlays", "Sound FX"]);
+const CUSTOM_CREATOR_VALUE = "__new_creator__";
 
 const isVideoPreview = (url = "") => /\.(mp4|webm|mov|m4v)(?:[?#]|$)/i.test(url);
 
@@ -254,7 +255,14 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
   const canMarkUpdated = Boolean(editing?.id) && UPDATE_MARKABLE_CATEGORIES.has(form.category);
   const creatorSuggestions = Array.from(
     new Set([...knownCreators, ...Object.keys(creatorOverrides)].filter(Boolean))
-  ).filter((name) => !creatorOverrides[name]?.deleted);
+  )
+    .filter((name) => !creatorOverrides[name]?.deleted)
+    .sort((a, b) => a.localeCompare(b));
+  const creatorSelectValue =
+    form.creator_tag && creatorSuggestions.includes(form.creator_tag)
+      ? form.creator_tag
+      : CUSTOM_CREATOR_VALUE;
+  const showCustomCreatorInput = creatorSelectValue === CUSTOM_CREATOR_VALUE;
   const thumbnailPreviewSrc = form.thumbnail_url
     ? form.thumbnail_url.startsWith("http") ? form.thumbnail_url : `${FILE_BASE}${form.thumbnail_url}`
     : "";
@@ -377,21 +385,40 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
               <>
                 <div>
                   <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">
-                    Creator (type to add a new one)
+                    Creator
                   </label>
-                  <Input
-                    list="creator-suggestions"
-                    value={form.creator_tag}
-                    onChange={(e) => set("creator_tag", e.target.value)}
-                    placeholder="e.g. MRBIT AUDIOS or your own"
-                    className="bg-white/5 border-white/10 mt-1"
-                    data-testid="upload-creator-input"
-                  />
-                  <datalist id="creator-suggestions">
-                    {creatorSuggestions.map((c) => (
-                      <option key={c} value={c} />
-                    ))}
-                  </datalist>
+                  <Select
+                    value={creatorSelectValue}
+                    onValueChange={(value) => {
+                      set("creator_tag", value === CUSTOM_CREATOR_VALUE ? "" : value);
+                    }}
+                  >
+                    <SelectTrigger
+                      className="bg-white/5 border-white/10 mt-1"
+                      data-testid="upload-creator-select"
+                    >
+                      <SelectValue placeholder="Choose a creator" />
+                    </SelectTrigger>
+                    <SelectContent className="glass border-white/10 text-white">
+                      {creatorSuggestions.map((creator) => (
+                        <SelectItem key={creator} value={creator}>
+                          {creator}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value={CUSTOM_CREATOR_VALUE}>
+                        New creator / type one
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {showCustomCreatorInput && (
+                    <Input
+                      value={form.creator_tag}
+                      onChange={(e) => set("creator_tag", e.target.value)}
+                      placeholder="Type a new creator name"
+                      className="bg-white/5 border-white/10 mt-2"
+                      data-testid="upload-creator-input"
+                    />
+                  )}
                 </div>
                 <div>
                   <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">
