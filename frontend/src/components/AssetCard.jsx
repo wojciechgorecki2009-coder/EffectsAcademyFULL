@@ -55,6 +55,11 @@ const youtubeEmbedUrl = (url = "") => {
   return id ? `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0&modestbranding=1` : "";
 };
 
+const isTypingTarget = (target) => {
+  if (!target?.closest) return false;
+  return Boolean(target.closest("input, textarea, select, [contenteditable='true'], [role='textbox']"));
+};
+
 function PreviewMedia({ src, title, className = "", videoClassName = "", imageClassName = "" }) {
   if (!src) return null;
   if (isVideoPreview(src)) {
@@ -376,6 +381,7 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
   };
 
   const handleCardKeyDown = (event) => {
+    if (isTypingTarget(event.target)) return;
     if (event.key !== "Enter" && event.key !== " ") return;
     if (isLockedPremium) {
       openPremium(event);

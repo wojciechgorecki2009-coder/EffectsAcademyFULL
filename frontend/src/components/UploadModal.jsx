@@ -48,6 +48,11 @@ const isVideoPreview = (url = "") => /\.(mp4|webm|mov|m4v)(?:[?#]|$)/i.test(url)
 const isYouTubeUrl = (url = "") =>
   /^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\//i.test(url.trim());
 
+const isTypingTarget = (target) => {
+  if (!target?.closest) return false;
+  return Boolean(target.closest("input, textarea, select, [contenteditable='true'], [role='textbox']"));
+};
+
 async function compressThumbnail(file) {
   if (!file?.type?.startsWith("image/")) return file;
   if (file.type === "image/gif") return file;
@@ -284,7 +289,15 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={submit} className="space-y-4">
+        <form
+          onSubmit={submit}
+          onKeyDownCapture={(event) => {
+            if ((event.key === " " || event.code === "Space") && isTypingTarget(event.target)) {
+              event.stopPropagation();
+            }
+          }}
+          className="space-y-4"
+        >
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
               <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">
