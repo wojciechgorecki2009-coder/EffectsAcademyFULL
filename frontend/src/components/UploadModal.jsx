@@ -128,12 +128,16 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
 
   const loadDistincts = async () => {
     try {
-      const [cr, sh, ov] = await Promise.all([
+      const [cr, audioAssets, sh, ov] = await Promise.all([
         api.get("/distinct/creators"),
+        api.get("/assets", { params: { category: "Audios" } }),
         api.get("/distinct/shows"),
         api.get("/category-overrides", { params: { kind: "creator" } }),
       ]);
-      setKnownCreators(cr.data || []);
+      const creatorsFromAudioCategories = (audioAssets.data || [])
+        .map((asset) => asset.creator_tag)
+        .filter(Boolean);
+      setKnownCreators(Array.from(new Set([...(cr.data || []), ...creatorsFromAudioCategories])));
       setKnownShows(sh.data || []);
       const grouped = {};
       for (const item of ov.data || []) grouped[item.name] = item;
