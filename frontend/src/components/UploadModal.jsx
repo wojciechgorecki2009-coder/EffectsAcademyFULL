@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -127,23 +127,29 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const loadDistincts = async () => {
-    try {
-      const [cr, audioAssets, sh, ov] = await Promise.all([
-        api.get("/distinct/creators"),
-        api.get("/assets", { params: { category: "Audios" } }),
-        api.get("/distinct/shows"),
-        api.get("/category-overrides", { params: { kind: "creator" } }),
-      ]);
-      const creatorsFromAudioCategories = (audioAssets.data || [])
-        .map((asset) => asset.creator_tag)
-        .filter(Boolean);
-      setKnownCreators(Array.from(new Set([...(cr.data || []), ...creatorsFromAudioCategories])));
-      setKnownShows(sh.data || []);
-      const grouped = {};
-      for (const item of ov.data || []) grouped[item.name] = item;
-      setCreatorOverrides(grouped);
-    } catch {}
+    const [cr, audioAssets, sh, ov] = await Promise.allSettled([
+      api.get("/distinct/creators"),
+      api.get("/assets", { params: { category: "Audios" } }),
+      api.get("/distinct/shows"),
+      api.get("/category-overrides", { params: { kind: "creator" } }),
+    ]);
+    const distinctCreators = cr.status === "fulfilled" ? cr.value.data || [] : [];
+    const creatorsFromAudioCategories = audioAssets.status === "fulfilled"
+      ? (audioAssets.value.data || []).map((asset) => asset.creator_tag).filter(Boolean)
+      : [];
+    const grouped = {};
+    if (ov.status === "fulfilled") {
+      for (const item of ov.value.data || []) grouped[item.name] = item;
+    }
+    setKnownCreators(Array.from(new Set([...distinctCreators, ...creatorsFromAudioCategories, ...Object.keys(grouped)])));
+    setKnownShows(sh.status === "fulfilled" ? sh.value.data || [] : []);
+    setCreatorOverrides(grouped);
   };
+
+  useEffect(() => {
+    if (open) loadDistincts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const setCategory = (v) => {
     set("category", v);
