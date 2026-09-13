@@ -24,6 +24,7 @@ export default function EditCategoryModal({
   onSaved,
 }) {
   const [imageUrl, setImageUrl] = useState("");
+  const [categoryName, setCategoryName] = useState("");
   const [colorFrom, setColorFrom] = useState("");
   const [colorTo, setColorTo] = useState("");
   const [accent, setAccent] = useState("");
@@ -34,6 +35,7 @@ export default function EditCategoryModal({
 
   useEffect(() => {
     if (!open) return;
+    setCategoryName(label || "");
     setImageUrl(override.image_url || baseImage || "");
     setColorFrom(override.color_from || baseTheme?.from || "#1A1A22");
     setColorTo(override.color_to || baseTheme?.to || "#0A0A10");
@@ -46,9 +48,15 @@ export default function EditCategoryModal({
 
   const save = async (deleteFlag = false) => {
     if (!label || !kind) return;
+    const nextName = categoryName.trim();
+    if (!deleteFlag && !nextName) {
+      toast.error("Category name is required.");
+      return;
+    }
     setSaving(true);
     try {
       await api.put(`/category-overrides/${kind}/${encodeURIComponent(label)}`, {
+        new_name: deleteFlag ? label : nextName,
         image_url: imageUrl || "",
         color_from: colorFrom || "",
         color_to: colorTo || "",
@@ -57,7 +65,7 @@ export default function EditCategoryModal({
         blur_px: blur,
         deleted: deleteFlag,
       });
-      toast.success(deleteFlag ? `Removed "${label}".` : `Updated "${label}".`);
+      toast.success(deleteFlag ? `Removed "${label}".` : `Updated "${nextName}".`);
       onSaved?.();
     } catch {
       toast.error("Could not save.");
@@ -150,8 +158,21 @@ export default function EditCategoryModal({
                   color: textColor || "#fff",
                   textShadow: "0 2px 24px rgba(0,0,0,0.65)",
                 }}>
-                {label}
+                {categoryName || label}
               </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">
+                Category Name
+              </label>
+              <Input
+                value={categoryName}
+                onChange={(e) => setCategoryName(e.target.value)}
+                placeholder="Category name"
+                className="bg-white/5 border-white/10 mt-1"
+                data-testid="edit-cat-name"
+              />
             </div>
 
             <div>

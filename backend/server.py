@@ -1246,6 +1246,7 @@ class CategoryOverride(BaseModel):
 
 
 class CategoryOverrideUpsert(BaseModel):
+    new_name: Optional[str] = None
     image_url: Optional[str] = None
     color_from: Optional[str] = None
     color_to: Optional[str] = None
@@ -3025,7 +3026,23 @@ async def upsert_category_override(
     await require_delete_access(request)
     if kind not in ("show", "creator"):
         raise HTTPException(400, "kind must be 'show' or 'creator'")
-    existing = await db.category_overrides.find_one({"kind": kind, "name": name}, {"_id": 0})
+    target_name = (payload.new_name or name).strip()
+    if not target_name:
+        raise HTTPException(400, "Category name is required")
+    if len(target_name) > 120:
+        raise HTTPException(400, "Category name must be 120 characters or less")
+    field_name = "creator_tag" if kind == "creator" else "show_group"
+    if target_name != name:
+        await db.assets.update_many(
+            {"category": "Audios" if kind == "creator" else "Torrents", field_name: name},
+            {"$set": {field_name: target_name, "updated_at": now_iso()}},
+        )
+        await db.category_overrides.delete_one({"kind": kind, "name": target_name})
+        await db.category_overrides.update_one(
+            {"kind": kind, "name": name},
+            {"$set": {"name": target_name, "updated_at": now_iso()}},
+        )
+    existing = await db.category_overrides.find_one({"kind": kind, "name": target_name}, {"_id": 0})
     if existing:
         updates = {"updated_at": now_iso()}
         for k in ("image_url", "color_from", "color_to", "accent", "text_color", "blur_px", "deleted"):
@@ -3033,15 +3050,15 @@ async def upsert_category_override(
             if v is not None:
                 updates[k] = v
         await db.category_overrides.update_one(
-            {"kind": kind, "name": name}, {"$set": updates}
+            {"kind": kind, "name": target_name}, {"$set": updates}
         )
         doc = await db.category_overrides.find_one(
-            {"kind": kind, "name": name}, {"_id": 0}
+            {"kind": kind, "name": target_name}, {"_id": 0}
         )
         return doc
     record = CategoryOverride(
         kind=kind,
-        name=name,
+        name=target_name,
         image_url=payload.image_url or "",
         color_from=payload.color_from or "",
         color_to=payload.color_to or "",
