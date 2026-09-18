@@ -2,8 +2,6 @@
   "use strict";
 
   var DEFAULT_API_BASE = "https://effects-academy-api.onrender.com";
-  var TRANSFORMERS_MODULE_URL = "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1";
-  var TRANSCRIPTION_MODELS = ["onnx-community/whisper-tiny.en", "Xenova/whisper-tiny.en"];
   var TARGET_SAMPLE_RATE = 16000;
   var MAX_TRANSCRIBE_MB = 80;
   var CATEGORIES = ["All", "Audios", "Presets", "Project Files", "Premium", "Captions", "Settings"];
@@ -20,13 +18,8 @@
     motion: "ea_extension_motion",
     font: "ea_extension_font",
     captionFont: "ea_caption_font",
-    captionFontSize: "ea_caption_font_size",
-    captionY: "ea_caption_y",
-    captionColor: "ea_caption_color",
-    captionGlowExposure: "ea_caption_glow_exposure",
-    captionGlowRadius: "ea_caption_glow_radius",
-    captionShadowOpacity: "ea_caption_shadow_opacity",
-    captionShadowSoftness: "ea_caption_shadow_softness"
+    captionFadeIn: "ea_caption_fade_in",
+    captionIncreaseTracking: "ea_caption_increase_tracking"
   };
 
   var state = {
@@ -39,19 +32,16 @@
     accent: localStorage.getItem(STORAGE_KEYS.accent) || "violet",
     motion: localStorage.getItem(STORAGE_KEYS.motion) || "premium",
     font: localStorage.getItem(STORAGE_KEYS.font) || "modern",
+    premiumAccess: false,
     assets: [],
     category: "All",
     search: "",
     loadingId: "",
+    captionFonts: [],
     captionSettings: {
       font: localStorage.getItem(STORAGE_KEYS.captionFont) || "Arial-BoldMT",
-      fontSize: Number(localStorage.getItem(STORAGE_KEYS.captionFontSize) || 86),
-      y: Number(localStorage.getItem(STORAGE_KEYS.captionY) || 78),
-      color: localStorage.getItem(STORAGE_KEYS.captionColor) || "#FFFFFF",
-      glowExposure: Number(localStorage.getItem(STORAGE_KEYS.captionGlowExposure) || 0.15),
-      glowRadius: Number(localStorage.getItem(STORAGE_KEYS.captionGlowRadius) || 400),
-      shadowOpacity: Number(localStorage.getItem(STORAGE_KEYS.captionShadowOpacity) || 100),
-      shadowSoftness: Number(localStorage.getItem(STORAGE_KEYS.captionShadowSoftness) || 43)
+      fadeInPreset: localStorage.getItem(STORAGE_KEYS.captionFadeIn) === "Slow Fade On" ? "Slow Fade On" : "Fade Up Words",
+      increaseTracking: localStorage.getItem(STORAGE_KEYS.captionIncreaseTracking) === "true"
     }
   };
 
@@ -64,6 +54,8 @@
     categoryTabs: document.getElementById("categoryTabs"),
     settingsPanel: document.getElementById("settingsPanel"),
     captionsPanel: document.getElementById("captionsPanel"),
+    captionPremiumGate: document.getElementById("captionPremiumGate"),
+    captionWorkflow: document.getElementById("captionWorkflow"),
     assetGrid: document.getElementById("assetGrid"),
     emptyState: document.getElementById("emptyState"),
     player: document.getElementById("player"),
@@ -72,6 +64,7 @@
     playerSubtitle: document.getElementById("playerSubtitle"),
     playerCurrent: document.getElementById("playerCurrent"),
     playerDuration: document.getElementById("playerDuration"),
+    playerCloseBtn: document.getElementById("playerCloseBtn"),
     playerPlayBtn: document.getElementById("playerPlayBtn"),
     playerProgress: document.getElementById("playerProgress"),
     playerMuteBtn: document.getElementById("playerMuteBtn"),
@@ -95,17 +88,30 @@
     captionProgressBar: document.getElementById("captionProgressBar"),
     captionStatusText: document.getElementById("captionStatusText"),
     captionFontInput: document.getElementById("captionFontInput"),
-    captionFontSizeInput: document.getElementById("captionFontSizeInput"),
-    captionYInput: document.getElementById("captionYInput"),
-    captionColorInput: document.getElementById("captionColorInput"),
-    captionGlowExposureInput: document.getElementById("captionGlowExposureInput"),
-    captionGlowRadiusInput: document.getElementById("captionGlowRadiusInput"),
-    captionShadowOpacityInput: document.getElementById("captionShadowOpacityInput"),
-    captionShadowSoftnessInput: document.getElementById("captionShadowSoftnessInput")
+    captionFontToggleBtn: document.getElementById("captionFontToggleBtn"),
+    captionFontMenu: document.getElementById("captionFontMenu"),
+    captionFontStatus: document.getElementById("captionFontStatus"),
+    captionFadeInInput: document.getElementById("captionFadeInInput"),
+    captionIncreaseTrackingInput: document.getElementById("captionIncreaseTrackingInput")
   };
 
   var currentAudioAsset = null;
-  var transcriberPromise = null;
+  var UI_ICONS = {
+    play: '<svg class="ui-icon ui-icon-fill" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z" /></svg>',
+    pause: '<svg class="ui-icon ui-icon-fill" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zM14 5h4v14h-4z" /></svg>',
+    volume: '<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 10v4h4l5 4V6l-5 4H5zM17 9a4 4 0 0 1 0 6M19.5 6.5a7.5 7.5 0 0 1 0 11" /></svg>',
+    muted: '<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 10v4h4l5 4V6l-5 4H5zM17 9l5 6M22 9l-5 6" /></svg>',
+    external: '<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5h5v5M19 5l-8 8M18 13v5a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" /></svg>'
+  };
+
+  function setControlIcon(button, iconName, label) {
+    if (!button || !UI_ICONS[iconName]) return;
+    button.innerHTML = UI_ICONS[iconName];
+    if (label) {
+      button.setAttribute("aria-label", label);
+      button.title = label;
+    }
+  }
 
   function createDeviceId() {
     var random = "";
@@ -135,6 +141,37 @@
     var seconds = String(Math.floor(value % 60));
     if (seconds.length < 2) seconds = "0" + seconds;
     return minutes + ":" + seconds;
+  }
+
+  function updateRangeFill(range) {
+    if (!range) return;
+    var min = Number(range.min || 0);
+    var max = Number(range.max || 0);
+    var value = Number(range.value || 0);
+    var percent = max > min ? ((value - min) / (max - min)) * 100 : 0;
+    range.style.setProperty("--range-progress", Math.max(0, Math.min(100, percent)).toFixed(3) + "%");
+  }
+
+  function closeAudioPlayer() {
+    if (!els.player || els.player.classList.contains("hidden")) return;
+    try { els.audioEl.pause(); } catch (pauseErr) {}
+    els.player.classList.remove("player-opening");
+    els.player.classList.add("player-closing");
+    setTimeout(function () {
+      els.player.classList.add("hidden");
+      els.player.classList.remove("player-closing");
+      try {
+        els.audioEl.removeAttribute("src");
+        els.audioEl.load();
+      } catch (resetErr) {}
+      currentAudioAsset = null;
+      els.playerProgress.value = "0";
+      els.playerProgress.max = "0";
+      els.playerCurrent.textContent = "0:00";
+      els.playerDuration.textContent = "0:00";
+      updateRangeFill(els.playerProgress);
+      setControlIcon(els.playerPlayBtn, "play", "Play");
+    }, 300);
   }
 
   function apiUrl(path) {
@@ -242,6 +279,128 @@
     });
   }
 
+  var openAppleSelectControl = null;
+  var appleSelectDocumentEventsBound = false;
+
+  function setAppleSelectOpen(control, open) {
+    if (!control) return;
+    if (openAppleSelectControl && openAppleSelectControl !== control) {
+      setAppleSelectOpen(openAppleSelectControl, false);
+    }
+    control.classList.toggle("open", !!open);
+    control._menu.classList.toggle("hidden", !open);
+    control._trigger.setAttribute("aria-expanded", open ? "true" : "false");
+    openAppleSelectControl = open ? control : (openAppleSelectControl === control ? null : openAppleSelectControl);
+  }
+
+  function enhanceSelect(select) {
+    if (!select || select.getAttribute("data-apple-select") === "true") return;
+    select.setAttribute("data-apple-select", "true");
+    select.setAttribute("aria-hidden", "true");
+    select.tabIndex = -1;
+    select.classList.add("apple-select-native");
+    select.addEventListener("click", function (event) { event.preventDefault(); });
+
+    var control = document.createElement("div");
+    control.className = "apple-select-control";
+    var trigger = document.createElement("button");
+    trigger.type = "button";
+    trigger.className = "apple-select-trigger";
+    trigger.setAttribute("aria-haspopup", "listbox");
+    trigger.setAttribute("aria-expanded", "false");
+    var value = document.createElement("span");
+    value.className = "apple-select-value";
+    var chevron = document.createElement("span");
+    chevron.className = "apple-select-chevron";
+    chevron.innerHTML = '<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 9.5 5 5 5-5" /></svg>';
+    trigger.appendChild(value);
+    trigger.appendChild(chevron);
+
+    var menu = document.createElement("div");
+    menu.className = "apple-select-menu hidden";
+    menu.setAttribute("role", "listbox");
+    control._menu = menu;
+    control._trigger = trigger;
+    control._select = select;
+
+    function syncSelection() {
+      var selectedOption = select.options[select.selectedIndex];
+      value.textContent = selectedOption ? selectedOption.textContent : "Select";
+      var options = menu.querySelectorAll(".apple-select-option");
+      for (var i = 0; i < options.length; i += 1) {
+        var selected = options[i].getAttribute("data-value") === select.value;
+        options[i].classList.toggle("selected", selected);
+        options[i].setAttribute("aria-selected", selected ? "true" : "false");
+      }
+    }
+
+    for (var i = 0; i < select.options.length; i += 1) {
+      (function (option) {
+        var optionButton = document.createElement("button");
+        optionButton.type = "button";
+        optionButton.className = "apple-select-option";
+        optionButton.setAttribute("role", "option");
+        optionButton.setAttribute("data-value", option.value);
+        var optionLabel = document.createElement("span");
+        optionLabel.textContent = option.textContent;
+        var check = document.createElement("span");
+        check.className = "apple-select-check";
+        check.innerHTML = '<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4.2 4.2L19 6.5" /></svg>';
+        optionButton.appendChild(optionLabel);
+        optionButton.appendChild(check);
+        optionButton.addEventListener("click", function (event) {
+          event.preventDefault();
+          event.stopPropagation();
+          select.value = option.value;
+          var changeEvent = document.createEvent("HTMLEvents");
+          changeEvent.initEvent("change", true, false);
+          select.dispatchEvent(changeEvent);
+          syncSelection();
+          setAppleSelectOpen(control, false);
+          trigger.focus();
+        });
+        menu.appendChild(optionButton);
+      }(select.options[i]));
+    }
+
+    trigger.addEventListener("click", function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (trigger.disabled) return;
+      var willOpen = !control.classList.contains("open");
+      setAppleSelectOpen(control, willOpen);
+      if (willOpen) {
+        var selectedButton = menu.querySelector(".apple-select-option.selected");
+        if (selectedButton) selectedButton.focus();
+      }
+    });
+    menu.addEventListener("keydown", function (event) {
+      var options = Array.prototype.slice.call(menu.querySelectorAll(".apple-select-option"));
+      var currentIndex = options.indexOf(document.activeElement);
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault();
+        var direction = event.key === "ArrowDown" ? 1 : -1;
+        options[(currentIndex + direction + options.length) % options.length].focus();
+      } else if (event.key === "Escape") {
+        event.preventDefault();
+        setAppleSelectOpen(control, false);
+        trigger.focus();
+      }
+    });
+    select.addEventListener("change", syncSelection);
+    select.parentNode.insertBefore(control, select.nextSibling);
+    control.appendChild(trigger);
+    control.appendChild(menu);
+    syncSelection();
+
+    if (!appleSelectDocumentEventsBound) {
+      appleSelectDocumentEventsBound = true;
+      document.addEventListener("click", function () {
+        if (openAppleSelectControl) setAppleSelectOpen(openAppleSelectControl, false);
+      });
+    }
+  }
+
   function resetAppleCardMotion(card) {
     card.style.setProperty("--asset-glow-x", "50%");
     card.style.setProperty("--asset-glow-y", "18%");
@@ -315,19 +474,6 @@
     });
   }
 
-  function bindCaptionSetting(input, key, storageKey, numeric) {
-    if (!input) return;
-    input.value = String(state.captionSettings[key]);
-    input.addEventListener("change", function () {
-      var value = numeric ? Number(input.value) : input.value.trim();
-      if (numeric && !isFinite(value)) value = state.captionSettings[key];
-      if (key === "color" && value.charAt(0) !== "#") value = "#" + value;
-      state.captionSettings[key] = value;
-      input.value = String(value);
-      localStorage.setItem(storageKey, String(value));
-    });
-  }
-
   function parseCaptionTime(value) {
     var match = String(value || "").trim().match(/(?:(\d+):)?(\d{1,2}):(\d{2})(?:[,.](\d{1,3}))?/);
     if (!match) return NaN;
@@ -373,15 +519,127 @@
     return {
       settings: {
         font: state.captionSettings.font || "Arial-BoldMT",
-        fontSize: Number(state.captionSettings.fontSize || 86),
-        y: Number(state.captionSettings.y || 78),
-        color: state.captionSettings.color || "#FFFFFF",
-        glowExposure: Number(state.captionSettings.glowExposure || 0.15),
-        glowRadius: Number(state.captionSettings.glowRadius || 400),
-        shadowOpacity: Number(state.captionSettings.shadowOpacity || 100),
-        shadowSoftness: Number(state.captionSettings.shadowSoftness || 43)
+        fontSize: 40,
+        y: 50,
+        color: "#FFFFFF",
+        glowExposure: 0.27,
+        glowRadius: 400,
+        shadowOpacity: 100,
+        shadowSoftness: 43,
+        fadeInPreset: state.captionSettings.fadeInPreset,
+        increaseTracking: state.captionSettings.increaseTracking
       }
     };
+  }
+
+  function captionFontLabel(font) {
+    return String(font && (font.fullName || (font.family + (font.style ? " " + font.style : "")) || font.postScriptName) || "").trim();
+  }
+
+  function matchingCaptionFonts(query) {
+    var needle = String(query || "").trim().toLowerCase();
+    if (!needle) return state.captionFonts.slice();
+    return state.captionFonts.filter(function (font) {
+      return [font.fullName, font.family, font.style, font.postScriptName].some(function (value) {
+        return String(value || "").toLowerCase().indexOf(needle) !== -1;
+      });
+    });
+  }
+
+  function selectCaptionFont(font) {
+    if (!font) return;
+    state.captionSettings.font = font.postScriptName || "Arial-BoldMT";
+    localStorage.setItem(STORAGE_KEYS.captionFont, state.captionSettings.font);
+    if (els.captionFontInput) {
+      els.captionFontInput.value = captionFontLabel(font) || state.captionSettings.font;
+      els.captionFontInput.dataset.postScriptName = state.captionSettings.font;
+    }
+    closeCaptionFontMenu();
+  }
+
+  function renderCaptionFontMenu(query) {
+    if (!els.captionFontMenu) return;
+    var fonts = matchingCaptionFonts(query);
+    els.captionFontMenu.innerHTML = "";
+    if (!fonts.length) {
+      var empty = document.createElement("div");
+      empty.className = "caption-font-empty";
+      empty.textContent = "No matching fonts";
+      els.captionFontMenu.appendChild(empty);
+      return;
+    }
+    fonts.forEach(function (font) {
+      var option = document.createElement("button");
+      option.type = "button";
+      option.className = "caption-font-option";
+      option.setAttribute("role", "option");
+      option.dataset.postScriptName = font.postScriptName;
+      if (font.postScriptName === state.captionSettings.font) option.classList.add("selected");
+
+      var name = document.createElement("span");
+      name.className = "caption-font-option-name";
+      name.textContent = captionFontLabel(font);
+      name.style.fontFamily = '"' + String(font.family || font.fullName || "").replace(/"/g, "") + '"';
+      option.appendChild(name);
+
+      var detail = document.createElement("small");
+      detail.textContent = font.postScriptName;
+      option.appendChild(detail);
+      option.addEventListener("mousedown", function (event) { event.preventDefault(); });
+      option.addEventListener("click", function () { selectCaptionFont(font); });
+      els.captionFontMenu.appendChild(option);
+    });
+  }
+
+  function openCaptionFontMenu() {
+    if (!els.captionFontMenu) return;
+    renderCaptionFontMenu(els.captionFontInput ? els.captionFontInput.value : "");
+    els.captionFontMenu.classList.remove("hidden");
+    if (els.captionFontToggleBtn) els.captionFontToggleBtn.setAttribute("aria-expanded", "true");
+  }
+
+  function closeCaptionFontMenu() {
+    if (els.captionFontMenu) els.captionFontMenu.classList.add("hidden");
+    if (els.captionFontToggleBtn) els.captionFontToggleBtn.setAttribute("aria-expanded", "false");
+  }
+
+  function commitCaptionFontInput(preferFirstMatch) {
+    if (!els.captionFontInput) return;
+    var value = String(els.captionFontInput.value || "").trim();
+    var lower = value.toLowerCase();
+    var exact = state.captionFonts.filter(function (font) {
+      return String(font.postScriptName || "").toLowerCase() === lower || captionFontLabel(font).toLowerCase() === lower;
+    })[0];
+    if (!exact && preferFirstMatch) exact = matchingCaptionFonts(value)[0];
+    if (exact) {
+      selectCaptionFont(exact);
+      return;
+    }
+    state.captionSettings.font = value || "Arial-BoldMT";
+    localStorage.setItem(STORAGE_KEYS.captionFont, state.captionSettings.font);
+    els.captionFontInput.dataset.postScriptName = state.captionSettings.font;
+  }
+
+  function loadCaptionFonts() {
+    if (!els.captionFontInput) return;
+    evalScript("EA_listFonts()").then(function (result) {
+      var parsed = {};
+      try { parsed = JSON.parse(result || "{}"); } catch (err) {}
+      if (!parsed.ok || !Array.isArray(parsed.fonts) || !parsed.fonts.length) throw new Error(parsed.message || "After Effects returned no fonts.");
+      state.captionFonts = parsed.fonts;
+      var selected = state.captionFonts.filter(function (font) { return font.postScriptName === state.captionSettings.font; })[0];
+      if (selected) {
+        els.captionFontInput.value = captionFontLabel(selected);
+        els.captionFontInput.dataset.postScriptName = selected.postScriptName;
+      } else {
+        els.captionFontInput.value = state.captionSettings.font;
+      }
+      if (els.captionFontStatus) els.captionFontStatus.textContent = state.captionFonts.length + " fonts available in After Effects";
+    }).catch(function () {
+      state.captionFonts = [{ postScriptName: "Arial-BoldMT", family: "Arial", style: "Bold", fullName: "Arial Bold" }];
+      els.captionFontInput.value = state.captionSettings.font || "Arial Bold";
+      if (els.captionFontStatus) els.captionFontStatus.textContent = "Type a PostScript font name";
+    });
   }
 
   function setCaptionStatus(text, progress) {
@@ -566,89 +824,111 @@
       "1",
       "-ar",
       String(TARGET_SAMPLE_RATE),
+      "-c:a",
+      "pcm_s16le",
       "-f",
       "wav",
       outputPath
     ]).then(function () {
       return outputPath;
     }).catch(function (err) {
-      throw new Error("Large scenepack audio extraction failed: " + String(err && err.message || err || "FFmpeg could not run.").slice(0, 220));
+      throw new Error("Could not extract the selected clip audio: " + String(err && err.message || err || "FFmpeg could not run.").slice(0, 220));
     });
   }
 
-  function loadBrowserTranscriber(onProgress) {
-    if (!transcriberPromise) {
-      var dynamicImport = new Function("specifier", "return import(specifier)");
-      transcriberPromise = dynamicImport(TRANSFORMERS_MODULE_URL).then(function (module) {
-        module.env.allowLocalModels = false;
-        module.env.useBrowserCache = true;
-        if (module.env.backends && module.env.backends.onnx && module.env.backends.onnx.wasm) {
-          module.env.backends.onnx.wasm.proxy = false;
-        }
-        var chain = Promise.reject(new Error("No transcription model attempted."));
-        var devices = ["cpu", "dml"];
-        TRANSCRIPTION_MODELS.forEach(function (modelId) {
-          devices.forEach(function (deviceName) {
-            chain = chain.catch(function () {
-              setCaptionStatus("Loading " + modelId + " on " + deviceName.toUpperCase() + "…", 18);
-              return module.pipeline("automatic-speech-recognition", modelId, {
-                device: deviceName,
-                dtype: "q8",
-                progress_callback: onProgress
-              });
-            });
-          });
-        });
-        return chain;
-      });
-      transcriberPromise = transcriberPromise.catch(function (err) {
-        transcriberPromise = null;
-        throw err;
-      });
+  function findWhisperRuntime() {
+    var path = window.require && window.require("path");
+    var fs = window.require && window.require("fs");
+    if (!path || !fs) throw new Error("CEP Node access is unavailable.");
+    var exeCandidates = [];
+    var modelCandidates = [];
+    var roots = extensionRootCandidates();
+    for (var i = 0; i < roots.length; i += 1) {
+      exeCandidates.push(path.join(roots[i], "bin", "whisper", "Release", "whisper-cli.exe"));
+      exeCandidates.push(path.join(roots[i], "bin", "whisper", "whisper-cli.exe"));
+      modelCandidates.push(path.join(roots[i], "bin", "whisper", "models", "ggml-tiny.en-q5_1.bin"));
     }
-    return transcriberPromise;
+    exeCandidates.push(path.resolve("after-effects-extension", "bin", "whisper", "Release", "whisper-cli.exe"));
+    modelCandidates.push(path.resolve("after-effects-extension", "bin", "whisper", "models", "ggml-tiny.en-q5_1.bin"));
+    var executable = firstExistingPath(exeCandidates);
+    var model = firstExistingPath(modelCandidates);
+    if (!executable || !model) {
+      throw new Error("The bundled local caption engine is incomplete. Reinstall the latest Effects Academy extension.");
+    }
+    return { executable: executable, model: model };
   }
 
-  function normalizeTranscriptionSegments(transcript) {
-    var chunks = transcript && transcript.chunks && transcript.chunks.length ? transcript.chunks : [];
-    var segments = [];
-    for (var i = 0; i < chunks.length; i += 1) {
-      var chunk = chunks[i];
-      var timestamp = chunk.timestamp || chunk.timestamps || [];
-      var start = Number(timestamp[0]);
-      if (!isFinite(start)) start = i * 4;
-      var fallbackEnd = start + Math.max(2, Math.min(6, String(chunk.text || "").split(/\s+/).length * 0.45));
-      var end = Number(timestamp[1]);
-      if (!isFinite(end)) end = fallbackEnd;
-      var text = String(chunk.text || "").trim();
-      if (text) segments.push({ start: Math.max(0, start), end: Math.max(start + 0.05, end), text: text });
-    }
-    if (segments.length) return segments;
+  function mergeCaptionSegments(segments, maxWords, maxDuration, maxGap) {
+    var fragments = [];
+    maxWords = Math.max(1, Number(maxWords || 8));
+    maxDuration = Math.max(1, Number(maxDuration || 4.5));
+    maxGap = Math.max(0, Number(maxGap || 0.8));
+    segments.forEach(function (segment) {
+      var words = String(segment.text || "").trim().split(/\s+/).filter(Boolean);
+      if (!words.length) return;
+      var duration = Math.max(0.05, Number(segment.end) - Number(segment.start));
+      for (var i = 0; i < words.length; i += maxWords) {
+        var chunk = words.slice(i, i + maxWords);
+        var start = Number(segment.start) + duration * (i / words.length);
+        var end = Number(segment.start) + duration * (Math.min(words.length, i + maxWords) / words.length);
+        fragments.push({ start: start, end: Math.max(start + 0.05, end), text: chunk.join(" "), wordCount: chunk.length });
+      }
+    });
 
-    var fullText = String((transcript && transcript.text) || "").trim();
-    if (!fullText) return [];
-    var sentences = fullText.replace(/([.!?])\s+/g, "$1\n").split(/\n+/);
-    for (var j = 0; j < sentences.length; j += 1) {
-      var sentence = sentences[j].trim();
-      if (sentence) segments.push({ start: j * 4, end: (j + 1) * 4, text: sentence });
-    }
-    return segments;
+    var output = [];
+    fragments.forEach(function (fragment) {
+      var current = output.length ? output[output.length - 1] : null;
+      var gap = current ? fragment.start - current.end : Infinity;
+      var combinedDuration = current ? fragment.end - current.start : Infinity;
+      if (current && current.wordCount + fragment.wordCount <= maxWords && gap <= maxGap && combinedDuration <= maxDuration) {
+        current.text += " " + fragment.text;
+        current.end = fragment.end;
+        current.wordCount += fragment.wordCount;
+      } else {
+        output.push(fragment);
+      }
+    });
+    output.forEach(function (item) { delete item.wordCount; });
+    return output;
   }
 
-  function segmentsForSelectedClip(segments, sourceInfo) {
-    var sourceStart = Number(sourceInfo.source_start || 0);
-    var sourceEnd = Number(sourceInfo.source_end || sourceInfo.duration || 0);
-    if (!isFinite(sourceEnd) || sourceEnd <= sourceStart) sourceEnd = Number(sourceInfo.duration || 0);
-    return segments.map(function (segment) {
-      var start = Math.max(sourceStart, Number(segment.start || 0));
-      var end = Math.min(sourceEnd, Number(segment.end || 0));
-      if (!isFinite(start) || !isFinite(end) || end <= start) return null;
-      return {
-        start: start - sourceStart,
-        end: end - sourceStart,
-        text: segment.text
-      };
-    }).filter(Boolean);
+  function transcribeCaptionAudio(audioPath) {
+    var fs = window.require("fs");
+    var path = window.require("path");
+    var runtime = findWhisperRuntime();
+    var outputBase = path.join(path.dirname(audioPath), path.basename(audioPath, path.extname(audioPath)) + "-captions");
+    var srtPath = outputBase + ".srt";
+    setCaptionStatus("Transcribing selected clip locally…", 48);
+    setStatus("Transcribing locally", "Creating timestamped caption text…");
+    return runProcess(runtime.executable, [
+      "-m", runtime.model,
+      "-f", audioPath,
+      "-l", "en",
+      "-ng",
+      "-sow",
+      "-ml", "42",
+      "-osrt",
+      "-of", outputBase,
+      "-np"
+    ]).then(function () {
+      if (!fs.existsSync(srtPath)) throw new Error("The local caption engine did not produce a transcript.");
+      var srt = fs.readFileSync(srtPath, "utf8");
+      var timedSegments = parseTimedCaptions(srt).map(function (segment) {
+        segment.text = String(segment.text || "").replace(/\[BLANK_AUDIO\]/ig, "").trim();
+        return segment;
+      }).filter(function (segment) { return !!segment.text; });
+      var segments = mergeCaptionSegments(timedSegments, 8, 6, 1);
+      if (!segments.length) throw new Error("No speech was detected in the selected clip.");
+      return { segments: segments, text: segments.map(function (item) { return item.text; }).join(" "), srtPath: srtPath };
+    });
+  }
+
+  function removeCaptionTempFiles(paths) {
+    var fs = window.require && window.require("fs");
+    if (!fs) return;
+    paths.forEach(function (filePath) {
+      try { if (filePath && fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch (err) {}
+    });
   }
 
   function readSelectedCaptionSource() {
@@ -660,51 +940,182 @@
     });
   }
 
+  function renderPrecompWithAerender(info, tempFiles) {
+    var fs = window.require && window.require("fs");
+    if (!fs) return Promise.reject(new Error("CEP Node access is unavailable."));
+    var renderPath = captionExtractPath((info.name || "selected-precomp") + ".avi").replace(/\.wav$/i, ".avi");
+    var renderLogPath = renderPath + ".log";
+    tempFiles.push(renderPath);
+    tempFiles.push(renderLogPath);
+    setCaptionStatus("Rendering the precomp audio in the background…", 8);
+    setStatus("Preparing precomp audio", "Adobe is mixing the selected precomp audio in a background process…");
+    return evalScript("EA_preparePrecompAudioRender(" + JSON.stringify(renderPath) + ")").then(function (result) {
+      var prepared = {};
+      try { prepared = JSON.parse(result || "{}"); } catch (e) {}
+      if (!prepared.ok) throw new Error(prepared.message || "After Effects could not prepare the precomp audio render.");
+      tempFiles.push(prepared.temp_project_path);
+      return runProcess(info.aerender_path, [
+        "-project", prepared.temp_project_path,
+        "-rqindex", String(prepared.rq_index),
+        "-log", renderLogPath,
+        "-v", "ERRORS"
+      ]);
+    }).then(function () {
+      if (!fs.existsSync(renderPath) || fs.statSync(renderPath).size < 44) {
+        var renderDetails = "";
+        try {
+          if (fs.existsSync(renderLogPath)) {
+            renderDetails = String(fs.readFileSync(renderLogPath, "utf8") || "").replace(/\s+/g, " ").trim();
+          }
+        } catch (logErr) {}
+        throw new Error("After Effects finished the precomp render but did not create an audio file." + (renderDetails ? " " + renderDetails.slice(-220) : ""));
+      }
+      return extractCaptionAudio(renderPath, {
+        source_start: 0,
+        source_end: Math.max(0.1, Number(info.duration || 0.1))
+      });
+    }).then(function (normalizedPath) {
+      tempFiles.push(normalizedPath);
+      return normalizedPath;
+    });
+  }
+
+  function captionAtempoFilters(factor) {
+    var filters = [];
+    factor = Number(factor || 1);
+    if (!isFinite(factor) || factor <= 0) factor = 1;
+    while (factor > 2.00001) {
+      filters.push("atempo=2");
+      factor /= 2;
+    }
+    while (factor < 0.49999) {
+      filters.push("atempo=0.5");
+      factor /= 0.5;
+    }
+    if (Math.abs(factor - 1) > 0.0001) filters.push("atempo=" + factor.toFixed(6));
+    return filters;
+  }
+
+  function mixPrecompClipAudio(info, tempFiles) {
+    var fs = window.require && window.require("fs");
+    if (!fs) return Promise.reject(new Error("CEP Node access is unavailable."));
+    var ffmpeg = findFfmpeg();
+    if (!ffmpeg) return Promise.reject(new Error("Bundled FFmpeg was not found."));
+    var sources = Array.isArray(info.audio_sources) ? info.audio_sources.filter(function (source) {
+      return source && source.file_path && Number(source.source_end) > Number(source.source_start) && Number(source.timeline_end) > Number(source.timeline_start);
+    }) : [];
+    if (!sources.length) return Promise.reject(new Error("No usable audio clips were found inside the selected precomp."));
+
+    var totalDuration = Math.max(0.1, Number(info.duration || 0.1));
+    var outputPath = captionExtractPath((info.name || "selected-precomp") + "-mixed.wav");
+    tempFiles.push(outputPath);
+    var args = ["-y", "-f", "lavfi", "-t", String(totalDuration), "-i", "anullsrc=channel_layout=mono:sample_rate=" + TARGET_SAMPLE_RATE];
+    sources.forEach(function (source) {
+      args.push("-ss", String(Math.max(0, Number(source.source_start))), "-t", String(Math.max(0.05, Number(source.source_end) - Number(source.source_start))), "-i", source.file_path);
+    });
+
+    var filters = ["[0:a]atrim=duration=" + totalDuration + ",asetpts=PTS-STARTPTS[base]"];
+    var mixLabels = ["[base]"];
+    sources.forEach(function (source, index) {
+      var sourceDuration = Math.max(0.05, Number(source.source_end) - Number(source.source_start));
+      var timelineDuration = Math.max(0.05, Number(source.timeline_end) - Number(source.timeline_start));
+      var chain = "[" + (index + 1) + ":a]aresample=" + TARGET_SAMPLE_RATE + ",aformat=sample_fmts=fltp:channel_layouts=mono";
+      if (source.reverse) chain += ",areverse";
+      var tempoFilters = captionAtempoFilters(sourceDuration / timelineDuration);
+      if (tempoFilters.length) chain += "," + tempoFilters.join(",");
+      chain += ",atrim=duration=" + timelineDuration + ",asetpts=PTS-STARTPTS,adelay=" + Math.max(0, Math.round(Number(source.timeline_start) * 1000)) + ":all=1[a" + index + "]";
+      filters.push(chain);
+      mixLabels.push("[a" + index + "]");
+    });
+    filters.push(mixLabels.join("") + "amix=inputs=" + mixLabels.length + ":duration=first:dropout_transition=0:normalize=0,atrim=duration=" + totalDuration + "[mixed]");
+    args.push("-filter_complex", filters.join(";"), "-map", "[mixed]", "-ac", "1", "-ar", String(TARGET_SAMPLE_RATE), "-c:a", "pcm_s16le", "-f", "wav", outputPath);
+
+    setCaptionStatus("Combining " + sources.length + " clip" + (sources.length === 1 ? "" : "s") + " from the precomp…", 10);
+    setStatus("Preparing precomp clips", "Mixing the audio clips without using the render queue…");
+    return runProcess(ffmpeg, args).then(function () {
+      if (!fs.existsSync(outputPath) || fs.statSync(outputPath).size < 44) throw new Error("The precomp clips did not produce an audio track.");
+      return outputPath;
+    }).catch(function (err) {
+      throw new Error("Could not combine the audio clips inside the precomp: " + String(err && err.message || err || "FFmpeg could not run.").slice(0, 260));
+    });
+  }
+
+  function updatePremiumAccessUI() {
+    var locked = !state.premiumAccess;
+    if (els.captionPremiumGate) els.captionPremiumGate.classList.toggle("hidden", !locked);
+    if (els.captionWorkflow) {
+      els.captionWorkflow.classList.toggle("premium-locked", locked);
+      var controls = els.captionWorkflow.querySelectorAll("button, input, select");
+      for (var i = 0; i < controls.length; i += 1) controls[i].disabled = locked;
+    }
+    if (locked && els.captionStatusText) {
+      els.captionStatusText.textContent = "Connect an active Premium account to use automatic captions.";
+    }
+  }
+
+  function setPremiumAccess(allowed) {
+    state.premiumAccess = allowed === true;
+    updatePremiumAccessUI();
+  }
+
+  function premiumAccessError(message) {
+    var error = new Error(message || "Connect an active Premium account in Connection settings before using captions.");
+    error.premiumRequired = true;
+    return error;
+  }
+
+  function verifyPremiumAccess() {
+    if (!state.authToken) {
+      setPremiumAccess(false);
+      return Promise.reject(premiumAccessError());
+    }
+    return getJson(apiUrl("/extension/assets"))
+      .then(function (result) {
+        if (!Array.isArray(result)) throw premiumAccessError();
+        setPremiumAccess(true);
+        return result;
+      })
+      .catch(function () {
+        setPremiumAccess(false);
+        throw premiumAccessError("Your Premium membership could not be verified. Reconnect your account in Connection settings.");
+      });
+  }
+
   function createCaptions() {
+    commitCaptionFontInput(true);
     if (els.captionCreateBtn) {
       els.captionCreateBtn.disabled = true;
       els.captionCreateBtn.textContent = "Transcribing…";
     }
     clearErrorState();
-    setCaptionStatus("Reading selected layer…", 4);
-    setStatus("Auto captions", "Reading the selected clip from After Effects…");
+    setCaptionStatus("Verifying Premium access…", 2);
+    setStatus("Checking Premium access", "Confirming your membership and linked extension…");
 
-    var sourceInfo = null;
-    readSelectedCaptionSource()
-      .then(function (info) {
-        sourceInfo = info;
-        setCaptionStatus("Decoding audio locally from " + (info.name || "selected clip") + "…", 10);
-        setStatus("Decoding audio", info.name || "Selected clip");
-        return decodeAudioPath(info.file_path, info);
+    var tempFiles = [];
+    verifyPremiumAccess()
+      .then(function () {
+        setCaptionStatus("Reading selected layer…", 4);
+        setStatus("Auto captions", "Reading the selected clip from After Effects…");
+        return readSelectedCaptionSource();
       })
-      .then(function (audioData) {
-        setCaptionStatus("Loading local transcription model…", 18);
-        setStatus("Loading caption model", "First run can take a little while.");
-        return loadBrowserTranscriber(function (event) {
-          if (event && event.status) {
-            var progressValue = typeof event.progress === "number" ? event.progress : undefined;
-            if (typeof progressValue === "number" && progressValue <= 1) progressValue = progressValue * 100;
-            setCaptionStatus(event.status.replace(/_/g, " "), typeof progressValue === "number" ? 18 + Math.round(progressValue * 0.34) : undefined);
-          }
-        }).then(function (transcriber) {
-          setCaptionStatus("Transcribing selected clip on your device…", 52);
-          setStatus("Transcribing locally", "Creating timestamped caption chunks…");
-          return transcriber(audioData, {
-            chunk_length_s: 30,
-            stride_length_s: 5,
-            return_timestamps: true
-          });
-        });
+      .then(function (info) {
+        if (info.mix_precomp) return mixPrecompClipAudio(info, tempFiles);
+        if (info.render_aerender) return renderPrecompWithAerender(info, tempFiles);
+        setCaptionStatus("Extracting audio from " + (info.name || "selected clip") + "…", 10);
+        setStatus("Preparing selected clip", info.name || "Selected clip");
+        return extractCaptionAudio(info.file_path, info);
+      })
+      .then(function (audioPath) {
+        if (tempFiles.indexOf(audioPath) === -1) tempFiles.push(audioPath);
+        return transcribeCaptionAudio(audioPath);
       })
       .then(function (transcript) {
-        var segments = normalizeTranscriptionSegments(transcript);
-        var text = String((transcript && transcript.text) || "").trim();
-        if (!segments.length && !text) throw new Error("No speech was detected in the selected clip.");
+        tempFiles.push(transcript.srtPath);
         setCaptionStatus("Adding caption layers to the timeline…", 88);
         setStatus("Building captions", "Adding styled text layers in After Effects…");
         var payload = captionPayload();
-        payload.captions = segments;
-        payload.plainText = text;
+        payload.captions = transcript.segments;
+        payload.plainText = transcript.text;
         return evalScript("EA_createCaptions(" + JSON.stringify(JSON.stringify(payload)) + ")");
       })
       .then(function (result) {
@@ -719,13 +1130,15 @@
         }
       })
       .catch(function (err) {
-        setCaptionStatus(err.message || "Could not create captions.", 0);
-        showError("Caption failed", err.message || "Could not transcribe and caption this clip.");
+        var message = String(err && err.message || err || "Could not transcribe and caption this clip.");
+        setCaptionStatus(message, 0);
+        showError(err && err.premiumRequired ? "Premium authentication required" : "Caption failed", message);
       })
       .finally(function () {
+        removeCaptionTempFiles(tempFiles);
         if (els.captionCreateBtn) {
-          els.captionCreateBtn.disabled = false;
-          els.captionCreateBtn.textContent = "Transcribe + add captions";
+          els.captionCreateBtn.disabled = !state.premiumAccess;
+          els.captionCreateBtn.textContent = "Add Captions";
         }
       });
   }
@@ -791,6 +1204,7 @@
       els.assetGrid.classList.add("hidden");
       els.settingsPanel.classList.add("hidden");
       els.captionsPanel.classList.remove("hidden");
+      updatePremiumAccessUI();
       return;
     }
 
@@ -844,7 +1258,8 @@
       badge.textContent = categoryLabel(asset);
       var downloads = document.createElement("span");
       downloads.className = "downloads";
-      downloads.textContent = "↓ " + (asset.download_count || 0);
+      var downloadCount = Number(asset.download_count || 0);
+      downloads.textContent = downloadCount + (downloadCount === 1 ? " download" : " downloads");
       meta.appendChild(badge);
       meta.appendChild(downloads);
 
@@ -869,7 +1284,8 @@
       var previewBtn = document.createElement("button");
       previewBtn.type = "button";
       previewBtn.className = "secondary";
-      previewBtn.textContent = isAudioAsset(asset) ? "▶" : "↗";
+      previewBtn.classList.add("icon-only-button");
+      setControlIcon(previewBtn, isAudioAsset(asset) ? "play" : "external", isAudioAsset(asset) ? "Preview audio" : "Open asset link");
       previewBtn.onclick = function () {
         if (isAudioAsset(asset)) previewAudio(asset);
         else openExternal(asset);
@@ -989,8 +1405,12 @@
       els.playerDuration.textContent = "0:00";
       els.playerProgress.value = "0";
       els.playerProgress.max = "0";
+      updateRangeFill(els.playerProgress);
       els.audioEl.src = url;
+      els.player.classList.remove("player-closing");
       els.player.classList.remove("hidden");
+      els.player.classList.add("player-opening");
+      setTimeout(function () { els.player.classList.remove("player-opening"); }, 380);
       els.audioEl.play().catch(function () {});
       setStatus("Previewing audio", asset.title || "Audio");
     }).catch(function (err) {
@@ -1322,6 +1742,7 @@
   function loadAssets() {
     clearErrorState();
     if (!state.authToken) {
+      setPremiumAccess(false);
       state.assets = [];
       renderAssets();
       showError("Premium pairing required", "Generate a pairing code on the Premium page, then enter it in Connection settings.");
@@ -1330,6 +1751,7 @@
     setStatus("Live library", "Loading assets from Effects Academy…");
     return getJson(apiUrl("/extension/assets"))
       .then(function (assets) {
+        setPremiumAccess(true);
       state.assets = (assets || []).filter(function (asset) {
           return ASSET_CATEGORIES.indexOf(asset.category) !== -1 && asset.category !== "Videos";
         });
@@ -1337,6 +1759,7 @@
         renderAssets();
       })
       .catch(function (err) {
+        setPremiumAccess(false);
         showError("Premium access required", err.message || "Sign in with an active Premium account.");
         state.assets = [];
         renderAssets();
@@ -1353,14 +1776,56 @@
     bindPreference(els.accentInput, "accent", STORAGE_KEYS.accent);
     bindPreference(els.motionInput, "motion", STORAGE_KEYS.motion);
     bindPreference(els.fontInput, "font", STORAGE_KEYS.font);
-    bindCaptionSetting(els.captionFontInput, "font", STORAGE_KEYS.captionFont, false);
-    bindCaptionSetting(els.captionFontSizeInput, "fontSize", STORAGE_KEYS.captionFontSize, true);
-    bindCaptionSetting(els.captionYInput, "y", STORAGE_KEYS.captionY, true);
-    bindCaptionSetting(els.captionColorInput, "color", STORAGE_KEYS.captionColor, false);
-    bindCaptionSetting(els.captionGlowExposureInput, "glowExposure", STORAGE_KEYS.captionGlowExposure, true);
-    bindCaptionSetting(els.captionGlowRadiusInput, "glowRadius", STORAGE_KEYS.captionGlowRadius, true);
-    bindCaptionSetting(els.captionShadowOpacityInput, "shadowOpacity", STORAGE_KEYS.captionShadowOpacity, true);
-    bindCaptionSetting(els.captionShadowSoftnessInput, "shadowSoftness", STORAGE_KEYS.captionShadowSoftness, true);
+    if (els.captionFontInput) {
+      els.captionFontInput.value = state.captionSettings.font;
+      els.captionFontInput.addEventListener("focus", openCaptionFontMenu);
+      els.captionFontInput.addEventListener("input", function () {
+        state.captionSettings.font = String(els.captionFontInput.value || "").trim() || "Arial-BoldMT";
+        renderCaptionFontMenu(els.captionFontInput.value);
+        openCaptionFontMenu();
+      });
+      els.captionFontInput.addEventListener("keydown", function (event) {
+        if (event.key === "ArrowDown") {
+          event.preventDefault();
+          openCaptionFontMenu();
+          var first = els.captionFontMenu && els.captionFontMenu.querySelector(".caption-font-option");
+          if (first) first.focus();
+        } else if (event.key === "Enter") {
+          event.preventDefault();
+          commitCaptionFontInput(true);
+        } else if (event.key === "Escape") {
+          closeCaptionFontMenu();
+        }
+      });
+      els.captionFontInput.addEventListener("blur", function () {
+        setTimeout(function () { commitCaptionFontInput(false); closeCaptionFontMenu(); }, 120);
+      });
+    }
+    if (els.captionFontToggleBtn) {
+      els.captionFontToggleBtn.addEventListener("click", function () {
+        if (els.captionFontMenu && els.captionFontMenu.classList.contains("hidden")) {
+          openCaptionFontMenu();
+          if (els.captionFontInput) els.captionFontInput.focus();
+        } else {
+          closeCaptionFontMenu();
+        }
+      });
+    }
+    loadCaptionFonts();
+    if (els.captionFadeInInput) {
+      els.captionFadeInInput.value = state.captionSettings.fadeInPreset;
+      els.captionFadeInInput.addEventListener("change", function () {
+        state.captionSettings.fadeInPreset = els.captionFadeInInput.value === "Slow Fade On" ? "Slow Fade On" : "Fade Up Words";
+        localStorage.setItem(STORAGE_KEYS.captionFadeIn, state.captionSettings.fadeInPreset);
+      });
+    }
+    if (els.captionIncreaseTrackingInput) {
+      els.captionIncreaseTrackingInput.checked = state.captionSettings.increaseTracking;
+      els.captionIncreaseTrackingInput.addEventListener("change", function () {
+        state.captionSettings.increaseTracking = !!els.captionIncreaseTrackingInput.checked;
+        localStorage.setItem(STORAGE_KEYS.captionIncreaseTracking, String(state.captionSettings.increaseTracking));
+      });
+    }
     els.apiBaseInput.addEventListener("change", function () {
       state.apiBase = els.apiBaseInput.value.trim() || DEFAULT_API_BASE;
       localStorage.setItem(STORAGE_KEYS.apiBase, state.apiBase);
@@ -1376,6 +1841,15 @@
       if (event.key === "Enter") redeemPairingCode();
     });
     if (els.captionCreateBtn) els.captionCreateBtn.addEventListener("click", createCaptions);
+    [
+      els.uiStyleInput,
+      els.layoutModeInput,
+      els.densityInput,
+      els.accentInput,
+      els.motionInput,
+      els.fontInput,
+      els.captionFadeInInput
+    ].forEach(enhanceSelect);
   }
 
   function init() {
@@ -1386,6 +1860,7 @@
       renderAssets();
     });
     els.refreshBtn.addEventListener("click", loadAssets);
+    if (els.playerCloseBtn) els.playerCloseBtn.addEventListener("click", closeAudioPlayer);
     els.playerPlayBtn.addEventListener("click", function () {
       if (!els.audioEl.src) return;
       if (els.audioEl.paused) els.audioEl.play().catch(function () {});
@@ -1393,33 +1868,45 @@
     });
     els.playerProgress.addEventListener("input", function () {
       els.audioEl.currentTime = parseFloat(els.playerProgress.value || "0");
+      updateRangeFill(els.playerProgress);
     });
     els.playerMuteBtn.addEventListener("click", function () {
       els.audioEl.muted = !els.audioEl.muted;
-      els.playerMuteBtn.textContent = els.audioEl.muted ? "🔇" : "🔊";
+      setControlIcon(els.playerMuteBtn, els.audioEl.muted ? "muted" : "volume", els.audioEl.muted ? "Unmute" : "Mute");
     });
     els.playerVolume.addEventListener("input", function () {
       els.audioEl.volume = parseFloat(els.playerVolume.value || "1");
       els.audioEl.muted = els.audioEl.volume === 0;
-      els.playerMuteBtn.textContent = els.audioEl.muted ? "🔇" : "🔊";
+      updateRangeFill(els.playerVolume);
+      setControlIcon(els.playerMuteBtn, els.audioEl.muted ? "muted" : "volume", els.audioEl.muted ? "Unmute" : "Mute");
     });
     els.audioEl.addEventListener("play", function () {
-      els.playerPlayBtn.textContent = "Ⅱ";
+      setControlIcon(els.playerPlayBtn, "pause", "Pause");
     });
     els.audioEl.addEventListener("pause", function () {
-      els.playerPlayBtn.textContent = "▶";
+      setControlIcon(els.playerPlayBtn, "play", "Play");
+    });
+    els.audioEl.addEventListener("ended", function () {
+      setControlIcon(els.playerPlayBtn, "play", "Play");
+      els.playerProgress.value = "0";
+      els.playerCurrent.textContent = "0:00";
+      updateRangeFill(els.playerProgress);
     });
     els.audioEl.addEventListener("loadedmetadata", function () {
       els.playerProgress.max = String(els.audioEl.duration || 0);
       els.playerDuration.textContent = fmtTime(els.audioEl.duration);
+      updateRangeFill(els.playerProgress);
     });
     els.audioEl.addEventListener("timeupdate", function () {
       els.playerProgress.value = String(els.audioEl.currentTime || 0);
       els.playerCurrent.textContent = fmtTime(els.audioEl.currentTime);
+      updateRangeFill(els.playerProgress);
     });
     els.playerImportBtn.addEventListener("click", function () { importCurrentAudio(1, els.playerImportBtn); });
     els.playerSlow09Btn.addEventListener("click", function () { importCurrentAudio(0.9, els.playerSlow09Btn); });
     els.playerSlow08Btn.addEventListener("click", function () { importCurrentAudio(0.8, els.playerSlow08Btn); });
+    updateRangeFill(els.playerProgress);
+    updateRangeFill(els.playerVolume);
     loadAssets();
   }
 

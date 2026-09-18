@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<ExtensionManifest Version="7.0" ExtensionBundleId="com.effectsacademy.panel" ExtensionBundleVersion="0.1.0" ExtensionBundleName="Effects Academy">
+<ExtensionManifest Version="7.0" ExtensionBundleId="com.effectsacademy.panel" ExtensionBundleVersion="1.0.0" ExtensionBundleName="Effects Academy">
   <ExtensionList>
-    <Extension Id="com.effectsacademy.panel" Version="0.1.0" />
+    <Extension Id="com.effectsacademy.panel" Version="1.0.0" />
   </ExtensionList>
   <ExecutionEnvironment>
     <HostList>

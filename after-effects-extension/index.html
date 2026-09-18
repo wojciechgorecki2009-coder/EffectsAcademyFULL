@@ -17,7 +17,7 @@
             <p>Your premium vault, docked inside After Effects</p>
           </div>
         </div>
-        <button id="refreshBtn" class="icon-button" title="Refresh assets">↻</button>
+        <button id="refreshBtn" class="icon-button" type="button" title="Refresh assets" aria-label="Refresh assets"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.34 5.66M20 4v7h-7" /></svg></button>
       </header>
 
       <section class="status-card">
@@ -90,7 +90,9 @@
         </div>
 
         <div class="settings-preview-card">
-          <div class="preview-orb"></div>
+          <div class="preview-apple-logo" aria-hidden="true">
+            <svg viewBox="0 0 384 512"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-72.4-19.7C63.3 119.1 0 176.1 0 262.2c0 50.8 18.8 104.5 42.1 141.1 20 31.4 46.2 66.7 79.2 65.4 31.4-1.2 43.3-20.4 81.3-20.4 36.8 0 47.4 20.4 80.6 20.4 33.3-.5 61-30.4 81-61.9 23.2-35.9 32.8-70.7 33.3-72.5-43.4-20.7-47-60.9-47-95.6zM261.2 104.5c16.7-20 27.9-48 24.9-76.5-24.1 1-53.2 17-70.5 37.1-15.5 17.9-29.1 46.5-25.5 74.4 26.9 2.1 54.4-13.7 71.1-35z" /></svg>
+          </div>
           <div>
             <strong>Apple Style</strong>
             <p>Cleaner cards, SF-style typography, liquid glass surfaces, slower hover motion, and the soft press/bounce animation on assets.</p>
@@ -105,54 +107,55 @@
           <p>Select a video or audio clip in your active comp, then let the extension transcribe it locally and build glowing text layers on the timeline.</p>
         </div>
 
-        <div class="caption-workflow">
+        <div id="captionPremiumGate" class="caption-premium-gate hidden" role="status">
+          <div class="caption-premium-lock" aria-hidden="true">
+            <svg class="ui-icon" viewBox="0 0 24 24"><path d="M7 10V8a5 5 0 0 1 10 0v2M6 10h12v10H6zM12 14v2" /></svg>
+          </div>
+          <div>
+            <strong>Premium authentication required</strong>
+            <p>Connect an active Premium account in Connection settings to unlock captions.</p>
+          </div>
+        </div>
+
+        <div id="captionWorkflow" class="caption-workflow">
           <div class="caption-card caption-run-card">
-            <div class="caption-icon">CC</div>
             <h3>Transcribe selected clip</h3>
             <p>This transcription is run locally on your device. Accuracy and speed depends on your specs.</p>
             <div id="captionProgressTrack" class="caption-progress-track" aria-hidden="true">
               <span id="captionProgressBar"></span>
             </div>
             <p id="captionStatusText" class="caption-status-text">Select a layer with a source file, then press the button.</p>
-            <button id="captionCreateBtn" class="primary caption-create-button" type="button">Transcribe + add captions</button>
+            <button id="captionCreateBtn" class="primary caption-create-button" type="button">Add Captions</button>
           </div>
 
           <div class="caption-card">
-            <div class="caption-settings-grid">
-              <label>
-                Font
-                <input id="captionFontInput" type="text" value="Arial-BoldMT" />
+            <div class="caption-animation-options">
+              <div class="caption-font-picker">
+                <label for="captionFontInput">Caption font</label>
+                <div class="caption-font-control">
+                  <input id="captionFontInput" type="text" value="Arial Bold" placeholder="Search fonts" autocomplete="off" spellcheck="false" aria-autocomplete="list" aria-controls="captionFontMenu" />
+                  <button id="captionFontToggleBtn" type="button" aria-label="Show installed fonts" aria-expanded="false"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 9.5 5 5 5-5" /></svg></button>
+                </div>
+                <div id="captionFontMenu" class="caption-font-menu hidden" role="listbox" aria-label="Installed After Effects fonts"></div>
+                <small id="captionFontStatus" class="caption-font-status">Loading fonts from After Effects…</small>
+              </div>
+              <label class="caption-animation-select">
+                Fade-in animation
+                <select id="captionFadeInInput">
+                  <option value="Fade Up Words">Fade Up Words</option>
+                  <option value="Slow Fade On">Slow Fade On</option>
+                </select>
               </label>
-              <label>
-                Font size
-                <input id="captionFontSizeInput" type="number" min="12" max="320" step="1" value="86" />
-              </label>
-              <label>
-                Position Y %
-                <input id="captionYInput" type="number" min="0" max="100" step="1" value="78" />
-              </label>
-              <label>
-                Text color
-                <input id="captionColorInput" type="text" value="#FFFFFF" />
-              </label>
-              <label>
-                Deep Glow exposure
-                <input id="captionGlowExposureInput" type="number" min="0" max="10" step="0.01" value="0.15" />
-              </label>
-              <label>
-                Deep Glow radius
-                <input id="captionGlowRadiusInput" type="number" min="0" max="2000" step="1" value="400" />
-              </label>
-              <label>
-                Shadow opacity %
-                <input id="captionShadowOpacityInput" type="number" min="0" max="100" step="1" value="100" />
-              </label>
-              <label>
-                Shadow softness
-                <input id="captionShadowSoftnessInput" type="number" min="0" max="500" step="1" value="43" />
+              <label class="caption-tracking-toggle">
+                <input id="captionIncreaseTrackingInput" type="checkbox" />
+                <span class="caption-switch" aria-hidden="true"></span>
+                <span class="caption-tracking-copy">
+                  <strong>Increase Tracking</strong>
+                  <small>Animate tracking from 0 to 9 across each caption.</small>
+                </span>
               </label>
             </div>
-            <p class="caption-note">Deep Glow 2 is applied when it is installed. Drop Shadow is applied with 100% opacity and 43 softness by default.</p>
+            <p class="caption-note">Fade Out Slow is always applied automatically.</p>
           </div>
         </div>
       </section>
@@ -172,16 +175,19 @@
               <strong id="playerTitle">Audio preview</strong>
               <p id="playerSubtitle">Playing from Effects Academy</p>
             </div>
-            <div class="player-time">
-              <span id="playerCurrent">0:00</span>
-              <span>/</span>
-              <span id="playerDuration">0:00</span>
+            <div class="player-heading-actions">
+              <div class="player-time">
+                <span id="playerCurrent">0:00</span>
+                <span>/</span>
+                <span id="playerDuration">0:00</span>
+              </div>
+              <button id="playerCloseBtn" class="mini-button player-close-button" type="button" aria-label="Close audio player" title="Close audio player"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17" /></svg></button>
             </div>
           </div>
           <div class="player-controls">
-            <button id="playerPlayBtn" class="round-button" type="button" aria-label="Play or pause">▶</button>
+            <button id="playerPlayBtn" class="round-button" type="button" aria-label="Play"><svg class="ui-icon ui-icon-fill" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z" /></svg></button>
             <input id="playerProgress" class="range progress-range" type="range" min="0" max="0" step="0.01" value="0" />
-            <button id="playerMuteBtn" class="mini-button" type="button" aria-label="Mute">🔊</button>
+            <button id="playerMuteBtn" class="mini-button" type="button" aria-label="Mute"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 10v4h4l5 4V6l-5 4H5zM17 9a4 4 0 0 1 0 6M19.5 6.5a7.5 7.5 0 0 1 0 11" /></svg></button>
             <input id="playerVolume" class="range volume-range" type="range" min="0" max="1" step="0.01" value="1" />
           </div>
           <div class="player-actions">
@@ -196,23 +202,27 @@
       <footer class="settings">
         <details>
           <summary>Connection settings</summary>
-          <label>
-            Pairing code from the Premium page
-            <input id="pairingCodeInput" type="text" placeholder="ABCD-1234" />
-          </label>
-          <button id="pairingCodeBtn" class="settings-button" type="button">Connect Premium account</button>
-          <p>This panel is premium-only and links one Effects Academy account to one extension install at a time.</p>
-          <details class="advanced-settings">
-            <summary>Advanced</summary>
+          <div class="connection-settings-content">
             <label>
-              API base
-              <input id="apiBaseInput" type="url" />
+              Pairing code from the Premium page
+              <input id="pairingCodeInput" type="text" placeholder="ABCD-1234" />
             </label>
-            <label>
-              Existing auth token fallback
-              <input id="authTokenInput" type="password" placeholder="Already connected token" />
-            </label>
-          </details>
+            <button id="pairingCodeBtn" class="settings-button" type="button">Connect Premium account</button>
+            <p>This panel is premium-only and links one Effects Academy account to one extension install at a time.</p>
+            <details class="advanced-settings">
+              <summary>Advanced</summary>
+              <div class="advanced-settings-content">
+                <label>
+                  API base
+                  <input id="apiBaseInput" type="url" />
+                </label>
+                <label>
+                  Existing auth token fallback
+                  <input id="authTokenInput" type="password" placeholder="Already connected token" />
+                </label>
+              </div>
+            </details>
+          </div>
         </details>
       </footer>
     </main>

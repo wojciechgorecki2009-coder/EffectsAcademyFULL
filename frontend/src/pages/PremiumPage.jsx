@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, BadgePercent, Check, Crown, KeyRound, LockKeyhole, MousePointerClick, ShieldCheck, Sparkles, X } from "lucide-react";
+import { ArrowLeft, BadgePercent, Check, Crown, Download, KeyRound, LockKeyhole, MousePointerClick, ShieldCheck, Sparkles, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { hasPremiumAccess, useAuth } from "@/lib/auth";
 import TwitchIcon from "@/components/TwitchIcon";
@@ -392,11 +392,21 @@ export default function PremiumPage() {
               {busy ? "Opening Stripe..." : hasPremium ? "Manage subscription" : user ? "Subscribe with Stripe" : "Sign in with Google"}
             </button>
             {hasPremium && (
-              <div className="mt-4 rounded-2xl border border-purple-300/20 bg-purple-300/10 px-4 py-4">
+              <div id="after-effects-extension" className="mt-4 scroll-mt-28 rounded-2xl border border-purple-300/20 bg-purple-300/10 px-4 py-4">
                 <p className="text-sm font-semibold text-white">After Effects extension access</p>
                 <p className="text-xs text-zinc-400 mt-1">
                   Generate a short pairing code, then type it into the extension Connection settings. Each Premium account can be linked to one extension install at a time.
                 </p>
+                <a
+                  href="/downloads/EffectsAcademy-AE-Extension-1.0.0.zxp"
+                  download
+                  className="mt-3 inline-flex items-center gap-2 rounded-lg bg-sky-500 hover:bg-sky-400 text-white px-4 py-2 text-sm font-semibold btn-press"
+                  data-testid="download-ae-extension"
+                >
+                  <Download className="w-4 h-4" />
+                  Download extension 1.0.0
+                </a>
+                <p className="mt-2 text-[11px] text-zinc-500">Install the .zxp with ZXP/UXP Installer, then connect your Premium account below.</p>
                 <button
                   type="button"
                   onClick={generateExtensionPairingCode}
