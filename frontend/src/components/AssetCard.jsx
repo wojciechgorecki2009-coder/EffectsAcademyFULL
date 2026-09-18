@@ -407,11 +407,6 @@ export default function AssetCard({ asset, featured = false, onChanged, allAsset
         data-testid={`asset-card-${asset.id}`}
         data-featured={featured ? "extension-launch" : undefined}
       >
-        {featured && (
-          <div className="featured-extension-ribbon">
-            <Pin className="w-3 h-3" /> Featured launch
-          </div>
-        )}
         <div className="aspect-video w-full bg-black/40 overflow-hidden relative">
           {isPremium && <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-br from-purple-400/10 via-transparent to-transparent opacity-80" />}
           {thumbnailSrc ? (
@@ -435,6 +430,11 @@ export default function AssetCard({ asset, featured = false, onChanged, allAsset
           {thumbnailIsVideo && (
             <div className="absolute bottom-3 left-3 z-[2] bg-black/65 text-[10px] font-mono px-2 py-1 rounded-full text-white border border-white/10">
               VIDEO PREVIEW
+            </div>
+          )}
+          {featured && (
+            <div className="featured-extension-ribbon">
+              <Pin className="w-3 h-3" /> Featured launch
             </div>
           )}
           {isVideo && (
