@@ -80,6 +80,12 @@ export function AuthProvider({ children }) {
     setUser(null);
   }, []);
 
+  const acceptPremiumTerms = useCallback(async () => {
+    const { data } = await api.post("/premium/terms/accept");
+    setUser(data.user);
+    return data.user;
+  }, []);
+
   const value = useMemo(() => ({
     user,
     config,
@@ -88,9 +94,10 @@ export function AuthProvider({ children }) {
     loginAsLocalViewer,
     logout,
     refreshUser,
+    acceptPremiumTerms,
     hasPremium: hasPremiumAccess(user),
     hasCancelledPremium: hasCancelledPremium(user),
-  }), [user, config, loading, loginWithGoogle, loginAsLocalViewer, logout, refreshUser]);
+  }), [user, config, loading, loginWithGoogle, loginAsLocalViewer, logout, refreshUser, acceptPremiumTerms]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

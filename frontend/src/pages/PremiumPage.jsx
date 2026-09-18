@@ -466,7 +466,10 @@ export default function PremiumPage() {
               If you cancel Premium, you keep access until the end of the paid billing period. After that, your account returns to Free.
             </p>
             <p className="text-xs text-zinc-500 mt-3 text-center">
-              [NO REFUNDS!!]
+              Premium Asset Licence acceptance is required before Premium downloads and extension access are enabled.
+            </p>
+            <p className="text-xs text-zinc-500 mt-3 text-center">
+              Subscription fees are non-refundable except where required by law. This does not affect your statutory rights.
             </p>
             {!config.stripe_configured && config.dev_login_enabled && (
               <p className="text-xs text-zinc-500 mt-3 text-center">Local preview mode — no payment will be submitted.</p>

@@ -109,6 +109,7 @@ FAL_STATUS_POLL_SECONDS = float(os.environ.get("FAL_STATUS_POLL_SECONDS", "1.5")
 FAL_STATUS_MAX_POLLS = int(os.environ.get("FAL_STATUS_MAX_POLLS", "80"))
 AI_IMAGE_MAX_BYTES = int(os.environ.get("AI_IMAGE_MAX_BYTES", str(8 * 1024 * 1024)))
 PREMIUM_DOWNLOAD_LINK_TTL_SECONDS = int(os.environ.get("PREMIUM_DOWNLOAD_LINK_TTL_SECONDS", str(10 * 60)))
+PREMIUM_TERMS_VERSION = os.environ.get("PREMIUM_TERMS_VERSION", "2026-09-18")
 PREMIUM_MONTHLY_CURRENCY = os.environ.get("PREMIUM_MONTHLY_CURRENCY", "usd").lower()
 STRIPE_REVENUE_CACHE_SECONDS = int(os.environ.get("STRIPE_REVENUE_CACHE_SECONDS", str(5 * 60)))
 STRIPE_SUBSCRIPTION_REVENUE_CACHE = {}
@@ -359,6 +360,10 @@ def public_user(user: dict) -> dict:
         "twitch_discount_percent": TWITCH_DISCOUNT_PERCENT,
         "extension_device_linked": bool(user.get("extension_device_id")),
         "extension_device_linked_at": user.get("extension_device_linked_at", ""),
+        "premium_terms_version": PREMIUM_TERMS_VERSION,
+        "premium_terms_accepted": has_accepted_premium_terms(user),
+        "premium_terms_accepted_at": user.get("premium_terms_accepted_at", ""),
+        "premium_terms_required": premium_terms_required(user),
         "can_upload": can_upload,
         "can_delete": can_delete,
     }
@@ -875,6 +880,22 @@ def has_premium_access(user: Optional[dict]) -> bool:
     return stripe_active_status(user.get("premium_status", ""))
 
 
+def has_accepted_premium_terms(user: Optional[dict]) -> bool:
+    return bool(user and user.get("premium_terms_accepted_version") == PREMIUM_TERMS_VERSION)
+
+
+def premium_terms_required(user: Optional[dict]) -> bool:
+    return bool(user and has_premium_access(user) and not user_is_staff(user) and not has_accepted_premium_terms(user))
+
+
+def require_premium_terms(user: Optional[dict]) -> None:
+    if premium_terms_required(user):
+        raise HTTPException(
+            status_code=428,
+            detail="Accept the Premium Asset Licence before accessing Premium assets",
+        )
+
+
 def has_cancelled_premium(user: Optional[dict]) -> bool:
     return bool(user and user.get("premium_cancelled") and not user_is_staff(user))
 
@@ -1102,6 +1123,7 @@ async def require_asset_access(request: Request, asset: dict):
         return
     if not has_premium_access(user):
         raise HTTPException(status_code=402, detail="Premium subscription required")
+    require_premium_terms(user)
 
 
 # ---------- Models ----------
@@ -1551,12 +1573,30 @@ async def auth_me(request: Request):
     return public_user(user)
 
 
+@api_router.post("/premium/terms/accept")
+async def accept_premium_terms(request: Request):
+    user = await request_user(request, required=True)
+    user = await sync_user_from_stripe(user)
+    if not has_premium_access(user):
+        raise HTTPException(status_code=402, detail="Active Premium subscription required")
+
+    accepted_at = now_iso()
+    updates = {
+        "premium_terms_accepted_version": PREMIUM_TERMS_VERSION,
+        "premium_terms_accepted_at": accepted_at,
+        "updated_at": accepted_at,
+    }
+    await db.users.update_one({"id": user["id"]}, {"$set": updates})
+    return {"ok": True, "user": public_user({**user, **updates})}
+
+
 @api_router.get("/extension/assets", response_model=List[Asset])
 async def list_extension_assets(request: Request):
     user = await request_user(request, required=True)
     user = await sync_user_from_stripe(user)
     if not has_premium_access(user):
         raise HTTPException(status_code=402, detail="Active Premium subscription required to use the After Effects extension")
+    require_premium_terms(user)
 
     device_id = (request.headers.get("x-extension-device-id") or "").strip()
     if len(device_id) < 16 or len(device_id) > 120:
@@ -1595,6 +1635,7 @@ async def create_extension_pairing_code(request: Request):
     user = await sync_user_from_stripe(user)
     if not has_premium_access(user):
         raise HTTPException(status_code=402, detail="Active Premium subscription required")
+    require_premium_terms(user)
 
     code = f"{secrets.token_hex(2).upper()}-{secrets.token_hex(2).upper()}"
     now_ts = int(time.time())
@@ -1639,6 +1680,7 @@ async def redeem_extension_pairing_code(payload: ExtensionPairingCodeRedeem):
     user = await sync_user_from_stripe(user)
     if not has_premium_access(user):
         raise HTTPException(status_code=402, detail="Active Premium subscription required")
+    require_premium_terms(user)
 
     linked_device_id = (user.get("extension_device_id") or "").strip()
     if linked_device_id and linked_device_id != device_id:
@@ -2449,6 +2491,7 @@ async def get_premium_download(token: str, request: Request):
         raise HTTPException(403, "This temporary link belongs to another signed-in account")
     if not has_premium_access(user):
         raise HTTPException(status_code=402, detail="Premium subscription required")
+    require_premium_terms(user)
 
     return {
         "title": link.get("title", "Premium download"),

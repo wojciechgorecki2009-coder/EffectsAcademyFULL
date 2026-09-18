@@ -65,6 +65,9 @@ export function TermsPage() {
       <Card title="Premium membership" icon={LockKeyhole}>
         <p>Premium membership unlocks access to premium assets while your subscription is active. Payments and subscription management are handled securely through Stripe.</p>
         <p>Premium access is linked to the Google account used at checkout so your subscription can be restored when you sign in.</p>
+        <p>Premium assets are provided under a limited, non-exclusive, non-transferable licence for use in your own personal or commercial creative projects. You may not reupload, leak, share, resell, sublicense, trade, or redistribute the source assets, whether unchanged, repackaged, or lightly modified.</p>
+        <p>Your account and unique After Effects extension access code are personal to you and must not be shared. Effects Academy may suspend or terminate Premium access where these terms are violated.</p>
+        <p>Subscription fees are non-refundable except where required by applicable law. You may cancel future renewals through subscription management. This does not affect your statutory rights.</p>
       </Card>
       <Card title="AI tools and fair use">
         <p>Effects Academy may offer AI-assisted tools for editing images or text previews. Free accounts may have limited monthly generations, while premium accounts may receive a higher generation allowance.</p>
@@ -90,6 +93,7 @@ export function PrivacyPage() {
     >
       <Card title="Information we collect">
         <p>When you sign in with Google, Effects Academy may store your Google account ID, email address, display name, role, and subscription status so premium access can be tracked securely.</p>
+        <p>For Premium accounts, Effects Academy also stores the version of the Premium Asset Licence you accepted and the date of acceptance.</p>
         <p>When you submit forms, we store the information you provide, such as DMCA notice details or suggestion text.</p>
       </Card>
       <Card title="Uploads and assets">

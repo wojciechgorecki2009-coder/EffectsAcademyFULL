@@ -8,6 +8,7 @@ import { API } from "@/lib/api";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import PersistentAudioBar from "@/components/PersistentAudioBar";
+import PremiumTermsGate from "@/components/PremiumTermsGate";
 import Home from "@/pages/Home";
 import CategoryPage from "@/pages/CategoryPage";
 import DmcaPage from "@/pages/DmcaPage";
@@ -136,6 +137,7 @@ function AppFrame() {
         <RefreshableRoutes />
         {!isSetupMiniSite ? <Footer /> : null}
         {!isSetupMiniSite ? <PersistentAudioBar /> : null}
+        <PremiumTermsGate />
         <Toaster
           theme="dark"
           position="bottom-right"
