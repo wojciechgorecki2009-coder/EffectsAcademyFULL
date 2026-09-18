@@ -1031,6 +1031,69 @@
   color: #f6d865;
 }
 
+.featured-extension-slot {
+  position: relative;
+  z-index: 2;
+}
+
+.featured-extension-slot::before {
+  content: "";
+  position: absolute;
+  inset: -10px;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: 26px;
+  background: radial-gradient(circle at 50% 20%, rgba(71, 169, 255, 0.3), rgba(112, 72, 255, 0.12) 46%, transparent 72%);
+  filter: blur(14px);
+  animation: featured-extension-glow 3.4s ease-in-out infinite;
+}
+
+.featured-extension-card {
+  border-color: rgba(116, 192, 255, 0.58) !important;
+  background:
+    linear-gradient(145deg, rgba(44, 124, 211, 0.1), transparent 36%),
+    var(--site-surface) !important;
+  box-shadow:
+    0 22px 62px rgba(0, 0, 0, 0.38),
+    0 0 0 1px rgba(128, 202, 255, 0.12) inset,
+    0 0 42px rgba(44, 140, 255, 0.2) !important;
+}
+
+.featured-extension-card:hover {
+  border-color: rgba(163, 218, 255, 0.82) !important;
+  box-shadow:
+    0 30px 78px rgba(0, 0, 0, 0.48),
+    0 0 0 1px rgba(166, 220, 255, 0.18) inset,
+    0 0 56px rgba(54, 151, 255, 0.28) !important;
+}
+
+.featured-extension-ribbon {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 8;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 9px;
+  border: 1px solid rgba(190, 230, 255, 0.34);
+  border-radius: 999px;
+  background: rgba(7, 88, 181, 0.88);
+  color: #f4fbff;
+  box-shadow: 0 10px 28px rgba(0, 59, 137, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+@keyframes featured-extension-glow {
+  0%, 100% { opacity: 0.56; transform: scale(0.98); }
+  50% { opacity: 1; transform: scale(1.025); }
+}
+
 .extension-launch-backdrop {
   position: fixed;
   inset: 0;
@@ -1522,6 +1585,7 @@
   .transcribe-page,
   .setup-category-card,
   .setup-item-card,
+  .featured-extension-slot::before,
   .extension-launch-backdrop,
   .extension-launch-modal,
   .extension-launch-window,

@@ -15,6 +15,7 @@ import Hero from "@/components/Hero";
 import { Captions, ChevronLeft, ChevronRight, Music2, Tv, Film, Sparkles } from "lucide-react";
 
 const FILTER_TABS = ["All", ...CATEGORIES];
+const EXTENSION_PIN_END = new Date("2026-10-02T23:59:59+01:00").getTime();
 
 const CATEGORY_TO_SLUG = {
   Torrents: "torrents",
@@ -42,6 +43,12 @@ const getStamp = (asset) => {
     ? asset.updated_at
     : asset.created_at || asset.createdAt;
   return new Date(displayStamp || 0).getTime() || 0;
+};
+
+const isEffectsAcademyExtension = (asset) => {
+  if (asset?.category !== "Premium") return false;
+  const normalizedTitle = String(asset?.title || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  return normalizedTitle.includes("effectsacademyextension");
 };
 
 const matchesSearch = (asset, query) => {
@@ -103,10 +110,16 @@ export default function Home() {
   const showsPickerForFilter = filter === "Audios" || filter === "Torrents";
 
   const sortedAssets = useMemo(() => [...assets].sort((a, b) => getStamp(b) - getStamp(a)), [assets]);
-  const recentlyAdded = useMemo(
-    () => sortedAssets.filter((asset) => asset.category !== "Videos").slice(0, 8),
-    [sortedAssets]
-  );
+  const recentlyAdded = useMemo(() => {
+    const recent = sortedAssets.filter((asset) => asset.category !== "Videos");
+    if (Date.now() > EXTENSION_PIN_END) return recent.slice(0, 8);
+    const extension = recent.find(isEffectsAcademyExtension);
+    if (!extension) return recent.slice(0, 8);
+    return [extension, ...recent.filter((asset) => asset.id !== extension.id)].slice(0, 8);
+  }, [sortedAssets]);
+  const pinnedExtensionId = Date.now() <= EXTENSION_PIN_END
+    ? recentlyAdded.find(isEffectsAcademyExtension)?.id || ""
+    : "";
 
   const mergedAudioCreators = useMemo(() => {
     const creatorsFromAssets = Array.from(
@@ -235,7 +248,7 @@ export default function Home() {
             <AssetGrid assets={searchedAll} onChanged={load} allAssets={assets} />
           )
         ) : isAllTab ? (
-          <DashboardView data={dashboardData} totalAssets={assets.length} recentlyAdded={recentlyAdded} allAssets={assets} onChanged={load} />
+          <DashboardView data={dashboardData} totalAssets={assets.length} recentlyAdded={recentlyAdded} pinnedExtensionId={pinnedExtensionId} allAssets={assets} onChanged={load} />
         ) : (
           <FilteredView
             filter={filter}
@@ -257,11 +270,11 @@ export default function Home() {
   );
 }
 
-function DashboardView({ data, totalAssets, recentlyAdded, allAssets, onChanged }) {
+function DashboardView({ data, totalAssets, recentlyAdded, pinnedExtensionId, allAssets, onChanged }) {
   if (totalAssets === 0) return <EmptyState filter="All" />;
   return (
     <div className="space-y-14">
-      <RecentlyAdded assets={recentlyAdded} allAssets={allAssets} onChanged={onChanged} />
+      <RecentlyAdded assets={recentlyAdded} pinnedExtensionId={pinnedExtensionId} allAssets={allAssets} onChanged={onChanged} />
       {DASHBOARD_SECTIONS.map((cat) => (
         <DashboardSection
           key={cat}
@@ -275,7 +288,7 @@ function DashboardView({ data, totalAssets, recentlyAdded, allAssets, onChanged 
   );
 }
 
-function RecentlyAdded({ assets, allAssets, onChanged }) {
+function RecentlyAdded({ assets, pinnedExtensionId, allAssets, onChanged }) {
   return (
     <div data-testid="recently-added-section" className="relative rounded-3xl border border-white/10 bg-white/[0.025] p-5 md:p-6 overflow-hidden">
       <div className="absolute -top-24 right-0 w-64 h-64 bg-neon/10 blur-3xl rounded-full pointer-events-none" />
@@ -289,7 +302,7 @@ function RecentlyAdded({ assets, allAssets, onChanged }) {
           </h2>
         </div>
       </div>
-      <AssetGrid assets={assets} onChanged={onChanged} allAssets={allAssets} />
+      <AssetGrid assets={assets} featuredAssetId={pinnedExtensionId} onChanged={onChanged} allAssets={allAssets} />
     </div>
   );
 }
@@ -331,12 +344,12 @@ function DashboardSection({ category, assets, allAssets, onChanged }) {
   );
 }
 
-function AssetGrid({ assets, onChanged, allAssets }) {
+function AssetGrid({ assets, featuredAssetId = "", onChanged, allAssets }) {
   return (
     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {assets.map((a, idx) => (
-        <div key={a.id} className="asset-3d-in" style={{ animationDelay: `${Math.min(idx, 12) * 60}ms` }}>
-          <AssetCard asset={a} onChanged={onChanged} allAssets={allAssets || assets} />
+        <div key={a.id} className={`asset-3d-in ${a.id === featuredAssetId ? "featured-extension-slot" : ""}`} style={{ animationDelay: `${Math.min(idx, 12) * 60}ms` }}>
+          <AssetCard asset={a} featured={a.id === featuredAssetId} onChanged={onChanged} allAssets={allAssets || assets} />
         </div>
       ))}
     </div>

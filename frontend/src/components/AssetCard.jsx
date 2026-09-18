@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Crown, Copy, Download, Eye, ImageIcon, Link as LinkIcon, LockKeyhole, Pencil, Play, RefreshCw, Sparkles, Trash2 } from "lucide-react";
+import { Crown, Copy, Download, Eye, ImageIcon, Link as LinkIcon, LockKeyhole, Pencil, Pin, Play, RefreshCw, Sparkles, Trash2 } from "lucide-react";
 import { CATEGORY_COLORS, FILE_BASE, api, buildFileUrl, buildDownloadUrl, deriveDownloadFilename, getAuthToken } from "@/lib/api";
 import { useUploadAccess } from "@/lib/uploadAccess";
 import { useAuth } from "@/lib/auth";
@@ -104,7 +104,7 @@ function directUrlEndpoint(src) {
   return `/uploads/${encodeURIComponent(decodeURIComponent(match[1]))}/direct`;
 }
 
-export default function AssetCard({ asset, onChanged, allAssets = [] }) {
+export default function AssetCard({ asset, featured = false, onChanged, allAssets = [] }) {
   const { isUploader, canDelete } = useUploadAccess();
   const { hasPremium } = useAuth();
   const globalAudio = useGlobalAudio();
@@ -403,9 +403,15 @@ export default function AssetCard({ asset, onChanged, allAssets = [] }) {
         role={isLockedPremium || hasAudioPlayback ? "button" : undefined}
         tabIndex={isLockedPremium || hasAudioPlayback ? 0 : undefined}
         onKeyDown={handleCardKeyDown}
-        className={`tilt-card group rounded-2xl overflow-hidden bg-[var(--site-surface)] backdrop-blur-xl border transition-all duration-300 fade-in ${isPremium ? "border-purple-300/20 shadow-[0_0_32px_rgba(168,85,247,0.13)] hover:border-purple-300/40" : "border-white/5 hover:border-white/15 hover:shadow-[0_18px_50px_rgba(0,0,0,0.28)]"} ${isLockedPremium || hasAudioPlayback ? "cursor-pointer" : ""}`}
+        className={`tilt-card group rounded-2xl overflow-hidden bg-[var(--site-surface)] backdrop-blur-xl border transition-all duration-300 fade-in ${featured ? "featured-extension-card" : ""} ${isPremium ? "border-purple-300/20 shadow-[0_0_32px_rgba(168,85,247,0.13)] hover:border-purple-300/40" : "border-white/5 hover:border-white/15 hover:shadow-[0_18px_50px_rgba(0,0,0,0.28)]"} ${isLockedPremium || hasAudioPlayback ? "cursor-pointer" : ""}`}
         data-testid={`asset-card-${asset.id}`}
+        data-featured={featured ? "extension-launch" : undefined}
       >
+        {featured && (
+          <div className="featured-extension-ribbon">
+            <Pin className="w-3 h-3" /> Featured launch
+          </div>
+        )}
         <div className="aspect-video w-full bg-black/40 overflow-hidden relative">
           {isPremium && <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-br from-purple-400/10 via-transparent to-transparent opacity-80" />}
           {thumbnailSrc ? (
