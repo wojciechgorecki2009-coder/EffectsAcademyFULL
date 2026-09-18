@@ -110,6 +110,7 @@ FAL_STATUS_MAX_POLLS = int(os.environ.get("FAL_STATUS_MAX_POLLS", "80"))
 AI_IMAGE_MAX_BYTES = int(os.environ.get("AI_IMAGE_MAX_BYTES", str(8 * 1024 * 1024)))
 PREMIUM_DOWNLOAD_LINK_TTL_SECONDS = int(os.environ.get("PREMIUM_DOWNLOAD_LINK_TTL_SECONDS", str(10 * 60)))
 PREMIUM_TERMS_VERSION = os.environ.get("PREMIUM_TERMS_VERSION", "2026-09-18")
+PREMIUM_TERMS_PREVIEW_EMAILS = {"limetelly200@gmail.com"}
 PREMIUM_MONTHLY_CURRENCY = os.environ.get("PREMIUM_MONTHLY_CURRENCY", "usd").lower()
 STRIPE_REVENUE_CACHE_SECONDS = int(os.environ.get("STRIPE_REVENUE_CACHE_SECONDS", str(5 * 60)))
 STRIPE_SUBSCRIPTION_REVENUE_CACHE = {}
@@ -885,7 +886,10 @@ def has_accepted_premium_terms(user: Optional[dict]) -> bool:
 
 
 def premium_terms_required(user: Optional[dict]) -> bool:
-    return bool(user and has_premium_access(user) and not user_is_staff(user) and not has_accepted_premium_terms(user))
+    if not user or not has_premium_access(user) or has_accepted_premium_terms(user):
+        return False
+    email = (user.get("email") or "").strip().lower()
+    return not user_is_staff(user) or email in PREMIUM_TERMS_PREVIEW_EMAILS
 
 
 def require_premium_terms(user: Optional[dict]) -> None:
