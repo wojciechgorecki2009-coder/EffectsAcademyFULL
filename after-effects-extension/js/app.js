@@ -26,10 +26,10 @@
     apiBase: localStorage.getItem(STORAGE_KEYS.apiBase) || DEFAULT_API_BASE,
     authToken: localStorage.getItem(STORAGE_KEYS.authToken) || "",
     deviceId: localStorage.getItem(STORAGE_KEYS.deviceId) || "",
-    uiStyle: localStorage.getItem(STORAGE_KEYS.uiStyle) || "default",
+    uiStyle: "apple", // single visual style, matching the website
     layoutMode: localStorage.getItem(STORAGE_KEYS.layoutMode) || "auto",
     density: localStorage.getItem(STORAGE_KEYS.density) || "comfortable",
-    accent: localStorage.getItem(STORAGE_KEYS.accent) || "violet",
+    accent: localStorage.getItem(STORAGE_KEYS.accent) || "blue",
     motion: localStorage.getItem(STORAGE_KEYS.motion) || "premium",
     font: localStorage.getItem(STORAGE_KEYS.font) || "modern",
     premiumAccess: false,
@@ -96,6 +96,22 @@
   };
 
   var currentAudioAsset = null;
+  // Shown when an asset has no artwork.
+  var PLACEHOLDER_ICONS = {
+    "Audios": '<svg class="ui-icon thumb-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4M8 7v10M12 4v16M16 8v8M20 11v2" /></svg>',
+    "Presets": '<svg class="ui-icon thumb-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h9M18 7h1M5 17h3M12 17h7M16 5v4M10 15v4" /></svg>',
+    "Project Files": '<svg class="ui-icon thumb-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" /></svg>',
+    default: '<svg class="ui-icon thumb-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v14H5zM5 15l4-4 4 4 2-2 4 4" /></svg>'
+  };
+  var CATEGORY_COLORS = {
+    "Audios": "#34D399",
+    "Presets": "#22D3EE",
+    "Project Files": "#FBBF24",
+    "Premium": "#FDE047",
+    "Overlays": "#F472B6",
+    "Sound FX": "#A78BFA",
+    "Torrents": "#60A5FA"
+  };
   var UI_ICONS = {
     play: '<svg class="ui-icon ui-icon-fill" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z" /></svg>',
     pause: '<svg class="ui-icon ui-icon-fill" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zM14 5h4v14h-4z" /></svg>',
@@ -165,6 +181,7 @@
         els.audioEl.load();
       } catch (resetErr) {}
       currentAudioAsset = null;
+      markPlayingCard("");
       els.playerProgress.value = "0";
       els.playerProgress.max = "0";
       els.playerCurrent.textContent = "0:00";
@@ -401,76 +418,13 @@
     }
   }
 
-  function resetAppleCardMotion(card) {
-    card.style.setProperty("--asset-glow-x", "50%");
-    card.style.setProperty("--asset-glow-y", "18%");
-    card.style.setProperty("--asset-tilt-x", "0deg");
-    card.style.setProperty("--asset-tilt-y", "0deg");
-    card.style.setProperty("--asset-parallax-x", "0px");
-    card.style.setProperty("--asset-parallax-y", "0px");
-  }
-
+  // A soft light follows the pointer across the card's media, like the website.
   function enhanceAppleCardMotion(card) {
-    resetAppleCardMotion(card);
-
     card.addEventListener("pointermove", function (event) {
-      if (state.uiStyle !== "apple") return;
       var rect = card.getBoundingClientRect();
       if (!rect.width || !rect.height) return;
-      var pointerX = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
-      var pointerY = Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height));
-      var tiltX = (0.5 - pointerY) * 7;
-      var tiltY = (pointerX - 0.5) * 8;
-      var parallaxX = (pointerX - 0.5) * 12;
-      var parallaxY = (pointerY - 0.5) * 12;
-      card.style.setProperty("--asset-glow-x", Math.round(pointerX * 100) + "%");
-      card.style.setProperty("--asset-glow-y", Math.round(pointerY * 100) + "%");
-      card.style.setProperty("--asset-tilt-x", tiltX.toFixed(2) + "deg");
-      card.style.setProperty("--asset-tilt-y", tiltY.toFixed(2) + "deg");
-      card.style.setProperty("--asset-parallax-x", parallaxX.toFixed(2) + "px");
-      card.style.setProperty("--asset-parallax-y", parallaxY.toFixed(2) + "px");
-    });
-
-    card.addEventListener("pointerleave", function () {
-      resetAppleCardMotion(card);
-    });
-
-    card.addEventListener("pointerdown", function (event) {
-      if (state.uiStyle !== "apple" || event.button > 0) return;
-      if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-
-      if (card.__applePressAnimation && card.__applePressAnimation.cancel) {
-        card.__applePressAnimation.cancel();
-      }
-      card.__applePressAnimation = card.animate(
-        [
-          {
-            transform: "translate3d(0, -6px, 0) rotateX(var(--asset-tilt-x, 0deg)) rotateY(var(--asset-tilt-y, 0deg)) scale(1.01)",
-            offset: 0
-          },
-          {
-            transform: "translate3d(0, -2px, 0) rotateX(0deg) rotateY(0deg) scale(0.955)",
-            offset: 0.2
-          },
-          {
-            transform: "translate3d(0, -10px, 0) rotateX(var(--asset-tilt-x, 0deg)) rotateY(var(--asset-tilt-y, 0deg)) scale(1.032)",
-            offset: 0.58
-          },
-          {
-            transform: "translate3d(0, -7px, 0) rotateX(var(--asset-tilt-x, 0deg)) rotateY(var(--asset-tilt-y, 0deg)) scale(1.006)",
-            offset: 0.8
-          },
-          {
-            transform: "translate3d(0, -6px, 0) rotateX(var(--asset-tilt-x, 0deg)) rotateY(var(--asset-tilt-y, 0deg)) scale(1.01)",
-            offset: 1
-          }
-        ],
-        {
-          duration: 1800,
-          easing: "cubic-bezier(0.16, 1, 0.22, 1)",
-          fill: "none"
-        }
-      );
+      card.style.setProperty("--card-x", (((event.clientX - rect.left) / rect.width) * 100).toFixed(1) + "%");
+      card.style.setProperty("--card-y", (((event.clientY - rect.top) / rect.height) * 100).toFixed(1) + "%");
     });
   }
 
@@ -1161,21 +1115,58 @@
     if (card) card.classList.remove("error", "shake");
   }
 
+  var tabLens = null;
+
+  function moveTabLens(animate) {
+    var active = els.categoryTabs.querySelector(".tab.active");
+    if (!tabLens || !active) return;
+    if (!animate) tabLens.style.transition = "none";
+    tabLens.style.width = active.offsetWidth + "px";
+    tabLens.style.transform = "translateX(" + active.offsetLeft + "px)";
+    if (!animate) {
+      void tabLens.offsetWidth;
+      tabLens.style.transition = "";
+    }
+    var left = active.offsetLeft - 24;
+    var right = active.offsetLeft + active.offsetWidth + 24;
+    if (left < els.categoryTabs.scrollLeft) els.categoryTabs.scrollTo({ left: left, behavior: "smooth" });
+    else if (right > els.categoryTabs.scrollLeft + els.categoryTabs.clientWidth) {
+      els.categoryTabs.scrollTo({ left: right - els.categoryTabs.clientWidth, behavior: "smooth" });
+    }
+  }
+
   function renderTabs() {
-    els.categoryTabs.innerHTML = "";
-    CATEGORIES.forEach(function (category) {
-      var button = document.createElement("button");
-      button.type = "button";
-      button.className = "tab" + (state.category === category ? " active" : "");
-      button.textContent = category;
-      button.title = category;
-      button.onclick = function () {
-        state.category = category;
-        renderTabs();
-        renderAssets();
-      };
-      els.categoryTabs.appendChild(button);
-    });
+    var firstRender = !tabLens;
+    if (firstRender) {
+      tabLens = document.createElement("span");
+      tabLens.className = "tab-lens";
+      tabLens.setAttribute("aria-hidden", "true");
+      els.categoryTabs.appendChild(tabLens);
+      CATEGORIES.forEach(function (category) {
+        var button = document.createElement("button");
+        button.type = "button";
+        button.className = "tab";
+        button.setAttribute("role", "tab");
+        button.textContent = category;
+        button.title = category;
+        button.setAttribute("data-category", category);
+        button.onclick = function () {
+          state.category = category;
+          renderTabs();
+          renderAssets();
+        };
+        els.categoryTabs.appendChild(button);
+      });
+      window.addEventListener("resize", function () { moveTabLens(false); });
+    }
+    var buttons = els.categoryTabs.querySelectorAll(".tab");
+    for (var i = 0; i < buttons.length; i += 1) {
+      var isActive = buttons[i].getAttribute("data-category") === state.category;
+      buttons[i].classList.toggle("active", isActive);
+      buttons[i].setAttribute("aria-selected", isActive ? "true" : "false");
+    }
+    if (firstRender) requestAnimationFrame(function () { moveTabLens(false); });
+    else moveTabLens(true);
   }
 
   function visibleAssets() {
@@ -1232,7 +1223,10 @@
     assets.forEach(function (asset) {
       var card = document.createElement("article");
       card.className = "card";
-      card.style.animationDelay = Math.min(360, els.assetGrid.children.length * 22) + "ms";
+      if (currentAudioAsset && currentAudioAsset.id === asset.id) card.classList.add("is-playing");
+      card.setAttribute("data-asset-id", asset.id || "");
+      // Cards cascade in two at a time, like rows revealing on the website.
+      card.style.animationDelay = Math.min(420, Math.floor(els.assetGrid.children.length / 2) * 45) + "ms";
       enhanceAppleCardMotion(card);
 
       var thumb = document.createElement("div");
@@ -1245,7 +1239,25 @@
         image.loading = "lazy";
         thumb.appendChild(image);
       } else {
-        thumb.textContent = categoryLabel(asset).slice(0, 3).toUpperCase();
+        thumb.classList.add("thumb-empty");
+        thumb.innerHTML = PLACEHOLDER_ICONS[asset.category] || PLACEHOLDER_ICONS.default;
+      }
+      if (asset.category === "Premium") {
+        var premiumChip = document.createElement("span");
+        premiumChip.className = "media-chip chip-tl premium";
+        premiumChip.textContent = "Premium";
+        thumb.appendChild(premiumChip);
+      }
+      if (isAudioAsset(asset) && asset.file_url) {
+        var playBubble = document.createElement("button");
+        playBubble.type = "button";
+        playBubble.className = "thumb-play";
+        setControlIcon(playBubble, "play", "Preview audio");
+        playBubble.onclick = function (event) {
+          event.stopPropagation();
+          previewAudio(asset);
+        };
+        thumb.appendChild(playBubble);
       }
 
       var body = document.createElement("div");
@@ -1256,10 +1268,12 @@
       var badge = document.createElement("span");
       badge.className = "badge" + (asset.category === "Premium" ? " premium" : "");
       badge.textContent = categoryLabel(asset);
+      if (CATEGORY_COLORS[asset.category]) badge.style.setProperty("--cat", CATEGORY_COLORS[asset.category]);
       var downloads = document.createElement("span");
       downloads.className = "downloads";
       var downloadCount = Number(asset.download_count || 0);
-      downloads.textContent = downloadCount + (downloadCount === 1 ? " download" : " downloads");
+      downloads.textContent = "\u2193 " + downloadCount;
+      downloads.title = downloadCount + (downloadCount === 1 ? " download" : " downloads");
       meta.appendChild(badge);
       meta.appendChild(downloads);
 
@@ -1409,13 +1423,25 @@
       els.audioEl.src = url;
       els.player.classList.remove("player-closing");
       els.player.classList.remove("hidden");
+      var seedArt = els.player.querySelector(".player-seed-art");
+      if (seedArt) seedArt.style.background = thumbnailUrl ? "center / cover no-repeat url(\"" + thumbnailUrl.replace(/"/g, "%22") + "\")" : "";
+      els.player.classList.remove("player-opening");
+      void els.player.offsetWidth;
       els.player.classList.add("player-opening");
-      setTimeout(function () { els.player.classList.remove("player-opening"); }, 380);
+      setTimeout(function () { els.player.classList.remove("player-opening"); }, 820);
+      markPlayingCard(asset.id);
       els.audioEl.play().catch(function () {});
       setStatus("Previewing audio", asset.title || "Audio");
     }).catch(function (err) {
       showError("Preview failed", err.message || "Could not preview this audio.");
     });
+  }
+
+  function markPlayingCard(assetId) {
+    var cards = els.assetGrid.querySelectorAll(".card[data-asset-id]");
+    for (var i = 0; i < cards.length; i += 1) {
+      cards[i].classList.toggle("is-playing", !!assetId && cards[i].getAttribute("data-asset-id") === assetId);
+    }
   }
 
   function openExternal(asset) {
@@ -1739,6 +1765,20 @@
       });
   }
 
+  function renderSkeletons() {
+    if (state.category === "Captions" || state.category === "Settings") return;
+    els.emptyState.classList.add("hidden");
+    els.assetGrid.classList.remove("hidden");
+    els.assetGrid.innerHTML = "";
+    for (var i = 0; i < 6; i += 1) {
+      var card = document.createElement("div");
+      card.className = "card skeleton-card";
+      card.style.animationDelay = Math.floor(i / 2) * 60 + "ms";
+      card.innerHTML = '<div class="thumb"></div><div class="card-body"><span class="skeleton line-sm"></span><span class="skeleton line-md"></span><span class="skeleton line-btn"></span></div>';
+      els.assetGrid.appendChild(card);
+    }
+  }
+
   function loadAssets() {
     clearErrorState();
     if (!state.authToken) {
@@ -1749,6 +1789,7 @@
       return Promise.resolve();
     }
     setStatus("Live library", "Loading assets from Effects Academy…");
+    if (!state.assets.length) renderSkeletons();
     return getJson(apiUrl("/extension/assets"))
       .then(function (assets) {
         setPremiumAccess(true);

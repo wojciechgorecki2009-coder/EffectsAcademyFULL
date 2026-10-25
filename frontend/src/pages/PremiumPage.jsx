@@ -451,13 +451,13 @@ export default function PremiumPage() {
                       </p>
                       <div className="mt-4 flex flex-wrap gap-2">
                         <a
-                          href="/downloads/EffectsAcademy-AE-Extension-1.0.0.zxp"
+                          href="/downloads/EffectsAcademy-AE-Extension-1.1.0.zxp"
                           download
                           className="btn btn-sm btn-primary"
                           data-testid="download-ae-extension"
                         >
                           <Download />
-                          Download extension 1.0.0
+                          Download extension 1.1.0
                         </a>
                         <button
                           type="button"

@@ -4,7 +4,7 @@
     {
       "name": "api-mock",
       "runtimeExecutable": "cmd",
-      "runtimeArgs": ["/c", "cd backend && set USE_MOCK_DB=1&& set FRONTEND_URL=http://localhost:3000&& set CORS_ORIGINS=http://localhost:3000&& python -m uvicorn server:app --port 8001"],
+      "runtimeArgs": ["/c", "cd backend && set USE_MOCK_DB=1&& set FRONTEND_URL=http://localhost:3000&& set CORS_ORIGINS=http://localhost:3000,http://localhost:5174&& python -m uvicorn server:app --port 8001"],
       "port": 8001
     },
     {
@@ -12,6 +12,13 @@
       "runtimeExecutable": "cmd",
       "runtimeArgs": ["/c", "cd frontend && set REACT_APP_BACKEND_URL=http://127.0.0.1:8001&& set BROWSER=none&& set PORT=3000&& npm start"],
       "port": 3000
+    },
+    {
+      "name": "extension",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "5174", "--bind", "127.0.0.1", "--directory", "after-effects-extension"],
+      "port": 5174,
+      "url": "http://localhost:5174"
     }
   ]
 }
