@@ -24,7 +24,7 @@ import {
   ViewAllLink,
 } from "@/components/Library";
 import { EASE_OUT, SPRING } from "@/lib/motion";
-import { ChevronRight, Music2, Tv, Film, RefreshCcw } from "lucide-react";
+import { ChevronRight, Music2, Tv, Film, RefreshCcw, Wand2 } from "lucide-react";
 
 const FILTER_TABS = ["All", ...CATEGORIES];
 const EXTENSION_PIN_END = new Date("2026-10-02T23:59:59+01:00").getTime();
@@ -393,6 +393,16 @@ function FilterTabs({ orientation, filter, setFilter, countLabel }) {
           >
             <RefreshCcw className="h-3.5 w-3.5 text-tint" />
             Converter
+          </Link>
+        </motion.div>
+        <motion.div layoutId="filter-remove-bg" layout="position" transition={RAIL_SPRING} className={vertical ? "w-full" : "shrink-0"}>
+          <Link
+            to="/remove-background"
+            className={`${itemClass} inline-flex items-center gap-1.5 text-ink-2 hover:text-ink`}
+            data-testid="filter-tab-remove-bg"
+          >
+            <Wand2 className="h-3.5 w-3.5 text-[#bf5af2]" />
+            Remove BG
           </Link>
         </motion.div>
         {vertical && (

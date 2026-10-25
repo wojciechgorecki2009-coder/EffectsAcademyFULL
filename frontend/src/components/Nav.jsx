@@ -40,6 +40,7 @@ const PRIMARY_TABS = [
   { to: "/category/premium", label: "Premium" },
   { to: "/category/videos", label: "Videos" },
   { to: "/convert", label: "Converter" },
+  { to: "/remove-background", label: "Remove BG" },
 ];
 
 const MORE_TABS = [

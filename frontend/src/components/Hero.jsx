@@ -92,7 +92,7 @@ export default function Hero({ query, setQuery, totalAssets }) {
 
         <motion.p className="lede mt-7 max-w-[38rem]" data-testid="hero-description" {...fade(0.55)}>
           Effects Academy is a curated vault for video editors: project files, overlays, presets, audios,
-          sound effects, torrents, premium packs, and a free video converter in one clean library.
+          sound effects, torrents, premium packs, plus a free video converter and background remover, in one clean library.
         </motion.p>
 
         <motion.div className="mt-11 w-full max-w-[40rem]" {...fade(0.7)}>

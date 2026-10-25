@@ -63,9 +63,9 @@ export function TermsPage() {
         <p>Your account and unique After Effects extension access code are personal to you and must not be shared. Effects Academy may suspend or terminate Premium access where these terms are violated.</p>
         <p>Subscription fees are non-refundable except where required by applicable law. You may cancel future renewals through subscription management. This does not affect your statutory rights.</p>
       </Card>
-      <Card title="Video converter">
-        <p>The video converter runs entirely in your browser. Files you convert are processed on your own device and are not uploaded to Effects Academy.</p>
-        <p>Only convert files you have the right to use. Conversion speed and the maximum file size depend on your device.</p>
+      <Card title="Video converter and background remover">
+        <p>The video converter and background remover run entirely in your browser. Files you use with them are processed on your own device and are not uploaded to Effects Academy.</p>
+        <p>Only use files you have the right to use. Speed and the maximum file size depend on your device. The background remover downloads an open-source AI model (BiRefNet, MIT licence) from Hugging Face the first time you use it.</p>
       </Card>
       <Card title="Copyright and takedowns">
         <p>If you believe your copyrighted work appears on Effects Academy without permission, use the DMCA page or email <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>.</p>
@@ -100,8 +100,8 @@ export function PrivacyPage() {
         <p>Effects Academy may use cookies or similar technologies to keep users signed in, protect premium access, remember preferences, measure site performance, and understand how the site is used.</p>
         <p>Browser settings may allow you to block or delete cookies, although some site features may stop working properly if sign-in or preference cookies are disabled.</p>
       </Card>
-      <Card title="Video converter">
-        <p>Videos you convert with the video converter never leave your device. Effects Academy does not receive, store, or see those files.</p>
+      <Card title="Video converter and background remover">
+        <p>Videos you convert and images you remove backgrounds from never leave your device. Effects Academy does not receive, store, or see those files. The tools download their processing engines from public content delivery networks (jsDelivr and Hugging Face) the first time you use them.</p>
       </Card>
       <Card title="Email and support">
         <p>DMCA notices and suggestions may be delivered to <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a> so the team can review them.</p>

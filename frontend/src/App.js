@@ -28,6 +28,7 @@ import "@/App.css";
 
 // Loaded on demand so the converter (and ffmpeg) never weighs down other pages.
 const ConverterPage = lazy(() => import("@/pages/ConverterPage"));
+const RemoveBackgroundPage = lazy(() => import("@/pages/RemoveBackgroundPage"));
 
 const ASSETS_CHANGED_EVENT = "effectsacademy:assets-changed";
 
@@ -128,6 +129,7 @@ function RefreshableRoutes() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/premium" element={<PremiumPage />} />
         <Route path="/convert" element={<Suspense fallback={<div className="min-h-[70vh]" />}><ConverterPage /></Suspense>} />
+        <Route path="/remove-background" element={<Suspense fallback={<div className="min-h-[70vh]" />}><RemoveBackgroundPage /></Suspense>} />
         <Route path="/ai-image" element={<Navigate to="/convert" replace />} />
         <Route path="/transcribe" element={<Navigate to="/convert" replace />} />
         <Route path="/products-i-use" element={<SetupPage />} />
