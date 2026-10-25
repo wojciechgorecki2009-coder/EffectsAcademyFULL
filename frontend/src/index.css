@@ -965,13 +965,13 @@ body { overflow-x: clip; }
   background: color-mix(in srgb, rgb(var(--panel)) 90%, transparent);
 }
 :root[data-lite] .lite-blur { --glass-blur: 16px; }
+:root[data-lite] .glass.solid-on-lite { background: rgb(var(--panel)); }
 
 :root[data-lite] .dialog-overlay { background: rgb(0 0 0 / 0.62); }
 :root[data-lite][data-scheme="light"] .dialog-overlay { background: rgb(0 0 0 / 0.32); }
 :root[data-lite] .dialog-content[data-state="open"] { animation-name: dialog-in-lite; }
 :root[data-lite] .dialog-content[data-state="closed"] { animation-name: dialog-out-lite; }
 :root[data-lite] .menu-content[data-state="open"] { animation-name: menu-in-lite; }
-:root[data-lite] .extension-launch-modal { animation-name: fade-rise-lite; }
 @keyframes dialog-in-lite {
   from { opacity: 0; transform: translate(-50%, -46%) scale(0.94); }
   to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
@@ -979,10 +979,6 @@ body { overflow-x: clip; }
 @keyframes dialog-out-lite { to { opacity: 0; transform: translate(-50%, -49%) scale(0.97); } }
 @keyframes menu-in-lite {
   from { opacity: 0; transform: scale(0.9) translateY(-6px); }
-  to { opacity: 1; transform: none; }
-}
-@keyframes fade-rise-lite {
-  from { opacity: 0; transform: translateY(32px) scale(0.955); }
   to { opacity: 1; transform: none; }
 }
 

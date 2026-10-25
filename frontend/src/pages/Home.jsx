@@ -27,7 +27,8 @@ import { EASE_OUT, SPRING } from "@/lib/motion";
 import { ChevronRight, Music2, Tv, Film, RefreshCcw, Wand2 } from "lucide-react";
 
 const FILTER_TABS = ["All", ...CATEGORIES];
-const EXTENSION_PIN_END = new Date("2026-10-02T23:59:59+01:00").getTime();
+// Keeps the extension pinned first in "Recently added" while the v1.1 update announcement runs.
+const EXTENSION_PIN_END = new Date("2026-11-01T23:59:59+00:00").getTime();
 
 const CATEGORY_TO_SLUG = {
   Torrents: "torrents",
