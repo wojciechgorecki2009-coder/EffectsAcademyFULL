@@ -16,7 +16,14 @@ import { fetchFile } from "@ffmpeg/util";
 
 const CORE_BASE = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm";
 export const ENGINE_SIZE_MB = 10; // compressed transfer size; ~32 MB unpacked
-export const MAX_FILE_BYTES = 2 * 1024 * 1024 * 1024;
+const GB = 1024 * 1024 * 1024;
+export const FREE_MAX_BYTES = 2 * GB;
+export const PREMIUM_MAX_BYTES = 10 * GB;
+// Inputs are read straight from disk (WORKERFS), so they can be huge. The
+// result, however, is built inside the engine's 2 GiB WebAssembly memory, so
+// outputs must stay comfortably below that.
+export const OUTPUT_LIMIT_BYTES = Math.floor(1.75 * GB);
+const LARGE_ENCODE_BYTES = 1 * GB;
 
 export const FORMATS = [
   { id: "mp4", label: "MP4", ext: "mp4", mime: "video/mp4", kind: "video", detail: "H.264 · plays everywhere" },
@@ -140,6 +147,10 @@ async function stageInput(ffmpeg, file) {
     await ffmpeg.mount(FFFSType.WORKERFS, { files: [file] }, dir);
     return { path: `${dir}/${file.name}`, cleanup: () => ffmpeg.unmount(dir).catch(() => {}) };
   } catch {
+    // Copying into the 2 GiB engine memory only works for modest files.
+    if (file.size > LARGE_ENCODE_BYTES) {
+      throw new Error("This browser can't stream large files into the converter. Try the latest Chrome, Edge or Firefox.");
+    }
     const name = `input.${extOf(file.name) || "bin"}`;
     await ffmpeg.writeFile(name, await fetchFile(file));
     return { path: name, cleanup: () => ffmpeg.deleteFile(name).catch(() => {}) };
@@ -179,7 +190,7 @@ const canCopy = (format, kind, codec) => {
 };
 
 /** Describes what conversion to `format` will do with this input, for the UI. */
-export function planConversion(info, formatId, options = {}) {
+export function planConversion(info, formatId, options = {}, fileSize = 0) {
   const format = FORMATS.find((f) => f.id === formatId);
   if (!format || !info) return null;
   if (format.kind === "audio") {
@@ -196,9 +207,21 @@ export function planConversion(info, formatId, options = {}) {
   }
   const videoCopy = canCopy(formatId, "video", info.video.codec);
   const audioCopy = !info.audio || canCopy(formatId, "audio", info.audio.codec);
+  if (videoCopy && fileSize > OUTPUT_LIMIT_BYTES) {
+    return {
+      lossless: false,
+      forceEncode: true,
+      note: "Too large to copy as-is inside the browser (results must stay under 1.75 GB), so it will be re-encoded at visually lossless quality. Expect this to take a long time.",
+    };
+  }
   if (videoCopy && audioCopy) return { lossless: true, note: "Streams copied as-is. No re-encode, no quality loss, done in seconds." };
   if (videoCopy) return { lossless: true, note: "Video copied as-is with no quality loss. Only the audio is converted (320 kbps)." };
-  return { lossless: false, note: "Re-encoded at visually lossless quality. This can take a while on longer clips." };
+  return {
+    lossless: false,
+    note: fileSize > LARGE_ENCODE_BYTES
+      ? "Re-encoded at visually lossless quality. A file this large can take a long time to re-encode in the browser."
+      : "Re-encoded at visually lossless quality. This can take a while on longer clips.",
+  };
 }
 
 function buildArgs({ input, output, format, info, mode, options }) {
@@ -243,12 +266,13 @@ export async function convertFile(file, formatId, { options = {}, onProgress, on
   const staged = await stageInput(ffmpeg, file);
   const output = `output.${format.ext}`;
   let crashed = false;
+  let overflow = false;
   try {
     onStage?.("probe");
     const probeLines = [];
     await withLogs(ffmpeg, ["-hide_banner", "-i", staged.path], (line) => probeLines.push(line));
     const info = parseProbe(probeLines);
-    const plan = planConversion(info, formatId, options);
+    const plan = planConversion(info, formatId, options, file.size);
     if (plan?.error) throw new Error(plan.error);
 
     const run = async (mode) => {
@@ -256,6 +280,12 @@ export async function convertFile(file, formatId, { options = {}, onProgress, on
       onProgress?.(0);
       const args = buildArgs({ input: staged.path, output, format, info, mode, options });
       return withLogs(ffmpeg, args, (line) => {
+        // Stop early, with a clear message, if the result outgrows browser memory.
+        const size = /size=\s*(\d+)\s*(kB|KiB)/.exec(line);
+        if (size && !overflow && Number(size[1]) * 1024 > OUTPUT_LIMIT_BYTES) {
+          overflow = true;
+          cancelEngine();
+        }
         const t = /time=(\d+):(\d+):([\d.]+)/.exec(line);
         if (t && info.duration > 0) {
           const seconds = Number(t[1]) * 3600 + Number(t[2]) * 60 + Number(t[3]);
@@ -265,7 +295,7 @@ export async function convertFile(file, formatId, { options = {}, onProgress, on
     };
 
     let lossless = plan?.lossless ?? false;
-    let code = await run("copy");
+    let code = await run(plan?.forceEncode ? "encode" : "copy");
     if (code !== 0 && format.kind !== "image" && formatId !== "wav" && formatId !== "mp3") {
       // Stream copy was refused by the muxer: fall back to a full high-quality encode.
       lossless = false;
@@ -285,6 +315,9 @@ export async function convertFile(file, formatId, { options = {}, onProgress, on
       lossless,
     };
   } catch (error) {
+    if (overflow) {
+      throw new Error("The converted file would be larger than your browser can hold (about 1.75 GB). Try GIF, an audio format, or a shorter clip.");
+    }
     // A WebAssembly fault leaves the engine unusable; discard it so the next
     // conversion starts from a fresh instance (cached download, no refetch).
     if (error instanceof WebAssembly.RuntimeError || /RuntimeError|out of bounds|unreachable/i.test(String(error))) {
@@ -294,7 +327,7 @@ export async function convertFile(file, formatId, { options = {}, onProgress, on
     }
     throw error;
   } finally {
-    if (!crashed) {
+    if (!crashed && !overflow) {
       await ffmpeg.deleteFile(output).catch(() => {});
       await staged.cleanup();
     }

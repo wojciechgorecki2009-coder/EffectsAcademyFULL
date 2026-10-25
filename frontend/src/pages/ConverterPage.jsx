@@ -15,13 +15,16 @@ import {
   UploadCloud,
   X,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth";
 import { PageIntro } from "@/components/Library";
 import { EASE_OUT, Reveal, SPRING } from "@/lib/motion";
 import {
   ENGINE_SIZE_MB,
   FORMATS,
-  MAX_FILE_BYTES,
+  FREE_MAX_BYTES,
+  PREMIUM_MAX_BYTES,
   cancelEngine,
   convertFile,
   extOf,
@@ -95,6 +98,8 @@ function Segmented({ options, value, onChange, layoutId }) {
 
 export default function ConverterPage() {
   const reduce = useReducedMotion();
+  const { hasPremium } = useAuth();
+  const maxBytes = hasPremium ? PREMIUM_MAX_BYTES : FREE_MAX_BYTES;
   const inputRef = useRef(null);
   const [file, setFile] = useState(null);
   const [sourceUrl, setSourceUrl] = useState("");
@@ -115,7 +120,7 @@ export default function ConverterPage() {
 
   const selectedFormat = FORMATS.find((f) => f.id === format);
   const gifOptions = useMemo(() => ({ fps: gifFps, width: gifWidth }), [gifFps, gifWidth]);
-  const plan = useMemo(() => (info ? planConversion(info, format, gifOptions) : null), [info, format, gifOptions]);
+  const plan = useMemo(() => (info ? planConversion(info, format, gifOptions, file?.size || 0) : null), [info, format, gifOptions, file]);
 
   // Free object URLs when they are replaced or the page closes.
   useEffect(() => () => sourceUrl && URL.revokeObjectURL(sourceUrl), [sourceUrl]);
@@ -148,8 +153,12 @@ export default function ConverterPage() {
       toast.error("Choose a video file, like MP4, MOV, WebM, MKV or AVI.");
       return;
     }
-    if (next.size > MAX_FILE_BYTES) {
-      toast.error(`That file is ${formatBytes(next.size)}. The converter supports files up to 2 GB.`);
+    if (next.size > maxBytes) {
+      if (!hasPremium && next.size <= PREMIUM_MAX_BYTES) {
+        toast.error(`That file is ${formatBytes(next.size)}. Free accounts can convert up to 2 GB. Premium raises the limit to 10 GB.`);
+      } else {
+        toast.error(`That file is ${formatBytes(next.size)}. The converter supports files up to ${hasPremium ? "10" : "2"} GB.`);
+      }
       return;
     }
     setFile(next);
@@ -280,8 +289,17 @@ export default function ConverterPage() {
                   {dragging ? "Drop to load it" : "Drop a video here"}
                 </p>
                 <p className="mt-2 max-w-sm text-[14px] leading-relaxed text-ink-2">
-                  or <span className="text-tint group-hover:underline">choose a file</span>. MP4, MOV, WebM, MKV, AVI and more, up to 2 GB.
+                  or <span className="text-tint group-hover:underline">choose a file</span>. MP4, MOV, WebM, MKV, AVI and more, up to {hasPremium ? "10 GB" : "2 GB"}.
                 </p>
+                {!hasPremium && (
+                  <Link
+                    to="/premium"
+                    onClick={(e) => e.stopPropagation()}
+                    className="mt-3 inline-flex items-center gap-1 rounded-full bg-[rgb(255_179_64/0.14)] px-3 py-1 text-[12px] font-semibold text-[#c27a00] hover:underline dark:text-[#ffb340]"
+                  >
+                    Premium converts files up to 10 GB
+                  </Link>
+                )}
                 <input
                   ref={inputRef}
                   type="file"
