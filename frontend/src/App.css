@@ -1511,3 +1511,46 @@
     justify-content: center;
   }
 }
+
+/* ==========================================================================
+   Touch devices: see "Touch devices" in index.css
+   ========================================================================== */
+
+:root[data-lite] .asset-card,
+:root[data-lite] .asset-card:hover {
+  transform: none;
+  box-shadow: var(--shadow-card), inset 0 0 0 1px var(--line);
+  transition: transform 260ms var(--ease-out);
+}
+:root[data-lite] .asset-card:active { transform: scale(0.98); transition-duration: 120ms; }
+:root[data-lite] .asset-card.is-playing { box-shadow: var(--shadow-card-hover), inset 0 0 0 1.5px rgb(var(--tint) / 0.55); }
+:root[data-lite] .asset-card:hover .asset-card-image { transform: scale(1.001); }
+:root[data-lite] .asset-card-sheen { display: none; }
+/* No hover to discover playback, so the play bubble is always shown */
+:root[data-lite] .asset-card-play span,
+:root[data-lite] .asset-card:hover .asset-card-play span { opacity: 1; transform: scale(0.92); }
+
+:root[data-lite] .media-chip,
+:root[data-lite] .asset-card-play span,
+:root[data-lite] .asset-card-eq { background: rgb(18 18 20 / 0.66); }
+:root[data-lite] .asset-card-lock,
+:root[data-lite] .asset-card:hover .asset-card-lock { background: rgb(0 0 0 / 0.5); }
+:root[data-lite] .featured-extension-card::after { filter: none; }
+
+:root[data-lite] .setup-style-apple .setup-search,
+:root[data-lite] .setup-style-apple .setup-category-card,
+:root[data-lite] .setup-style-apple .setup-item-card,
+:root[data-lite] .setup-style-apple .setup-editor-card,
+:root[data-lite] .setup-style-apple .setup-empty { background: rgba(255, 255, 255, 0.86); }
+:root[data-lite] .setup-style-apple.setup-theme-dark .setup-search,
+:root[data-lite] .setup-style-apple.setup-theme-dark .setup-category-card,
+:root[data-lite] .setup-style-apple.setup-theme-dark .setup-item-card,
+:root[data-lite] .setup-style-apple.setup-theme-dark .setup-editor-card,
+:root[data-lite] .setup-style-apple.setup-theme-dark .setup-empty { background: rgba(30, 30, 34, 0.9); }
+
+@media (max-width: 639px) {
+  .asset-card { border-radius: 18px; }
+  .asset-card-media { margin: 5px 5px 0; border-radius: 13px; }
+  .asset-card-play span { width: 42px; height: 42px; }
+  .asset-card .media-chip { font-size: 10.5px; }
+}

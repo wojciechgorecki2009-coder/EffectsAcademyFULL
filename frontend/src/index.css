@@ -934,3 +934,70 @@ input[type="range"].audio-slider::-moz-range-thumb {
   }
   .aurora span { animation: none !important; }
 }
+
+/* ==========================================================================
+   Touch devices (phones and tablets)
+   <html data-lite> is set before first paint by public/index.html. Mobile
+   Safari and Chrome kill a tab that runs out of GPU memory, and blur is the
+   usual cause: every blurred or backdrop-blurred layer needs its own
+   offscreen textures. So on touch devices:
+     - blur() entrance animations become plain fades and rises,
+     - only the fixed nav and audio player keep live backdrop blur
+       (.lite-blur); other glass gets a near-opaque tint instead,
+     - the aurora keeps its colour without the giant blur and blend modes,
+     - hover-only effects and per-card GPU layers are dropped.
+   ========================================================================== */
+
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body { overflow-x: clip; }
+
+:root[data-lite] { -webkit-tap-highlight-color: transparent; }
+:root[data-lite] :is(a, button, [role="button"], summary, label) { touch-action: manipulation; }
+
+/* framer-motion writes blur() into inline styles; this beats them without touching the code */
+:root[data-lite] [style*="blur("]:not(.keep-filter) { filter: none !important; }
+
+:root[data-lite] *:not(.lite-blur) {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+:root[data-lite] :is(.lg, .glass):not(.lite-blur) {
+  background: color-mix(in srgb, rgb(var(--panel)) 90%, transparent);
+}
+:root[data-lite] .lite-blur { --glass-blur: 16px; }
+
+:root[data-lite] .dialog-overlay { background: rgb(0 0 0 / 0.62); }
+:root[data-lite][data-scheme="light"] .dialog-overlay { background: rgb(0 0 0 / 0.32); }
+:root[data-lite] .dialog-content[data-state="open"] { animation-name: dialog-in-lite; }
+:root[data-lite] .dialog-content[data-state="closed"] { animation-name: dialog-out-lite; }
+:root[data-lite] .menu-content[data-state="open"] { animation-name: menu-in-lite; }
+:root[data-lite] .extension-launch-modal { animation-name: fade-rise-lite; }
+@keyframes dialog-in-lite {
+  from { opacity: 0; transform: translate(-50%, -46%) scale(0.94); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes dialog-out-lite { to { opacity: 0; transform: translate(-50%, -49%) scale(0.97); } }
+@keyframes menu-in-lite {
+  from { opacity: 0; transform: scale(0.9) translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes fade-rise-lite {
+  from { opacity: 0; transform: translateY(32px) scale(0.955); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Dialogs never run past the visible screen (dvh tracks the mobile toolbars) */
+.dialog-content { max-height: calc(100dvh - 1.5rem); overflow-y: auto; overscroll-behavior: contain; }
+
+:root[data-lite] .aurora { filter: none; opacity: calc(var(--aurora-opacity, 0.55) * 0.75); }
+:root[data-lite] .aurora span { mix-blend-mode: normal; animation: none; will-change: auto; }
+:root[data-lite] .blur-3xl {
+  filter: none !important;
+  -webkit-mask-image: radial-gradient(closest-side, #000 15%, transparent);
+  mask-image: radial-gradient(closest-side, #000 15%, transparent);
+}
+
+/* No 16px minimum means iOS zooms the whole page when a field is focused */
+:root[data-lite] :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea) {
+  font-size: max(16px, 1em);
+}

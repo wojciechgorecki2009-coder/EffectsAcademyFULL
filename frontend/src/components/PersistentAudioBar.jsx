@@ -3,6 +3,7 @@ import { AnimatePresence, motion, useAnimate, useReducedMotion } from "framer-mo
 import { Download, Loader2, Music2, Pause, Play, Volume2, VolumeX, Repeat } from "lucide-react";
 import LiquidGlass from "@/components/LiquidGlass";
 import { EASE_OUT, SPRING } from "@/lib/motion";
+import { LITE } from "@/lib/device";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import {
@@ -215,7 +216,8 @@ export default function PersistentAudioBar() {
       >
         {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
       </button>
-      <input
+      {/* Phones control volume with their hardware buttons (iOS ignores page volume), so only mute is shown there. */}
+      {!LITE && <input
         type="range"
         min={0}
         max={1}
@@ -225,7 +227,7 @@ export default function PersistentAudioBar() {
         className="audio-slider audio-slider-volume bare w-20"
         style={{ "--pct": `${(audio.muted ? 0 : audio.volume) * 100}%` }}
         aria-label="Audio volume"
-      />
+      />}
     </div>
   );
 
@@ -243,7 +245,7 @@ export default function PersistentAudioBar() {
           <div ref={pulseScope} className="mx-auto max-w-[920px]">
           <LiquidGlass
             as={motion.div}
-            className="pointer-events-auto rounded-[30px] lg-strong"
+            className="lite-blur pointer-events-auto rounded-[30px] lg-strong"
             edge={26}
             strength={44}
             variants={ISLAND_VARIANTS}

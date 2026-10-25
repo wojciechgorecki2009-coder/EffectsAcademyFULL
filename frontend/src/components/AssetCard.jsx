@@ -60,19 +60,58 @@ const isTypingTarget = (target) => {
   return Boolean(target.closest("input, textarea, select, [contenteditable='true'], [role='textbox']"));
 };
 
+/*
+ * Motion previews only load and play while they are on screen. Dozens of
+ * looping videos decoding at once is what runs phones out of memory.
+ */
+function InViewVideo({ src, className }) {
+  const ref = useRef(null);
+  const [near, setNear] = useState(false);
+
+  useEffect(() => {
+    const node = ref.current;
+    if (!node || typeof IntersectionObserver === "undefined") {
+      setNear(true);
+      return undefined;
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setNear(entry.isIntersecting);
+        if (entry.isIntersecting) node.play?.().catch(() => {});
+        else node.pause?.();
+      },
+      { rootMargin: "200px 0px" }
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <video
+      ref={ref}
+      src={near ? src : undefined}
+      className={className}
+      muted
+      loop
+      playsInline
+      autoPlay={near}
+      preload={near ? "metadata" : "none"}
+    />
+  );
+}
+
 function PreviewMedia({ src, title, className = "", videoClassName = "", imageClassName = "" }) {
+  const [broken, setBroken] = useState(false);
+  useEffect(() => setBroken(false), [src]);
   if (!src) return null;
   if (isVideoPreview(src)) {
+    return <InViewVideo src={src} className={`${className} ${videoClassName}`} />;
+  }
+  if (broken) {
     return (
-      <video
-        src={src}
-        className={`${className} ${videoClassName}`}
-        muted
-        loop
-        playsInline
-        autoPlay
-        preload="metadata"
-      />
+      <span className={`${className} flex items-center justify-center text-ink-3`} role="img" aria-label={title || "Asset preview"}>
+        <ImageIcon className="h-7 w-7" />
+      </span>
     );
   }
 
@@ -80,6 +119,9 @@ function PreviewMedia({ src, title, className = "", videoClassName = "", imageCl
     <img
       src={src}
       alt={title || "Asset preview"}
+      loading="lazy"
+      decoding="async"
+      onError={() => setBroken(true)}
       className={`${className} ${imageClassName}`}
     />
   );
@@ -415,7 +457,7 @@ export default function AssetCard({ asset, featured = false, onChanged, allAsset
             </span>
           )}
           {thumbnailIsVideo && (
-            <span className="media-chip chip pointer-events-none absolute bottom-2.5 left-2.5 z-[2]">
+            <span className="media-chip chip pointer-events-none absolute bottom-2.5 left-2.5 z-[2] max-sm:hidden">
               <Film /> Motion preview
             </span>
           )}
@@ -448,10 +490,10 @@ export default function AssetCard({ asset, featured = false, onChanged, allAsset
           )}
         </div>
 
-        <div className="flex flex-1 flex-col px-4 pb-4 pt-3">
-          <div className="flex items-center justify-between gap-3 text-[12px] font-medium">
-            <span className="inline-flex items-center gap-1.5 text-ink-2">
-              <span className="dot" style={{ color: color.text }} />
+        <div className="flex min-w-0 flex-1 flex-col px-3 pb-3 pt-2.5 sm:px-4 sm:pb-4 sm:pt-3">
+          <div className="flex items-center justify-between gap-2 text-[11px] font-medium sm:gap-3 sm:text-[12px]">
+            <span className="inline-flex min-w-0 items-center gap-1.5 truncate text-ink-2">
+              <span className="dot shrink-0" style={{ color: color.text }} />
               {asset.category}
             </span>
             {!isVideo ? (
@@ -467,34 +509,34 @@ export default function AssetCard({ asset, featured = false, onChanged, allAsset
             )}
           </div>
 
-          <h3 className="mt-1.5 line-clamp-1 font-display text-[17px] font-semibold leading-snug tracking-[-0.02em] text-ink">
+          <h3 className="mt-1 line-clamp-2 break-words font-display text-[14.5px] font-semibold leading-snug tracking-[-0.02em] text-ink sm:mt-1.5 sm:line-clamp-1 sm:text-[17px]">
             {asset.title}
           </h3>
 
           {isPremium && (
-            <p className="mt-0.5 flex items-center gap-1.5 text-[12.5px] text-ink-2">
+            <p className="mt-0.5 flex items-center gap-1.5 text-[11.5px] text-ink-2 sm:text-[12.5px]">
               <Crown className="h-3.5 w-3.5 text-[#ffb340]" /> Included with membership
             </p>
           )}
 
           {metaParts.length > 0 && (
-            <p className="mt-0.5 line-clamp-1 text-[12.5px] text-ink-3">{metaParts.join(" · ")}</p>
+            <p className="mt-0.5 line-clamp-1 text-[11.5px] text-ink-3 sm:text-[12.5px]">{metaParts.join(" · ")}</p>
           )}
 
           {asset.description && (
-            <p className="mt-2 line-clamp-2 text-[13.5px] leading-relaxed text-ink-2">{asset.description}</p>
+            <p className="mt-2 line-clamp-2 text-[13.5px] leading-relaxed text-ink-2 max-sm:hidden">{asset.description}</p>
           )}
 
-          <div className="mt-auto flex gap-2 pt-4">
+          <div className="mt-auto flex flex-wrap gap-2 pt-3 sm:pt-4">
             <button
               type="button"
               onClick={isLockedPremium ? openPremium : download}
               disabled={downloading}
-              className={`btn btn-sm flex-1 ${isLockedPremium ? "btn-secondary" : isActiveAudio ? "btn-primary" : "btn-tinted"}`}
+              className={`btn btn-sm min-w-0 flex-1 ${isLockedPremium ? "btn-secondary" : isActiveAudio ? "btn-primary" : "btn-tinted"}`}
               data-testid={`download-btn-${asset.id}`}
             >
               <ActionIcon />
-              {actionLabel}
+              <span className="truncate">{actionLabel}</span>
             </button>
             {isUploader && !isLockedPremium && (
               <>

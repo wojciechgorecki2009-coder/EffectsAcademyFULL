@@ -1,4 +1,5 @@
 import { forwardRef, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { LITE } from "@/lib/device";
 
 /*
  * Liquid Glass
@@ -6,11 +7,12 @@ import { forwardRef, useEffect, useId, useLayoutEffect, useRef, useState } from 
  * The CSS material (.lg in index.css) provides tint, blur, a specular rim and
  * a pointer-following sheen. On Chromium we go further: an SVG displacement
  * map, generated for the element's exact size, bends the backdrop near the
- * edges the way a thick glass lens does. Other engines keep the CSS material.
+ * edges the way a thick glass lens does. Other engines, and touch devices
+ * (where the filter costs too much GPU memory), keep the CSS material.
  */
 
 const supportsRefraction = (() => {
-  if (typeof window === "undefined" || typeof navigator === "undefined") return false;
+  if (typeof window === "undefined" || typeof navigator === "undefined" || LITE) return false;
   const brands = navigator.userAgentData?.brands || [];
   const isChromium = brands.some((b) => /Chromium|Google Chrome|Microsoft Edge/i.test(b.brand));
   if (!isChromium) return false;

@@ -1,5 +1,6 @@
 import { FFmpeg, FFFSType } from "@ffmpeg/ffmpeg";
 import { fetchFile } from "@ffmpeg/util";
+import { LITE } from "@/lib/device";
 
 /*
  * Browser-side video conversion with ffmpeg.wasm.
@@ -21,8 +22,11 @@ export const FREE_MAX_BYTES = 2 * GB;
 export const PREMIUM_MAX_BYTES = 10 * GB;
 // Inputs are read straight from disk (WORKERFS), so they can be huge. The
 // result, however, is built inside the engine's 2 GiB WebAssembly memory, so
-// outputs must stay comfortably below that.
-export const OUTPUT_LIMIT_BYTES = Math.floor(1.75 * GB);
+// outputs must stay comfortably below that. Phones get a much lower ceiling:
+// the result briefly exists three times over (engine memory, the copy read
+// out of it, the download blob) and mobile browsers kill tabs far sooner.
+export const OUTPUT_LIMIT_BYTES = LITE ? 400 * 1024 * 1024 : Math.floor(1.75 * GB);
+const OUTPUT_LIMIT_LABEL = LITE ? "400 MB" : "1.75 GB";
 const LARGE_ENCODE_BYTES = 1 * GB;
 
 export const FORMATS = [
@@ -211,7 +215,7 @@ export function planConversion(info, formatId, options = {}, fileSize = 0) {
     return {
       lossless: false,
       forceEncode: true,
-      note: "Too large to copy as-is inside the browser (results must stay under 1.75 GB), so it will be re-encoded at visually lossless quality. Expect this to take a long time.",
+      note: `Too large to copy as-is inside the browser (results must stay under ${OUTPUT_LIMIT_LABEL}), so it will be re-encoded at visually lossless quality. Expect this to take a long time.`,
     };
   }
   if (videoCopy && audioCopy) return { lossless: true, note: "Streams copied as-is. No re-encode, no quality loss, done in seconds." };
@@ -316,7 +320,7 @@ export async function convertFile(file, formatId, { options = {}, onProgress, on
     };
   } catch (error) {
     if (overflow) {
-      throw new Error("The converted file would be larger than your browser can hold (about 1.75 GB). Try GIF, an audio format, or a shorter clip.");
+      throw new Error(`The converted file would be larger than your browser can hold (about ${OUTPUT_LIMIT_LABEL}${LITE ? " on phones and tablets" : ""}). Try GIF, an audio format, or a shorter clip.`);
     }
     // A WebAssembly fault leaves the engine unusable; discard it so the next
     // conversion starts from a fresh instance (cached download, no refetch).

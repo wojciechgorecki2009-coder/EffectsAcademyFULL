@@ -27,6 +27,9 @@ export function ThemeProvider({ children }) {
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
     localStorage.setItem("ea_theme", theme);
+    // Mobile browsers tint their toolbars with this; keep it matching the page.
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.content = theme === "blue" ? "#f5f5f7" : theme === "gray" ? "#1c1c1e" : "#000000";
   }, [theme]);
 
   // "blue" is the light appearance; dark and gray are dark appearances.

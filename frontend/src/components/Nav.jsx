@@ -1,5 +1,5 @@
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Lock, Upload, LogOut, UserCircle, Crown, Settings2, Check, BarChart3, BadgePercent, ChevronRight } from "lucide-react";
 import DiscordIcon from "@/components/DiscordIcon";
@@ -215,6 +215,17 @@ export default function Nav() {
 
   useEffect(() => setMobileOpen(false), [pathname]);
 
+  // The mobile menu closes when you tap anywhere outside the nav.
+  const headerRef = useRef(null);
+  useEffect(() => {
+    if (!mobileOpen) return undefined;
+    const onPointerDown = (event) => {
+      if (!headerRef.current?.contains(event.target)) setMobileOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [mobileOpen]);
+
   // Sticky page toolbars sit just under the floating nav (and the promo strip when shown).
   useEffect(() => {
     document.documentElement.style.setProperty("--sticky-top", showPromotionBanner ? "6.75rem" : "5.25rem");
@@ -251,6 +262,7 @@ export default function Nav() {
       )}
 
       <header
+        ref={headerRef}
         className={`pointer-events-none fixed inset-x-0 z-50 px-3 transition-[top] duration-500 ease-out-expo sm:px-5 ${
           showPromotionBanner ? "promo-nav-offset top-[2.9rem]" : "top-3"
         }`}
@@ -269,7 +281,7 @@ export default function Nav() {
           transition={{ ...SPRING, opacity: { duration: 0.6, ease: EASE_OUT }, filter: { duration: 0.6, ease: EASE_OUT } }}
         >
           <LiquidGlass
-            className={`rounded-full transition-[height,box-shadow] duration-500 ease-out-expo ${scrolled ? "h-[3.25rem]" : "h-14"}`}
+            className={`lite-blur rounded-full transition-[height,box-shadow] duration-500 ease-out-expo ${scrolled ? "h-[3.25rem]" : "h-14"}`}
             edge={20}
             strength={42}
           >
@@ -422,7 +434,7 @@ export default function Nav() {
             {mobileOpen && (
               <motion.div
                 key="mobile-menu"
-                className="glass mt-2 overflow-hidden rounded-[28px] lg:hidden"
+                className="glass lite-blur mt-2 max-h-[calc(100dvh-6.5rem)] overflow-y-auto overscroll-contain rounded-[28px] lg:hidden"
                 initial={{ opacity: 0, y: -12, scale: 0.97, filter: "blur(8px)" }}
                 animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
                 exit={{ opacity: 0, y: -8, scale: 0.98, filter: "blur(6px)", transition: { duration: 0.22 } }}

@@ -1,5 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  // hover: styles only apply on devices that can hover, so taps on phones don't leave them stuck on.
+  future: { hoverOnlyWhenSupported: true },
   darkMode: ["variant", "&:is(:root[data-scheme=\"dark\"] *)"],
   content: ["./src/**/*.{js,jsx,ts,tsx}", "./public/index.html"],
   theme: {

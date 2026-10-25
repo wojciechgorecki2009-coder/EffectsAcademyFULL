@@ -49,10 +49,13 @@ async function load(spec) {
   active = spec;
 }
 
+// Phones and tablets ask for the CPU model up front (see lib/backgroundRemoval.js).
+let preferCpu = false;
+
 function ensureLoaded() {
   if (!loading) {
     loading = (async () => {
-      if (await hasWebGPU()) {
+      if (!preferCpu && await hasWebGPU()) {
         try {
           await load(GPU_MODEL);
           return;
@@ -92,6 +95,7 @@ function looksBroken(mask) {
 self.onmessage = async ({ data }) => {
   try {
     if (data.type === "load") {
+      preferCpu = Boolean(data.preferCpu);
       await ensureLoaded();
       self.postMessage({ type: "ready", device: active.device });
       return;

@@ -3,13 +3,16 @@ import { motion, useReducedMotion, useScroll, useSpring, useTransform } from "fr
 import { Search, Sparkles, X } from "lucide-react";
 import LiquidGlass from "@/components/LiquidGlass";
 import { CountUp, EASE_OUT, KineticText } from "@/lib/motion";
+import { LITE } from "@/lib/device";
 
 const HERO_BACKGROUND = "/media/hero-background-poster.jpg";
 
 export default function Hero({ query, setQuery, totalAssets }) {
   const sectionRef = useRef(null);
   const inputRef = useRef(null);
-  const reduce = useReducedMotion();
+  const reduceMotion = useReducedMotion();
+  // Touch devices skip the parallax (it re-composites a blurred full-screen layer every scroll frame).
+  const staticHero = reduceMotion || LITE;
 
   // Scroll-linked exit: the hero recedes like a layer being pushed back in comp space.
   const { scrollYProgress } = useScroll({ target: sectionRef, offset: ["start start", "end start"] });
@@ -34,7 +37,7 @@ export default function Hero({ query, setQuery, totalAssets }) {
   }, []);
 
   const fade = (delay) => ({
-    initial: reduce ? false : { opacity: 0, y: 18, filter: "blur(10px)" },
+    initial: reduceMotion ? false : { opacity: 0, y: 18, filter: "blur(10px)" },
     // Clearing filter afterwards matters: a filtered ancestor would cut glass off from the backdrop.
     animate: { opacity: 1, y: 0, filter: "blur(0px)", transitionEnd: { filter: "none" } },
     transition: { duration: 1.1, ease: EASE_OUT, delay },
@@ -47,7 +50,7 @@ export default function Hero({ query, setQuery, totalAssets }) {
       data-testid="hero-section"
     >
       {/* Background composition */}
-      <motion.div className="absolute inset-0 -z-10" style={reduce ? undefined : { y: bgY, scale: bgScale }} aria-hidden="true">
+      <motion.div className="absolute inset-0 -z-10" style={staticHero ? undefined : { y: bgY, scale: bgScale }} aria-hidden="true">
         <img
           src={HERO_BACKGROUND}
           alt=""
@@ -73,7 +76,7 @@ export default function Hero({ query, setQuery, totalAssets }) {
 
       <motion.div
         className="flex w-full flex-col items-center"
-        style={reduce ? undefined : { y: contentY, scale: contentScale, opacity: contentOpacity }}
+        style={staticHero ? undefined : { y: contentY, scale: contentScale, opacity: contentOpacity }}
       >
         <motion.div {...fade(0.05)}>
           <LiquidGlass

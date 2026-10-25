@@ -1,10 +1,14 @@
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import { ChevronLeft, ChevronRight, SearchX } from "lucide-react";
 import AssetCard from "@/components/AssetCard";
 import { EASE_OUT, KineticText, Reveal } from "@/lib/motion";
 
-export const GRID_CLASS = "grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
+// Two compact columns on phones, growing to four on wide screens.
+export const GRID_CLASS = "asset-grid grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4";
+
+const GRID_BATCH = 24;
 
 /** Apple-style section heading: small colored eyebrow, big headline, optional "View all ›". */
 export function SectionHeader({ eyebrow, eyebrowColor, title, action, className = "" }) {
@@ -58,12 +62,31 @@ export function BackButton({ onClick, to, children, testId }) {
 /**
  * Cards reveal row by row as they scroll into view. Delay is based on column
  * position so each row cascades left to right, like staggered layers.
+ * Long lists render in batches as you approach the end, so a category with
+ * hundreds of assets doesn't build every card (and thumbnail) up front.
  */
 export function AssetGrid({ assets, featuredAssetId = "", onChanged, allAssets }) {
   const reduce = useReducedMotion();
+  const [limit, setLimit] = useState(GRID_BATCH);
+  const sentinelRef = useRef(null);
+  const hasMore = assets.length > limit;
+
+  useEffect(() => {
+    if (!hasMore || !sentinelRef.current || typeof IntersectionObserver === "undefined") return undefined;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) setLimit((value) => value + GRID_BATCH);
+      },
+      { rootMargin: "1200px 0px" }
+    );
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [hasMore, limit]);
+
   return (
+    <>
     <div className={GRID_CLASS}>
-      {assets.map((a, idx) => (
+      {assets.slice(0, limit).map((a, idx) => (
         <motion.div
           key={a.id}
           className={a.id === featuredAssetId ? "featured-extension-slot" : ""}
@@ -76,6 +99,8 @@ export function AssetGrid({ assets, featuredAssetId = "", onChanged, allAssets }
         </motion.div>
       ))}
     </div>
+    {hasMore && <div ref={sentinelRef} className="h-px" aria-hidden="true" />}
+    </>
   );
 }
 

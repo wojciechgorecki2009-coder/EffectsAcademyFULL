@@ -4,9 +4,11 @@ import { Check, Cpu, Download, ImagePlus, Layers, Loader2, Maximize2, RefreshCcw
 import { toast } from "sonner";
 import { PageIntro } from "@/components/Library";
 import { EASE_OUT, Reveal, SPRING } from "@/lib/motion";
+import { LITE } from "@/lib/device";
 import {
   ACCEPTED_TYPES,
   MAX_FILE_BYTES,
+  MAX_MEGAPIXELS,
   MAX_PIXELS,
   MODEL_DOWNLOAD_MB,
   formatBytes,
@@ -152,7 +154,7 @@ export default function RemoveBackgroundPage() {
       return;
     }
     if (dims.width * dims.height > MAX_PIXELS) {
-      toast.error(`That image is ${Math.round((dims.width * dims.height) / 1e6)} megapixels. The limit is 100 megapixels.`);
+      toast.error(`That image is ${Math.round((dims.width * dims.height) / 1e6)} megapixels. The limit is ${MAX_MEGAPIXELS} megapixels.`);
       return;
     }
     setFile(next);
@@ -249,10 +251,10 @@ export default function RemoveBackgroundPage() {
                 <ImagePlus className="h-9 w-9" />
               </motion.span>
               <p className="font-display text-[1.6rem] font-semibold tracking-[-0.025em] text-ink">
-                {dragging ? "Drop to load it" : "Drop an image here"}
+                {dragging ? "Drop to load it" : LITE ? "Choose an image" : "Drop an image here"}
               </p>
               <p className="mt-2 max-w-sm text-[14px] leading-relaxed text-ink-2">
-                or <span className="text-tint group-hover:underline">choose a file</span>. PNG, JPG, WebP or AVIF, up to 100 megapixels.
+                {LITE ? "Tap to pick one from your photos or files" : <>or <span className="text-tint group-hover:underline">choose a file</span></>}. PNG, JPG, WebP or AVIF, up to {MAX_MEGAPIXELS} megapixels.
               </p>
               <input
                 type="file"
@@ -379,7 +381,9 @@ export default function RemoveBackgroundPage() {
               ? `Preparing the AI: one-time download (${Math.round(modelProgress * 100)}%), then it's cached.`
               : modelState === "error"
                 ? "The AI model couldn't load. Check your connection and try again."
-                : `First use downloads the AI model once (about ${Math.min(MODEL_DOWNLOAD_MB.webgpu, MODEL_DOWNLOAD_MB.wasm)}–${Math.max(MODEL_DOWNLOAD_MB.webgpu, MODEL_DOWNLOAD_MB.wasm)} MB). Most accurate on devices with a modern GPU.`}
+                : MODEL_DOWNLOAD_MB.webgpu === MODEL_DOWNLOAD_MB.wasm
+                  ? `First use downloads the AI model once (about ${MODEL_DOWNLOAD_MB.wasm} MB), best over Wi-Fi.`
+                  : `First use downloads the AI model once (about ${Math.min(MODEL_DOWNLOAD_MB.webgpu, MODEL_DOWNLOAD_MB.wasm)}–${Math.max(MODEL_DOWNLOAD_MB.webgpu, MODEL_DOWNLOAD_MB.wasm)} MB). Most accurate on devices with a modern GPU.`}
           </p>
           {error && <p className="mt-2 text-center text-[13px] text-[#ff453a]" data-testid="remove-bg-error">{error}</p>}
         </Reveal>

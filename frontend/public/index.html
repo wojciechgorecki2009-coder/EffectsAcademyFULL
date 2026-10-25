@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#5257ff" />
+    <meta name="theme-color" content="#000000" />
     <meta
       name="description"
       content="Effects Academy is a curated vault of editing assets for video editors, including project files, overlays, presets, audios, sound effects, torrents, videos, and premium drops."
@@ -45,6 +45,12 @@
           root.dataset.theme = theme;
           root.dataset.font = font;
           root.dataset.scheme = theme === "blue" ? "light" : "dark";
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.content = theme === "blue" ? "#f5f5f7" : theme === "gray" ? "#1c1c1e" : "#000000";
+        } catch (e) {}
+        // Phones and tablets get a lighter rendering path (see "Touch devices" in index.css).
+        try {
+          if (window.matchMedia("(hover: none) and (pointer: coarse)").matches) document.documentElement.dataset.lite = "";
         } catch (e) {}
       })();
     </script>

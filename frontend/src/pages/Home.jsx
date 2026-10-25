@@ -332,7 +332,7 @@ function FilterTabs({ orientation, filter, setFilter, countLabel }) {
       layout
       transition={RAIL_SPRING}
       style={{ borderRadius: 26 }}
-      className={`pointer-events-auto p-1 ${vertical ? "w-[11.5rem]" : "max-w-full"}`}
+      className={`lite-blur pointer-events-auto p-1 ${vertical ? "w-[11.5rem]" : "max-w-full"}`}
       edge={18}
       strength={34}
     >

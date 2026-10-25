@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { PageIntro } from "@/components/Library";
 import { EASE_OUT, Reveal, SPRING } from "@/lib/motion";
+import { LITE } from "@/lib/device";
 import {
   ENGINE_SIZE_MB,
   FORMATS,
@@ -286,10 +287,10 @@ export default function ConverterPage() {
                   <UploadCloud className="h-9 w-9" />
                 </motion.span>
                 <p className="font-display text-[1.6rem] font-semibold tracking-[-0.025em] text-ink">
-                  {dragging ? "Drop to load it" : "Drop a video here"}
+                  {dragging ? "Drop to load it" : LITE ? "Choose a video" : "Drop a video here"}
                 </p>
                 <p className="mt-2 max-w-sm text-[14px] leading-relaxed text-ink-2">
-                  or <span className="text-tint group-hover:underline">choose a file</span>. MP4, MOV, WebM, MKV, AVI and more, up to {hasPremium ? "10 GB" : "2 GB"}.
+                  {LITE ? "Tap to pick one from your files or library" : <>or <span className="text-tint group-hover:underline">choose a file</span></>}. MP4, MOV, WebM, MKV, AVI and more, up to {hasPremium ? "10 GB" : "2 GB"}.
                 </p>
                 {!hasPremium && (
                   <Link

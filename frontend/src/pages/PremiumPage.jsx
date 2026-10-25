@@ -59,7 +59,7 @@ function ComparisonValue({ value, premium = false }) {
         <span className={`flex h-5 w-5 items-center justify-center rounded-full ${premium ? "bg-tint text-tint-ink" : "bg-[var(--fill-2)] text-ink"}`}>
           <Check className="h-3 w-3" strokeWidth={3} />
         </span>
-        Included
+        <span className="max-sm:sr-only">Included</span>
       </span>
     );
   }
@@ -67,7 +67,7 @@ function ComparisonValue({ value, premium = false }) {
     return (
       <span className="inline-flex items-center gap-2 text-ink-3">
         <Minus className="h-4 w-4" />
-        Not included
+        <span className="max-sm:sr-only">Not included</span>
       </span>
     );
   }
@@ -559,26 +559,26 @@ export default function PremiumPage() {
           </Reveal>
 
           <Reveal className="mt-8 overflow-x-auto rounded-[28px] bg-panel shadow-[var(--shadow-card),inset_0_0_0_1px_var(--line)]">
-            <table className="w-full min-w-[640px] text-[14px]">
+            <table className="w-full text-[13.5px] sm:min-w-[640px] sm:text-[14px]">
               <thead>
                 <tr className="text-left">
-                  <th className="px-6 pb-5 pt-7 align-bottom text-[12px] font-semibold uppercase tracking-[0.08em] text-ink-3 md:px-8">Feature</th>
-                  <th className="px-6 pb-5 pt-7 align-bottom md:px-8">
+                  <th className="px-4 pb-5 pt-7 align-bottom text-[12px] font-semibold uppercase tracking-[0.08em] text-ink-3 sm:px-6 md:px-8">Feature</th>
+                  <th className="px-3 pb-5 pt-7 align-bottom sm:px-6 md:px-8">
                     <div className="text-[13px] font-medium text-ink-3">Free</div>
                     <div className="mt-1 font-display text-[1.375rem] font-semibold tracking-[-0.02em] text-ink">$0</div>
                   </th>
-                  <th className="bg-[rgb(var(--tint)/0.05)] px-6 pb-5 pt-7 align-bottom md:px-8">
+                  <th className="bg-[rgb(var(--tint)/0.05)] px-3 pb-5 pt-7 align-bottom sm:px-6 md:px-8">
                     <div className="inline-flex items-center gap-1.5 text-[13px] font-medium text-tint">
                       <Crown className="h-3.5 w-3.5" /> Premium
                     </div>
                     <div className="mt-1 font-display text-[1.375rem] font-semibold tracking-[-0.02em] text-ink">
                       {bestDiscountPercent > 0 ? (
                         <span className="inline-flex items-baseline gap-2">
-                          <span>{priceLabel} / month</span>
+                          <span>{priceLabel}<span className="text-ink-3 max-sm:text-[13px] max-sm:font-medium"> / month</span></span>
                           <span className="text-sm font-normal text-ink-3 line-through">${PREMIUM_PRICE.toFixed(2)}</span>
                         </span>
                       ) : (
-                        "$9.99 / month"
+                        <>$9.99<span className="text-ink-3 max-sm:text-[13px] max-sm:font-medium"> / month</span></>
                       )}
                     </div>
                   </th>
@@ -587,11 +587,11 @@ export default function PremiumPage() {
               <tbody>
                 {COMPARISON_ROWS.map((row) => (
                   <tr key={row.feature} className="border-t border-[var(--line)] transition-colors duration-200 hover:bg-[var(--fill)]">
-                    <td className="px-6 py-4 font-medium text-ink md:px-8">{row.feature}</td>
-                    <td className="px-6 py-4 md:px-8">
+                    <td className="px-4 py-4 font-medium text-ink sm:px-6 md:px-8">{row.feature}</td>
+                    <td className="px-3 py-4 sm:px-6 md:px-8">
                       <ComparisonValue value={row.free} />
                     </td>
-                    <td className="bg-[rgb(var(--tint)/0.05)] px-6 py-4 md:px-8">
+                    <td className="bg-[rgb(var(--tint)/0.05)] px-3 py-4 sm:px-6 md:px-8">
                       <ComparisonValue value={row.premium} premium />
                     </td>
                   </tr>

@@ -7,11 +7,16 @@
  * then encode a lossless PNG. Nothing is uploaded; nothing is resampled or
  * recompressed except the transparency itself.
  */
+import { LITE } from "@/lib/device";
 
 // One-time model downloads: BEN2 on WebGPU, ormbg on the CPU fallback.
-export const MODEL_DOWNLOAD_MB = { webgpu: 219, wasm: 176 };
-// Browsers refuse canvases much beyond this (Chrome ~268 MP, Safari far less).
-export const MAX_PIXELS = 100_000_000;
+// Phones and tablets always use ormbg: BEN2's GPU working set is enough to get
+// a mobile browser tab killed.
+export const MODEL_DOWNLOAD_MB = LITE ? { webgpu: 176, wasm: 176 } : { webgpu: 219, wasm: 176 };
+// Browsers refuse canvases much beyond this (Chrome ~268 MP, Safari far less);
+// phones also run out of memory well before that.
+export const MAX_MEGAPIXELS = LITE ? 40 : 100;
+export const MAX_PIXELS = MAX_MEGAPIXELS * 1_000_000;
 export const MAX_FILE_BYTES = 200 * 1024 * 1024;
 export const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/webp", "image/avif", "image/bmp", "image/gif"];
 
@@ -66,7 +71,7 @@ export function loadRemover(onProgress) {
   if (!readyPromise) {
     readyPromise = new Promise((resolve, reject) => {
       pending.set("load", { resolve, reject });
-      getWorker().postMessage({ type: "load" });
+      getWorker().postMessage({ type: "load", preferCpu: LITE });
     }).catch((error) => {
       readyPromise = null;
       throw error;
@@ -98,7 +103,7 @@ function createCanvas(width, height) {
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
-  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  const ctx = canvas.getContext("2d");
   if (!ctx || canvas.width !== width || canvas.height !== height) {
     throw new Error("This image is too large for your browser to process.");
   }
@@ -117,7 +122,7 @@ export async function removeBackground(file, { onStage, onProgress } = {}) {
   const { width, height } = bitmap;
   if (width * height > MAX_PIXELS) {
     bitmap.close();
-    throw new Error(`This image is ${Math.round((width * height) / 1e6)} megapixels. The limit is 100 megapixels.`);
+    throw new Error(`This image is ${Math.round((width * height) / 1e6)} megapixels. The limit is ${MAX_MEGAPIXELS} megapixels.`);
   }
 
   onStage?.("segment");
@@ -132,32 +137,24 @@ export async function removeBackground(file, { onStage, onProgress } = {}) {
   onStage?.("compose");
   const { mask, width: maskWidth, height: maskHeight } = result;
 
-  // Matte → canvas, then scale to the exact original size with smooth filtering.
+  // Matte → a small canvas whose alpha channel is the mask.
   const small = createCanvas(maskWidth, maskHeight);
   const matte = small.ctx.createImageData(maskWidth, maskHeight);
-  for (let i = 0, j = 0; i < mask.length; i += 1, j += 4) {
-    matte.data[j] = mask[i];
-    matte.data[j + 3] = 255;
-  }
+  for (let i = 0, j = 3; i < mask.length; i += 1, j += 4) matte.data[j] = mask[i];
   small.ctx.putImageData(matte, 0, 0);
 
-  const scaled = createCanvas(width, height);
-  scaled.ctx.imageSmoothingEnabled = true;
-  scaled.ctx.imageSmoothingQuality = "high";
-  scaled.ctx.drawImage(small.canvas, 0, 0, width, height);
-  const alpha = scaled.ctx.getImageData(0, 0, width, height).data;
-  scaled.canvas.width = 0;
-
-  // Original pixels, untouched except for the alpha channel.
+  // Original pixels, untouched except for the alpha channel: "destination-in"
+  // multiplies their alpha by the matte, scaled to the exact original size with
+  // smooth filtering. Doing it on one canvas keeps peak memory to a single
+  // full-size buffer, which matters on phones.
   const full = createCanvas(width, height);
   full.ctx.drawImage(bitmap, 0, 0);
   bitmap.close();
-  const image = full.ctx.getImageData(0, 0, width, height, { colorSpace: "srgb" });
-  const px = image.data;
-  for (let i = 3; i < px.length; i += 4) {
-    px[i] = (px[i] * alpha[i - 3] + 127) / 255;
-  }
-  full.ctx.putImageData(image, 0, 0);
+  full.ctx.globalCompositeOperation = "destination-in";
+  full.ctx.imageSmoothingEnabled = true;
+  full.ctx.imageSmoothingQuality = "high";
+  full.ctx.drawImage(small.canvas, 0, 0, width, height);
+  small.canvas.width = 0;
 
   onStage?.("encode");
   const blob = await new Promise((resolve, reject) =>

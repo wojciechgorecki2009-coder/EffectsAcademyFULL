@@ -6,6 +6,7 @@ import { AuthProvider } from "@/lib/auth";
 import { motion, useReducedMotion } from "framer-motion";
 import { ThemeProvider, useTheme } from "@/lib/theme";
 import { EASE_OUT } from "@/lib/motion";
+import { LITE } from "@/lib/device";
 import { useGlassSheen } from "@/components/LiquidGlass";
 import { API } from "@/lib/api";
 import Nav from "@/components/Nav";
@@ -38,9 +39,13 @@ function GlassSheenRoot({ children }) {
 }
 
 // Each route enters like a new shot: a short rise with a de-blur.
+// Touch devices skip it: fading the whole page means compositing the entire
+// page as one offscreen layer, which is a lot of memory on a phone. The
+// sections inside each page still animate in on their own.
 function RouteTransition({ children }) {
   const { pathname } = useLocation();
   const reduce = useReducedMotion();
+  if (LITE) return <div key={pathname}>{children}</div>;
   return (
     <motion.div
       key={pathname}
@@ -162,6 +167,7 @@ function AppFrame() {
           theme={scheme}
           position="top-center"
           offset={88}
+          mobileOffset={{ top: 80, left: 12, right: 12 }}
           toastOptions={{
             style: {
               background: "var(--glass-tint-strong)",
