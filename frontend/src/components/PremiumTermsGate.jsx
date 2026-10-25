@@ -8,7 +8,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/lib/auth";
 
@@ -63,73 +62,72 @@ export default function PremiumTermsGate() {
   return (
     <AlertDialog open={open} onOpenChange={() => {}}>
       <AlertDialogContent
-        className="grid w-[calc(100vw-2rem)] max-w-3xl max-h-[92vh] grid-rows-[auto_minmax(0,1fr)] overflow-hidden border-white/10 bg-[#111114]/95 p-0 text-white shadow-2xl backdrop-blur-2xl"
+        className="max-h-[92vh] w-[calc(100vw-2rem)] max-w-3xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden !p-0"
         onEscapeKeyDown={(event) => event.preventDefault()}
       >
-        <div className="border-b border-white/10 bg-gradient-to-br from-sky-500/15 via-transparent to-violet-500/10 px-6 py-6 md:px-8">
-          <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl border border-sky-400/25 bg-sky-400/10">
-            <FileCheck2 className="h-5 w-5 text-sky-300" />
-          </div>
+        <div className="border-b border-[var(--line)] px-6 pb-6 pt-7 md:px-8">
+          <span className="mb-5 flex h-12 w-12 items-center justify-center rounded-[16px] bg-tint text-tint-ink shadow-[0_10px_30px_-10px_rgb(var(--tint)/0.7)]">
+            <FileCheck2 className="h-6 w-6" />
+          </span>
           <AlertDialogHeader className="text-left">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-sky-300">Premium Asset Licence</p>
-            <AlertDialogTitle className="font-display text-3xl font-bold tracking-tight md:text-4xl">
+            <p className="eyebrow">Premium Asset Licence</p>
+            <AlertDialogTitle className="font-display text-[1.875rem] font-bold leading-tight tracking-[-0.035em] md:text-4xl">
               One agreement. Full creative access.
             </AlertDialogTitle>
-            <AlertDialogDescription className="max-w-2xl text-sm leading-relaxed text-zinc-400">
+            <AlertDialogDescription className="max-w-2xl text-[15px] leading-relaxed">
               Please review and accept these terms before using or downloading Premium assets. Your acceptance is saved to your account, so you only need to do this once for this version.
             </AlertDialogDescription>
           </AlertDialogHeader>
         </div>
 
-        <div className="overflow-y-auto px-6 py-5 md:px-8">
+        <div className="overflow-y-auto px-6 py-6 md:px-8">
           <div className="grid gap-3 md:grid-cols-2">
             {TERMS.map((term, index) => (
-              <div key={term.title} className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
-                <div className="mb-2 flex items-center gap-2">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-sky-400/10 text-xs font-bold text-sky-300">
+              <div key={term.title} className="rounded-[20px] bg-[var(--fill)] p-4">
+                <div className="mb-2 flex items-center gap-2.5">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[rgb(var(--tint)/0.14)] text-[12px] font-bold text-tint">
                     {index + 1}
                   </span>
-                  <h3 className="text-sm font-semibold text-zinc-100">{term.title}</h3>
+                  <h3 className="text-[14px] font-semibold text-ink">{term.title}</h3>
                 </div>
-                <p className="text-xs leading-relaxed text-zinc-400">{term.text}</p>
+                <p className="text-[13px] leading-relaxed text-ink-2">{term.text}</p>
               </div>
             ))}
           </div>
 
-          <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-2xl border border-white/10 bg-black/20 p-4 transition-colors hover:border-sky-400/30">
+          <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-[20px] p-4 shadow-[inset_0_0_0_1px_var(--line-strong)] transition-shadow duration-300 hover:shadow-[inset_0_0_0_1px_rgb(var(--tint)/0.5)]">
             <Checkbox
               checked={agreed}
               onCheckedChange={(value) => setAgreed(value === true)}
-              className="mt-0.5 h-5 w-5 rounded-md border-white/25 data-[state=checked]:border-sky-400 data-[state=checked]:bg-sky-500"
+              className="mt-0.5 h-5 w-5 rounded-md border-[var(--line-strong)] data-[state=checked]:border-tint data-[state=checked]:bg-tint data-[state=checked]:text-tint-ink"
             />
-            <span className="text-sm leading-relaxed text-zinc-300">
+            <span className="text-[14px] leading-relaxed text-ink-2">
               I have read and agree to the Premium Asset Licence and understand that sharing Premium assets or my extension access code may result in termination of my membership.
             </span>
           </label>
 
-          {error ? <p className="mt-3 text-sm text-red-400">{error}</p> : null}
+          {error ? <p className="mt-3 text-[13px] text-[#ff453a]">{error}</p> : null}
 
-          <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
-            <Button
+          <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-center">
+            <button
               type="button"
               onClick={accept}
               disabled={!agreed || submitting}
-              className="h-12 flex-1 rounded-xl bg-sky-500 font-semibold text-white hover:bg-sky-400"
+              className="btn btn-primary btn-lg flex-1"
             >
-              {submitting ? "Saving agreement..." : <><Check className="h-4 w-4" /> Accept and continue</>}
-            </Button>
-            <Button
+              {submitting ? "Saving agreement..." : <><Check /> Accept and continue</>}
+            </button>
+            <button
               type="button"
-              variant="ghost"
               onClick={logout}
               disabled={submitting}
-              className="h-12 rounded-xl px-5 text-zinc-400 hover:bg-white/5 hover:text-white"
+              className="btn btn-ghost btn-lg"
             >
               Sign out
-            </Button>
+            </button>
           </div>
 
-          <div className="mt-4 flex items-center justify-center gap-4 text-[11px] text-zinc-500">
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-4 text-[12px] text-ink-3">
             <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5" /> Account-level acceptance</span>
             <span className="inline-flex items-center gap-1.5"><LockKeyhole className="h-3.5 w-3.5" /> Required for Premium access</span>
           </div>

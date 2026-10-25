@@ -8,9 +8,21 @@ import {
   SHOW_IMAGES,
   CATEGORY_COLORS,
 } from "@/lib/api";
-import AssetCard from "@/components/AssetCard";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import CategoryPicker from "@/components/CategoryPicker";
-import { ChevronDown, ChevronLeft, Check, Music2, Tv, Film, Search, Tags, SlidersHorizontal, Sparkles } from "lucide-react";
+import LiquidGlass from "@/components/LiquidGlass";
+import {
+  AssetGrid,
+  AssetSkeletonGrid,
+  BackButton,
+  BranchCard,
+  EmptyState,
+  PickerSkeleton,
+  SectionHeader,
+  SubHeading,
+} from "@/components/Library";
+import { EASE_OUT, KineticText, SPRING } from "@/lib/motion";
+import { ArrowUpDown, ChevronDown, ChevronRight, Check, Music2, Tv, Film, Search, X } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -89,7 +101,8 @@ export default function CategoryPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("newest");
   const [overrides, setOverrides] = useState({ creator: {}, show: {} });
-  const c = CATEGORY_COLORS[category];
+  const c = CATEGORY_COLORS[category] || {};
+  const reduce = useReducedMotion();
 
   const load = async () => {
     setLoading(true);
@@ -179,44 +192,56 @@ export default function CategoryPage() {
 
   if (!category) {
     return (
-      <div className="text-center py-24">
-        <h2 className="font-display text-3xl mb-2">Category not found</h2>
-        <Link to="/" className="text-neon">Back home</Link>
-      </div>
+      <section className="mx-auto flex min-h-[70vh] max-w-xl flex-col items-center justify-center px-6 pt-28 text-center">
+        <p className="eyebrow mb-2">404</p>
+        <h2 className="display-md text-ink">Category not found.</h2>
+        <Link to="/" className="link-more mt-5">
+          Back to browse <ChevronRight className="h-4 w-4" />
+        </Link>
+      </section>
     );
   }
 
   return (
-    <section className="max-w-[1400px] mx-auto px-6 md:px-12 pt-28 pb-12 page-soft-enter" data-testid={`page-${slug}`}>
-      <Link
-        to="/"
-        className="inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-white mb-6 btn-press"
-        data-testid="back-home"
-      >
-        <ChevronLeft className="w-4 h-4" /> Browse
-      </Link>
+    <section className="mx-auto max-w-[1320px] px-4 pb-28 pt-28 sm:px-6 md:px-8 md:pt-32" data-testid={`page-${slug}`}>
+      <BackButton to="/" testId="back-home">Browse</BackButton>
 
-      <div className="flex flex-wrap items-end justify-between gap-4 mb-10">
-        <div>
-          <span
-            className="text-xs font-mono uppercase tracking-widest px-2.5 py-1 rounded-md border"
-            style={{ color: c.text, background: c.bg, borderColor: c.border }}
+      <div className="mb-10 flex flex-wrap items-end justify-between gap-6">
+        <div className="max-w-2xl">
+          <motion.p
+            className="eyebrow eyebrow-c mb-2 inline-flex items-center gap-2"
+            style={{ "--c": c.text }}
+            initial={reduce ? false : { opacity: 0, x: -12 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.8, ease: EASE_OUT }}
           >
-            {category}
-          </span>
-          <h1 className="font-display text-4xl md:text-5xl font-black tracking-tighter mt-3">
-            {category}
+            <span className="dot" /> {category}
+          </motion.p>
+          <h1 className="display-lg text-ink">
+            <KineticText text={category} stagger={0.07} />
           </h1>
-          <p className="text-zinc-400 max-w-xl mt-2">{DESCRIPTIONS[category]}</p>
+          <motion.p
+            className="lede mt-4"
+            initial={reduce ? false : { opacity: 0, y: 12, filter: "blur(6px)" }}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)", transitionEnd: { filter: "none" } }}
+            transition={{ duration: 0.9, ease: EASE_OUT, delay: 0.25 }}
+          >
+            {DESCRIPTIONS[category]}
+          </motion.p>
         </div>
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-          <SortControl sortBy={sortBy} setSortBy={setSortBy} />
-          <p className="text-xs font-mono uppercase tracking-widest text-zinc-500 sm:text-right">
+        <motion.div
+          className="flex items-center gap-4"
+          initial={reduce ? false : { opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.9, ease: EASE_OUT, delay: 0.35 }}
+        >
+          <p className="text-[13px] font-medium tabular-nums text-ink-3">
             {isSearching
               ? `${globalSearchResults.length} search result${globalSearchResults.length === 1 ? "" : "s"}`
               : `${categorySearchFilteredAssets.length} items`}
           </p>
-        </div>
+          <SortControl sortBy={sortBy} setSortBy={setSortBy} />
+        </motion.div>
       </div>
 
       <AssetSearch
@@ -226,139 +251,120 @@ export default function CategoryPage() {
         category={category}
       />
 
-      {isSearching ? (
-        <>
-          <h2 className="font-display text-lg font-semibold mb-4 flex items-center gap-2">
-            <Search className="w-5 h-5 text-neon" /> Search results across all tabs
-          </h2>
-          <AssetGrid assets={globalSearchResults} loading={loading} reload={load} allAssets={allAssets} category="Search" />
-        </>
-      ) : category === "Audios" ? (
-        <>
-          {!sub ? (
-            <>
-              <h2 className="font-display text-lg font-semibold mb-4 flex items-center gap-2">
-                <Music2 className="w-5 h-5 text-neon" /> Choose an Audio Pack
-              </h2>
-              {loading ? <PickerSkeleton /> : (
-                <CategoryPicker
-                  items={mergedCreators}
-                  themes={CREATOR_THEMES}
-                  images={{}}
-                  overrides={overrides.creator}
-                  kind="creator"
-                  onChanged={async () => {
-                    await Promise.all([loadOverrides(), load()]);
-                  }}
-                  getCount={(cr) => categorySearchFilteredAssets.filter((a) => a.creator_tag === cr).length}
-                  onPick={setSub}
-                  testIdPrefix="creator"
-                />
-              )}
-            </>
-          ) : (
-            <SubList sub={sub} onBack={() => setSub(null)} backLabel="creators" filtered={filteredAudios} loading={loading} reload={load} allAssets={allAssets} category={category} />
-          )}
-        </>
-      ) : category === "Torrents" ? (
-        <>
-          {!torrentBranch && (
-            <>
-              <h2 className="font-display text-lg font-semibold mb-4 flex items-center gap-2">
-                <Tv className="w-5 h-5 text-neon" /> Shows or Movies?
-              </h2>
-              {loading ? <PickerSkeleton /> : (
-                <div
-                  className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-12"
-                  data-testid="torrent-branch-grid"
-                >
-                  <BranchCard
-                    label="Shows"
-                    count={showAssets.length}
-                    icon={<Tv className="w-7 h-7" />}
-                    from="#0E2A5C"
-                    to="#040E26"
-                    accent="#3B82F6"
-                    onClick={() => setTorrentBranch("Shows")}
-                    testId="torrent-branch-shows"
+      <div className="mt-10">
+        {isSearching ? (
+          <>
+            <SubHeading icon={<Search />}>Search results across all tabs</SubHeading>
+            <CategoryGrid assets={globalSearchResults} loading={loading} reload={load} allAssets={allAssets} category="Search" />
+          </>
+        ) : category === "Audios" ? (
+          <>
+            {!sub ? (
+              <>
+                <SubHeading icon={<Music2 />}>Choose an audio pack</SubHeading>
+                {loading ? <PickerSkeleton /> : (
+                  <CategoryPicker
+                    items={mergedCreators}
+                    themes={CREATOR_THEMES}
+                    images={{}}
+                    overrides={overrides.creator}
+                    kind="creator"
+                    onChanged={async () => {
+                      await Promise.all([loadOverrides(), load()]);
+                    }}
+                    getCount={(cr) => categorySearchFilteredAssets.filter((a) => a.creator_tag === cr).length}
+                    onPick={setSub}
+                    testIdPrefix="creator"
                   />
-                  <BranchCard
-                    label="Movies"
-                    count={movieAssets.length}
-                    icon={<Film className="w-7 h-7" />}
-                    from="#3A0C18"
-                    to="#0A0204"
-                    accent="#EF4444"
-                    onClick={() => setTorrentBranch("Movies")}
-                    testId="torrent-branch-movies"
+                )}
+              </>
+            ) : (
+              <SubList sub={sub} onBack={() => setSub(null)} backLabel="creators" filtered={filteredAudios} loading={loading} reload={load} allAssets={allAssets} category={category} />
+            )}
+          </>
+        ) : category === "Torrents" ? (
+          <>
+            {!torrentBranch && (
+              <>
+                <SubHeading icon={<Tv />}>Shows or movies?</SubHeading>
+                {loading ? <PickerSkeleton /> : (
+                  <div
+                    className="mb-12 grid grid-cols-1 gap-5 md:grid-cols-2"
+                    data-testid="torrent-branch-grid"
+                  >
+                    <BranchCard
+                      label="Shows"
+                      count={showAssets.length}
+                      icon={<Tv />}
+                      from="#0E2A5C"
+                      to="#040E26"
+                      accent="#3B82F6"
+                      onClick={() => setTorrentBranch("Shows")}
+                      testId="torrent-branch-shows"
+                    />
+                    <BranchCard
+                      label="Movies"
+                      count={movieAssets.length}
+                      icon={<Film />}
+                      from="#3A0C18"
+                      to="#0A0204"
+                      accent="#EF4444"
+                      onClick={() => setTorrentBranch("Movies")}
+                      testId="torrent-branch-movies"
+                      index={1}
+                    />
+                  </div>
+                )}
+              </>
+            )}
+
+            {torrentBranch === "Shows" && !sub && (
+              <>
+                <BackButton onClick={() => setTorrentBranch(null)} testId="back-to-branch">Torrents</BackButton>
+                <SubHeading icon={<Tv />}>Choose a show</SubHeading>
+                {loading ? <PickerSkeleton /> : (
+                  <CategoryPicker
+                    items={mergedShows}
+                    themes={SHOW_THEMES}
+                    images={SHOW_IMAGES}
+                    overrides={overrides.show}
+                    kind="show"
+                    onChanged={async () => {
+                      await Promise.all([loadOverrides(), load()]);
+                    }}
+                    getCount={(s) => showAssets.filter((a) => a.show_group === s).length}
+                    onPick={setSub}
+                    testIdPrefix="show"
                   />
-                </div>
-              )}
-            </>
-          )}
+                )}
+              </>
+            )}
 
-          {torrentBranch === "Shows" && !sub && (
-            <>
-              <button
-                onClick={() => setTorrentBranch(null)}
-                className="inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-white mb-6 btn-press"
-                data-testid="back-to-branch"
-              >
-                <ChevronLeft className="w-4 h-4" /> Torrents
-              </button>
-              <h2 className="font-display text-lg font-semibold mb-4 flex items-center gap-2">
-                <Tv className="w-5 h-5 text-neon" /> Choose a Show
-              </h2>
-              {loading ? <PickerSkeleton /> : (
-                <CategoryPicker
-                  items={mergedShows}
-                  themes={SHOW_THEMES}
-                  images={SHOW_IMAGES}
-                  overrides={overrides.show}
-                  kind="show"
-                  onChanged={async () => {
-                    await Promise.all([loadOverrides(), load()]);
-                  }}
-                  getCount={(s) => showAssets.filter((a) => a.show_group === s).length}
-                  onPick={setSub}
-                  testIdPrefix="show"
-                />
-              )}
-            </>
-          )}
+            {torrentBranch === "Shows" && sub && (
+              <SubList
+                sub={sub}
+                onBack={() => setSub(null)}
+                backLabel="shows"
+                filtered={filteredShowAssets.filter((a) => (a.torrent_type || "Show") === "Show")}
+                loading={loading}
+                reload={load}
+                allAssets={allAssets}
+                category={category}
+              />
+            )}
 
-          {torrentBranch === "Shows" && sub && (
-            <SubList
-              sub={sub}
-              onBack={() => setSub(null)}
-              backLabel="shows"
-              filtered={filteredShowAssets.filter((a) => (a.torrent_type || "Show") === "Show")}
-              loading={loading}
-              reload={load}
-              allAssets={allAssets}
-              category={category}
-            />
-          )}
-
-          {torrentBranch === "Movies" && (
-            <>
-              <button
-                onClick={() => setTorrentBranch(null)}
-                className="inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-white mb-6 btn-press"
-                data-testid="back-to-branch"
-              >
-                <ChevronLeft className="w-4 h-4" /> Torrents
-              </button>
-              <h2 className="font-display text-2xl font-bold mb-4 flex items-center gap-2">
-                <Film className="w-5 h-5 text-neon" /> Movies
-              </h2>
-              <AssetGrid assets={movieAssets} loading={loading} reload={load} allAssets={allAssets} category={category} />
-            </>
-          )}
-        </>
-      ) : (
-        <AssetGrid assets={sortedAssets} loading={loading} reload={load} allAssets={allAssets} category={category} />
-      )}
+            {torrentBranch === "Movies" && (
+              <>
+                <BackButton onClick={() => setTorrentBranch(null)} testId="back-to-branch">Torrents</BackButton>
+                <SectionHeader eyebrow="Torrents" eyebrowColor={c.text} title="Movies" />
+                <CategoryGrid assets={movieAssets} loading={loading} reload={load} allAssets={allAssets} category={category} />
+              </>
+            )}
+          </>
+        ) : (
+          <CategoryGrid assets={sortedAssets} loading={loading} reload={load} allAssets={allAssets} category={category} />
+        )}
+      </div>
     </section>
   );
 }
@@ -370,24 +376,35 @@ function SortControl({ sortBy, setSortBy }) {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.035] hover:bg-white/[0.07] px-3 py-2 text-sm text-zinc-300 btn-press shadow-[0_0_24px_rgba(0,0,0,0.18)]"
+          className="lg lg-hover inline-flex h-10 items-center gap-2 rounded-full pl-3.5 pr-3 text-[13.5px]"
           data-testid="category-sort"
         >
-          <SlidersHorizontal className="w-4 h-4 text-zinc-500" />
-          <span className="text-xs uppercase tracking-widest text-zinc-500">Sort</span>
-          <span className="text-white font-semibold min-w-[92px] text-left">{activeOption.label}</span>
-          <ChevronDown className="w-3.5 h-3.5 text-zinc-500" />
+          <ArrowUpDown className="h-3.5 w-3.5 text-ink-3" />
+          <span className="text-ink-3">Sort</span>
+          <AnimatePresence mode="popLayout" initial={false}>
+            <motion.span
+              key={activeOption.value}
+              className="font-medium text-ink"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.3, ease: EASE_OUT }}
+            >
+              {activeOption.label}
+            </motion.span>
+          </AnimatePresence>
+          <ChevronDown className="h-3.5 w-3.5 text-ink-3" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="glass border-white/10 text-white min-w-48 p-1" align="end">
+      <DropdownMenuContent className="glass min-w-52 rounded-[20px] border-0 p-1.5 text-ink" align="end" sideOffset={10}>
         {SORT_OPTIONS.map((option) => (
           <DropdownMenuItem
             key={option.value}
             onClick={() => setSortBy(option.value)}
-            className="cursor-pointer hover:bg-white/10 focus:bg-white/10 rounded-lg flex items-center justify-between gap-4"
+            className="flex cursor-pointer items-center justify-between gap-4 rounded-xl px-3 py-2 text-[0.9rem] text-ink focus:bg-[var(--fill-2)] focus:text-ink"
           >
             <span>{option.label}</span>
-            {sortBy === option.value && <Check className="w-4 h-4 text-neon" />}
+            <Check className={`h-4 w-4 text-tint transition-opacity duration-200 ${sortBy === option.value ? "opacity-100" : "opacity-0"}`} />
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>
@@ -397,142 +414,76 @@ function SortControl({ sortBy, setSortBy }) {
 
 function AssetSearch({ value, onChange, genres, category }) {
   return (
-    <div className="mb-8 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-      <label className="text-xs font-mono uppercase tracking-widest text-zinc-500 flex items-center gap-2 mb-2">
-        <Search className="w-4 h-4" /> Search all assets
-      </label>
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+    <div className="sticky top-[var(--sticky-top,5.25rem)] z-30 -mx-1 px-1 py-2">
+      <LiquidGlass className="group flex h-12 items-center rounded-full pl-4 pr-1.5 focus-within:shadow-[var(--glass-shadow),0_0_0_4px_rgb(var(--tint)/0.16)]" edge={18} strength={34}>
+        <Search className="h-[18px] w-[18px] shrink-0 text-ink-2 transition-colors duration-300 group-focus-within:text-tint" />
         <input
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={`Search titles, creators, genres, shows...`}
-          className="w-full rounded-xl bg-black/30 border border-white/10 py-3 pl-10 pr-4 text-sm text-white placeholder:text-zinc-600 outline-none focus:border-neon/60"
+          placeholder="Search all assets: titles, creators, genres, shows..."
+          aria-label="Search all assets"
+          className="bare h-full min-w-0 flex-1 bg-transparent px-3 text-[15px] text-ink outline-none placeholder:text-ink-3"
           data-testid="asset-global-search"
         />
-      </div>
-      <p className="mt-2 text-xs text-zinc-500">
-        Searches every tab, including creators like MrBit, Nexlo, and Iusets.
-      </p>
-      {category === "Audios" && genres.length > 0 && (
-        <div className="flex flex-wrap gap-2 mt-3">
-          {genres.map((genre) => (
-            <button
-              key={genre}
+        <AnimatePresence>
+          {value ? (
+            <motion.button
               type="button"
-              onClick={() => onChange(genre)}
-              className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-zinc-300 hover:text-white hover:border-white/20 btn-press"
+              onClick={() => onChange("")}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--fill-2)] text-ink-2 hover:text-ink"
+              initial={{ opacity: 0, scale: 0.6 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.6 }}
+              transition={SPRING}
+              aria-label="Clear search"
             >
-              {genre}
-            </button>
-          ))}
+              <X className="h-4 w-4" />
+            </motion.button>
+          ) : null}
+        </AnimatePresence>
+      </LiquidGlass>
+      {category === "Audios" && genres.length > 0 && (
+        <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto pb-1">
+          {genres.map((genre) => {
+            const active = value === genre;
+            return (
+              <button
+                key={genre}
+                type="button"
+                onClick={() => onChange(active ? "" : genre)}
+                className={`shrink-0 rounded-full px-3.5 py-1.5 text-[13px] font-medium transition-[background-color,color,transform] duration-300 ease-spring active:scale-95 ${
+                  active ? "bg-ink text-canvas" : "bg-[var(--fill-2)] text-ink-2 hover:text-ink"
+                }`}
+              >
+                {genre}
+              </button>
+            );
+          })}
         </div>
       )}
+      <p className="sr-only">Searches every tab, including creators like MrBit, Nexlo, and Iusets.</p>
     </div>
-  );
-}
-
-function BranchCard({ label, count, icon, from, to, accent, onClick, testId }) {
-  return (
-    <button
-      onClick={onClick}
-      className="asset-3d-in relative h-44 rounded-2xl p-7 text-left btn-press overflow-hidden border border-white/5 hover:border-white/20 transition-colors group"
-      style={{ background: `linear-gradient(135deg, ${from} 0%, ${to} 100%)` }}
-      data-testid={testId}
-    >
-      <div
-        className="absolute -top-10 -right-10 w-48 h-48 rounded-full opacity-30 blur-3xl pointer-events-none"
-        style={{ background: accent }}
-      />
-      <div className="relative flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-3 text-white">
-            {icon}
-            <span className="font-display text-3xl font-black tracking-tight">{label}</span>
-          </div>
-          <p className="mt-2 text-sm text-white/60">
-            {count} item{count === 1 ? "" : "s"}
-          </p>
-        </div>
-        <span className="text-xs uppercase tracking-widest text-white/70 group-hover:text-white">
-          Open →
-        </span>
-      </div>
-    </button>
   );
 }
 
 function SubList({ sub, onBack, backLabel, filtered, loading, reload, allAssets, category }) {
   return (
     <>
-      <button
-        onClick={onBack}
-        className="inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-white mb-6 btn-press"
-        data-testid="back-to-picker"
-      >
-        <ChevronLeft className="w-4 h-4" /> All {backLabel}
-      </button>
-      <h2 className="font-display text-2xl font-bold mb-4">{sub}</h2>
-      <AssetGrid assets={filtered} loading={loading} reload={reload} allAssets={allAssets} category={category} />
+      <BackButton onClick={onBack} testId="back-to-picker">All {backLabel}</BackButton>
+      <SectionHeader eyebrow={category} eyebrowColor={CATEGORY_COLORS[category]?.text} title={sub} />
+      <CategoryGrid assets={filtered} loading={loading} reload={reload} allAssets={allAssets} category={category} />
     </>
   );
 }
 
-function AssetGrid({ assets, loading, reload, allAssets, category }) {
+function CategoryGrid({ assets, loading, reload, allAssets, category }) {
   if (loading) return <AssetSkeletonGrid />;
-  if (assets.length === 0) return <EmptyCategoryState category={category} />;
-  return (
-    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {assets.map((a, idx) => (
-        <div
-          key={a.id}
-          className="asset-3d-in"
-          style={{ animationDelay: `${Math.min(idx, 12) * 60}ms` }}
-        >
-          <AssetCard asset={a} onChanged={reload} allAssets={allAssets || assets} />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function AssetSkeletonGrid() {
-  return (
-    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {Array.from({ length: 8 }).map((_, idx) => (
-        <div key={idx} className="rounded-2xl overflow-hidden border border-white/5 bg-[var(--site-surface)] animate-pulse">
-          <div className="aspect-video bg-white/5" />
-          <div className="p-5 space-y-3">
-            <div className="h-5 w-20 rounded bg-white/5" />
-            <div className="h-6 w-3/4 rounded bg-white/5" />
-            <div className="h-4 w-full rounded bg-white/5" />
-            <div className="h-10 w-full rounded-lg bg-white/5" />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function PickerSkeleton() {
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-12">
-      {Array.from({ length: 4 }).map((_, idx) => (
-        <div key={idx} className="h-44 rounded-2xl border border-white/5 bg-white/[0.035] animate-pulse" />
-      ))}
-    </div>
-  );
-}
-
-function EmptyCategoryState({ category }) {
-  return (
-    <div className="relative overflow-hidden text-center py-24 border border-dashed border-white/10 rounded-2xl bg-white/[0.02]">
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-neon/50 to-transparent" />
-      <Sparkles className="w-8 h-8 text-neon mx-auto mb-4 opacity-80" />
-      <h3 className="font-display text-2xl mb-2">No assets found</h3>
-      <p className="text-zinc-500 max-w-md mx-auto">
+  if (assets.length === 0) {
+    return (
+      <EmptyState>
         No {category?.toLowerCase() || "assets"} matched this view. Try another creator or category, or search by title, genre, show, or uploader.
-      </p>
-    </div>
-  );
+      </EmptyState>
+    );
+  }
+  return <AssetGrid assets={assets} onChanged={reload} allAssets={allAssets} />;
 }

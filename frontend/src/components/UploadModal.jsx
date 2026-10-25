@@ -293,14 +293,14 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
       }}
     >
       <DialogContent
-        className="glass border-white/10 text-white max-w-2xl max-h-[92vh] overflow-y-auto"
+        className="glass border-[var(--line)] text-ink max-w-2xl max-h-[92vh] overflow-y-auto"
         data-testid="upload-modal"
       >
         <DialogHeader>
           <DialogTitle className="font-display text-2xl">
             {editing ? "Edit Asset" : "Upload Asset"}
           </DialogTitle>
-          <DialogDescription className="text-zinc-400">
+          <DialogDescription className="text-ink-2">
             {isVideo
               ? "Paste a YouTube link and it will play directly inside the Videos tab."
               : "Pick a category, drop a thumbnail, and add one file or external link."}
@@ -318,30 +318,30 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
         >
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
-              <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">
+              <label className="text-xs font-semibold text-ink-3">
                 Title
               </label>
               <Input
                 value={form.title}
                 onChange={(e) => set("title", e.target.value)}
                 placeholder={isVideo ? "Video title" : "Asset title"}
-                className="bg-white/5 border-white/10 mt-1"
+                className="bg-[var(--fill)] border-[var(--line)] mt-1"
                 data-testid="upload-title-input"
               />
             </div>
 
             <div className="col-span-2">
-              <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">
+              <label className="text-xs font-semibold text-ink-3">
                 Category
               </label>
               <Select value={form.category} onValueChange={setCategory}>
                 <SelectTrigger
-                  className="bg-white/5 border-white/10 mt-1"
+                  className="bg-[var(--fill)] border-[var(--line)] mt-1"
                   data-testid="upload-category-select"
                 >
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="glass border-white/10 text-white">
+                <SelectContent className="glass border-[var(--line)] text-ink">
                   {categoryOptions.map((c) => (
                     <SelectItem key={c} value={c}>
                       {c}
@@ -353,7 +353,7 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
 
             {canMarkUpdated && (
               <label className="col-span-2 group cursor-pointer rounded-xl border border-amber-300/20 bg-amber-300/5 px-4 py-3 flex items-start gap-3 hover:bg-amber-300/10 transition-colors">
-                <span className={`mt-0.5 w-5 h-5 rounded-md border flex items-center justify-center transition-all ${form.is_updated ? "bg-amber-300 border-amber-200 text-black shadow-[0_0_18px_rgba(251,191,36,0.25)]" : "border-white/20 bg-white/5 text-transparent"}`}>
+                <span className={`mt-0.5 w-5 h-5 rounded-md border flex items-center justify-center transition-all ${form.is_updated ? "bg-amber-300 border-amber-200 text-black shadow-[0_0_18px_rgba(251,191,36,0.25)]" : "border-[var(--line-strong)] bg-[var(--fill)] text-transparent"}`}>
                   <RefreshCw className="w-3.5 h-3.5" />
                 </span>
                 <input
@@ -371,7 +371,7 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
                   <span className="block text-sm font-semibold text-amber-100">
                     Mark this asset as updated
                   </span>
-                  <span className="block text-xs text-zinc-400 mt-1">
+                  <span className="block text-xs text-ink-2 mt-1">
                     Use this when the existing Drive link now contains a new overlay or sound effect. It will move back into Recently Added and show an UPDATED tag.
                   </span>
                 </span>
@@ -379,14 +379,14 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
             )}
 
             <div className="col-span-2">
-              <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">
+              <label className="text-xs font-semibold text-ink-3">
                 Description
               </label>
               <Textarea
                 value={form.description}
                 onChange={(e) => set("description", e.target.value)}
                 rows={3}
-                className="bg-white/5 border-white/10 mt-1 resize-none"
+                className="bg-[var(--fill)] border-[var(--line)] mt-1 resize-none"
                 data-testid="upload-description-input"
               />
             </div>
@@ -394,7 +394,7 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
             {isAudio && (
               <>
                 <div>
-                  <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">
+                  <label className="text-xs font-semibold text-ink-3">
                     Creator
                   </label>
                   <Select
@@ -404,12 +404,12 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
                     }}
                   >
                     <SelectTrigger
-                      className="bg-white/5 border-white/10 mt-1"
+                      className="bg-[var(--fill)] border-[var(--line)] mt-1"
                       data-testid="upload-creator-select"
                     >
                       <SelectValue placeholder="Choose a creator" />
                     </SelectTrigger>
-                    <SelectContent className="glass border-white/10 text-white">
+                    <SelectContent className="glass border-[var(--line)] text-ink">
                       {creatorSuggestions.map((creator) => (
                         <SelectItem key={creator} value={creator}>
                           {creator}
@@ -425,20 +425,20 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
                       value={form.creator_tag}
                       onChange={(e) => set("creator_tag", e.target.value)}
                       placeholder="Type a new creator name"
-                      className="bg-white/5 border-white/10 mt-2"
+                      className="bg-[var(--fill)] border-[var(--line)] mt-2"
                       data-testid="upload-creator-input"
                     />
                   )}
                 </div>
                 <div>
-                  <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">
+                  <label className="text-xs font-semibold text-ink-3">
                     Genre
                   </label>
                   <Input
                     value={form.genre || form.bpm || ""}
                     onChange={(e) => set("genre", e.target.value)}
                     placeholder="e.g. phonk, cinematic, dark"
-                    className="bg-white/5 border-white/10 mt-1"
+                    className="bg-[var(--fill)] border-[var(--line)] mt-1"
                     data-testid="upload-genre-input"
                   />
                 </div>
@@ -447,28 +447,28 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
 
             {!isAudio && (
               <div className="col-span-2">
-                <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">
+                <label className="text-xs font-semibold text-ink-3">
                   Creator Tag
                 </label>
                 <Input
                   value={form.creator_tag}
                   onChange={(e) => set("creator_tag", e.target.value)}
                   placeholder="e.g. mrbit_100"
-                  className="bg-white/5 border-white/10 mt-1"
+                  className="bg-[var(--fill)] border-[var(--line)] mt-1"
                 />
               </div>
             )}
 
             {isPF && (
               <div>
-                <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">
+                <label className="text-xs font-semibold text-ink-3">
                   AE Version
                 </label>
                 <Input
                   value={form.ae_version}
                   onChange={(e) => set("ae_version", e.target.value)}
                   placeholder="e.g. After Effects 2024"
-                  className="bg-white/5 border-white/10 mt-1"
+                  className="bg-[var(--fill)] border-[var(--line)] mt-1"
                 />
               </div>
             )}
@@ -476,17 +476,17 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
             {isTorrent && (
               <>
                 <div>
-                  <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">
+                  <label className="text-xs font-semibold text-ink-3">
                     Type
                   </label>
                   <Select
                     value={form.torrent_type || "Show"}
                     onValueChange={(v) => set("torrent_type", v)}
                   >
-                    <SelectTrigger className="bg-white/5 border-white/10 mt-1" data-testid="upload-torrent-type">
+                    <SelectTrigger className="bg-[var(--fill)] border-[var(--line)] mt-1" data-testid="upload-torrent-type">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="glass border-white/10 text-white">
+                    <SelectContent className="glass border-[var(--line)] text-ink">
                       <SelectItem value="Show">Show</SelectItem>
                       <SelectItem value="Movie">Movie</SelectItem>
                     </SelectContent>
@@ -494,7 +494,7 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
                 </div>
                 {form.torrent_type !== "Movie" && (
                   <div>
-                    <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">
+                    <label className="text-xs font-semibold text-ink-3">
                       Show (type to add a new one)
                     </label>
                     <Input
@@ -502,7 +502,7 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
                       value={form.show_group}
                       onChange={(e) => set("show_group", e.target.value)}
                       placeholder="e.g. The Boys or your own"
-                      className="bg-white/5 border-white/10 mt-1"
+                      className="bg-[var(--fill)] border-[var(--line)] mt-1"
                       data-testid="upload-show-input"
                     />
                     <datalist id="show-suggestions">
@@ -519,7 +519,7 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
             )}
 
             <div className="col-span-2" onPaste={handleThumbnailPaste}>
-              <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">
+              <label className="text-xs font-semibold text-ink-3">
                 Thumbnail / Preview URL
               </label>
               <div className="flex gap-2 mt-1">
@@ -527,10 +527,10 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
                   value={form.thumbnail_url}
                   onChange={(e) => set("thumbnail_url", e.target.value)}
                   placeholder="https://... or upload image, GIF, MP4"
-                  className="bg-white/5 border-white/10"
+                  className="bg-[var(--fill)] border-[var(--line)]"
                   data-testid="upload-thumbnail-url"
                 />
-                <label className="cursor-pointer bg-white/5 border border-white/10 px-3 rounded-md flex items-center hover:bg-white/10 btn-press">
+                <label className="cursor-pointer bg-[var(--fill)] border border-[var(--line)] px-3 rounded-md flex items-center hover:bg-[var(--fill-2)] btn-press">
                   <ImagePlus className="w-4 h-4" />
                   <input
                     type="file"
@@ -544,18 +544,18 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
                 </label>
               </div>
               {uploadingField === "thumbnail_url" && (
-                <p className="mt-1 text-xs text-zinc-400">
+                <p className="mt-1 text-xs text-ink-2">
                   {uploadProgress ? `Uploading preview ${uploadProgress}%...` : "Preparing preview upload..."}
                 </p>
               )}
-              <p className="mt-1 text-xs text-zinc-500">
+              <p className="mt-1 text-xs text-ink-3">
                 Supports JPG/PNG, animated GIF, and MP4/WebM previews. Snipping Tool paste still works for images.
               </p>
               {thumbnailPreviewSrc && (
                 isVideoPreview(thumbnailPreviewSrc) ? (
                   <video
                     src={thumbnailPreviewSrc}
-                    className="mt-2 w-full max-h-44 object-cover rounded-lg border border-white/10 bg-black/40"
+                    className="mt-2 w-full max-h-44 object-cover rounded-lg border border-[var(--line)] bg-[var(--fill)]"
                     muted
                     loop
                     playsInline
@@ -566,19 +566,19 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
                   <img
                     src={thumbnailPreviewSrc}
                     alt=""
-                    className="mt-2 w-full max-h-44 object-cover rounded-lg border border-white/10"
+                    className="mt-2 w-full max-h-44 object-cover rounded-lg border border-[var(--line)]"
                   />
                 )
               )}
             </div>
 
-            <div className={`col-span-2 grid ${isVideo ? "grid-cols-1" : "grid-cols-2"} gap-3 mt-2 pt-3 border-t border-white/5`}>
+            <div className={`col-span-2 grid ${isVideo ? "grid-cols-1" : "grid-cols-2"} gap-3 mt-2 pt-3 border-t border-[var(--line)]`}>
               {!isVideo && (
               <div>
-                <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">
+                <label className="text-xs font-semibold text-ink-3">
                   File Upload (≤ 50MB)
                 </label>
-                <label className="mt-1 flex items-center justify-center gap-2 h-11 cursor-pointer bg-white/5 border border-dashed border-white/15 rounded-md hover:bg-white/10 btn-press text-sm text-zinc-300">
+                <label className="mt-1 flex items-center justify-center gap-2 h-11 cursor-pointer bg-[var(--fill)] border border-dashed border-[var(--line)] rounded-md hover:bg-[var(--fill-2)] btn-press text-sm text-ink-2">
                   <Upload className="w-4 h-4" />
                   {uploadLabel("file_url", Boolean(form.file_url))}
                   <input
@@ -592,18 +592,18 @@ export default function UploadModal({ open, onOpenChange, editing, onSaved }) {
               </div>
               )}
               <div>
-                <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">
+                <label className="text-xs font-semibold text-ink-3">
                   {isVideo ? "YouTube URL" : "External URL (Drive / Mega)"}
                 </label>
                 <Input
                   value={form.external_url}
                   onChange={(e) => set("external_url", e.target.value)}
                   placeholder={isVideo ? "https://www.youtube.com/watch?v=..." : "https://drive.google.com/..."}
-                  className="bg-white/5 border-white/10 mt-1"
+                  className="bg-[var(--fill)] border-[var(--line)] mt-1"
                   data-testid="upload-external-url"
                 />
                 {isVideo && (
-                  <p className="mt-1 text-xs text-zinc-500">
+                  <p className="mt-1 text-xs text-ink-3">
                     YouTube, youtu.be, Shorts, and embed links are supported.
                   </p>
                 )}

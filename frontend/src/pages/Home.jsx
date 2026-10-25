@@ -9,10 +9,22 @@ import {
   SHOW_THEMES,
   SHOW_IMAGES,
 } from "@/lib/api";
-import AssetCard from "@/components/AssetCard";
+import { AnimatePresence, motion } from "framer-motion";
 import CategoryPicker from "@/components/CategoryPicker";
 import Hero from "@/components/Hero";
-import { Captions, ChevronLeft, ChevronRight, Music2, Tv, Film, Sparkles } from "lucide-react";
+import LiquidGlass from "@/components/LiquidGlass";
+import {
+  AssetGrid,
+  AssetSkeletonGrid,
+  BackButton,
+  BranchCard,
+  EmptyState,
+  SectionHeader,
+  SubHeading,
+  ViewAllLink,
+} from "@/components/Library";
+import { EASE_OUT, SPRING } from "@/lib/motion";
+import { Captions, ChevronRight, Music2, Tv, Film, Wand2 } from "lucide-react";
 
 const FILTER_TABS = ["All", ...CATEGORIES];
 const EXTENSION_PIN_END = new Date("2026-10-02T23:59:59+01:00").getTime();
@@ -182,98 +194,138 @@ export default function Home() {
   const isAllTab = filter === "All";
   const isSearching = Boolean(query.trim());
 
+  const countLabel = isSearching
+    ? `${searchedAll?.length || 0} search result${searchedAll?.length === 1 ? "" : "s"}`
+    : isAllTab
+      ? `${assets.length} total`
+      : showsPickerForFilter && !sub
+        ? `${assets.filter((a) => a.category === filter).length} items`
+        : `${filteredForFilter.length} assets`;
+
   return (
     <>
       <Hero query={query} setQuery={setQuery} totalAssets={assets.length} />
 
-      <section className="max-w-[1400px] mx-auto px-6 md:px-12 pb-24 page-soft-enter" data-testid="asset-section">
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-8 mt-6">
-          <div className="flex flex-wrap gap-2" data-testid="filter-tabs">
-            {FILTER_TABS.map((t) => {
-              const active = filter === t;
-              const c = CATEGORY_COLORS[t];
-              return (
-                <button
-                  key={t}
-                  onClick={() => setFilter(t)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium border btn-press transition-all ${
-                    active
-                      ? "bg-white/15 border-white/20 text-white"
-                      : "bg-white/[0.03] border-white/5 text-zinc-400 hover:text-white"
-                  }`}
-                  style={
-                    active && c
-                      ? { color: c.text, background: c.bg, borderColor: c.border }
-                      : {}
-                  }
-                  data-testid={`filter-tab-${t.toLowerCase().replace(/\s+/g, "-")}`}
-                >
-                  {t}
-                </button>
-              );
-            })}
-            <Link
-              to="/ai-image"
-              className="px-4 py-2 rounded-lg text-sm font-semibold border btn-press transition-all text-white border-purple-300/30 bg-gradient-to-r from-purple-600/70 via-fuchsia-500/60 to-indigo-500/70 hover:from-purple-500 hover:via-fuchsia-400 hover:to-indigo-400 shadow-[0_0_28px_rgba(168,85,247,0.18)]"
-              data-testid="filter-tab-ai-tools"
-            >
-              AI Tools
-            </Link>
-            <Link
-              to="/transcribe"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border btn-press transition-all text-white border-cyan-300/30 bg-gradient-to-r from-cyan-500/60 via-blue-500/55 to-indigo-500/65 hover:from-cyan-400 hover:via-blue-400 hover:to-indigo-400 shadow-[0_0_28px_rgba(34,211,238,0.16)]"
-              data-testid="filter-tab-transcribe"
-            >
-              <Captions className="w-4 h-4" />
-              Transcribe
-            </Link>
-          </div>
-          <p className="text-xs font-mono uppercase tracking-widest text-zinc-500">
-            {isSearching
-              ? `${searchedAll?.length || 0} search result${searchedAll?.length === 1 ? "" : "s"}`
-              : isAllTab
-                ? `${assets.length} total`
-                : showsPickerForFilter && !sub
-                  ? `${assets.filter((a) => a.category === filter).length} items`
-                  : `${filteredForFilter.length} assets`}
-          </p>
-        </div>
+      <section className="relative mx-auto max-w-[1320px] px-4 pb-28 sm:px-6 md:px-8" data-testid="asset-section">
+        <FilterBar filter={filter} setFilter={setFilter} countLabel={countLabel} />
 
-        {loading ? (
-          <AssetSkeletonGrid />
-        ) : isSearching ? (
-          searchedAll.length === 0 ? (
-            <EmptyState filter="Search" />
+        <div className="mt-10">
+          {loading ? (
+            <AssetSkeletonGrid />
+          ) : isSearching ? (
+            searchedAll.length === 0 ? (
+              <HomeEmptyState filter="Search" />
+            ) : (
+              <>
+                <SectionHeader eyebrow="Search" title={<>Results for &ldquo;{query.trim()}&rdquo;</>} />
+                <AssetGrid assets={searchedAll} onChanged={load} allAssets={assets} />
+              </>
+            )
+          ) : isAllTab ? (
+            <DashboardView data={dashboardData} totalAssets={assets.length} recentlyAdded={recentlyAdded} pinnedExtensionId={pinnedExtensionId} allAssets={assets} onChanged={load} />
           ) : (
-            <AssetGrid assets={searchedAll} onChanged={load} allAssets={assets} />
-          )
-        ) : isAllTab ? (
-          <DashboardView data={dashboardData} totalAssets={assets.length} recentlyAdded={recentlyAdded} pinnedExtensionId={pinnedExtensionId} allAssets={assets} onChanged={load} />
-        ) : (
-          <FilteredView
-            filter={filter}
-            sub={sub}
-            setSub={setSub}
-            torrentBranch={torrentBranch}
-            setTorrentBranch={setTorrentBranch}
-            mergedAudioCreators={mergedAudioCreators}
-            mergedShows={mergedShows}
-            overrides={overrides}
-            loadOverrides={loadOverrides}
-            assets={assets}
-            filtered={filteredForFilter}
-            load={load}
-          />
-        )}
+            <FilteredView
+              filter={filter}
+              sub={sub}
+              setSub={setSub}
+              torrentBranch={torrentBranch}
+              setTorrentBranch={setTorrentBranch}
+              mergedAudioCreators={mergedAudioCreators}
+              mergedShows={mergedShows}
+              overrides={overrides}
+              loadOverrides={loadOverrides}
+              assets={assets}
+              filtered={filteredForFilter}
+              load={load}
+            />
+          )}
+        </div>
       </section>
     </>
   );
 }
 
-function DashboardView({ data, totalAssets, recentlyAdded, pinnedExtensionId, allAssets, onChanged }) {
-  if (totalAssets === 0) return <EmptyState filter="All" />;
+/*
+ * Sticky Liquid Glass filter bar. The active tab is a glass "lens" that glides
+ * between options; content scrolling underneath shows through the material.
+ */
+function FilterBar({ filter, setFilter, countLabel }) {
   return (
-    <div className="space-y-14">
+    <div className="sticky top-[var(--sticky-top,5.25rem)] z-30 -mx-1 flex items-center gap-3 px-1 py-2">
+      <LiquidGlass className="min-w-0 flex-1 rounded-full p-1 sm:flex-none" edge={18} strength={34}>
+        <div className="no-scrollbar flex items-center gap-0.5 overflow-x-auto" data-testid="filter-tabs">
+          {FILTER_TABS.map((t) => {
+            const active = filter === t;
+            const c = CATEGORY_COLORS[t];
+            return (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setFilter(t)}
+                className={`relative shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-[13.5px] font-medium tracking-[-0.01em] transition-colors duration-300 ${
+                  active ? "text-ink" : "text-ink-2 hover:text-ink"
+                }`}
+                aria-pressed={active}
+                data-testid={`filter-tab-${t.toLowerCase().replace(/\s+/g, "-")}`}
+              >
+                {active && (
+                  <motion.span
+                    layoutId="home-filter-lens"
+                    className="absolute inset-0 rounded-full bg-panel shadow-[0_1px_4px_rgb(0_0_0/0.14),inset_0_0_0_0.5px_var(--line-strong),inset_0_1px_0_rgb(255_255_255/0.12)]"
+                    transition={SPRING}
+                  />
+                )}
+                <span className="relative inline-flex items-center gap-1.5">
+                  {c ? (
+                    <span
+                      className="dot transition-transform duration-500 ease-spring"
+                      style={{ color: c.text, transform: active ? "scale(1)" : "scale(0)", width: active ? undefined : 0, marginRight: active ? undefined : -6 }}
+                    />
+                  ) : null}
+                  {t}
+                </span>
+              </button>
+            );
+          })}
+          <span className="mx-1.5 h-5 w-px shrink-0 bg-[var(--line-strong)]" aria-hidden="true" />
+          <Link
+            to="/ai-image"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-[13.5px] font-medium text-ink-2 transition-colors duration-300 hover:text-ink"
+            data-testid="filter-tab-ai-tools"
+          >
+            <Wand2 className="h-3.5 w-3.5 text-[#bf5af2]" />
+            AI Tools
+          </Link>
+          <Link
+            to="/transcribe"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-[13.5px] font-medium text-ink-2 transition-colors duration-300 hover:text-ink"
+            data-testid="filter-tab-transcribe"
+          >
+            <Captions className="h-3.5 w-3.5 text-[#64d2ff]" />
+            Transcribe
+          </Link>
+        </div>
+      </LiquidGlass>
+      <AnimatePresence mode="popLayout" initial={false}>
+        <motion.p
+          key={countLabel}
+          className="ml-auto hidden shrink-0 text-[13px] font-medium tabular-nums text-ink-3 md:block"
+          initial={{ opacity: 0, y: 8, filter: "blur(4px)" }}
+          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          exit={{ opacity: 0, y: -8, filter: "blur(4px)" }}
+          transition={{ duration: 0.4, ease: EASE_OUT }}
+        >
+          {countLabel}
+        </motion.p>
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function DashboardView({ data, totalAssets, recentlyAdded, pinnedExtensionId, allAssets, onChanged }) {
+  if (totalAssets === 0) return <HomeEmptyState filter="All" />;
+  return (
+    <div className="space-y-24">
       <RecentlyAdded assets={recentlyAdded} pinnedExtensionId={pinnedExtensionId} allAssets={allAssets} onChanged={onChanged} />
       {DASHBOARD_SECTIONS.map((cat) => (
         <DashboardSection
@@ -290,18 +342,8 @@ function DashboardView({ data, totalAssets, recentlyAdded, pinnedExtensionId, al
 
 function RecentlyAdded({ assets, pinnedExtensionId, allAssets, onChanged }) {
   return (
-    <div data-testid="recently-added-section" className="relative rounded-3xl border border-white/10 bg-white/[0.025] p-5 md:p-6 overflow-hidden">
-      <div className="absolute -top-24 right-0 w-64 h-64 bg-neon/10 blur-3xl rounded-full pointer-events-none" />
-      <div className="relative flex items-end justify-between mb-5 pb-3 border-b border-white/5">
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-mono uppercase tracking-widest px-2.5 py-1 rounded-md border text-neon bg-neon/10 border-neon/20">
-            Fresh
-          </span>
-          <h2 className="font-display text-2xl md:text-3xl font-black tracking-tighter flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-neon" /> Recently Added
-          </h2>
-        </div>
-      </div>
+    <div data-testid="recently-added-section">
+      <SectionHeader eyebrow="Fresh drops" title="Recently added." />
       <AssetGrid assets={assets} featuredAssetId={pinnedExtensionId} onChanged={onChanged} allAssets={allAssets} />
     </div>
   );
@@ -312,46 +354,19 @@ function DashboardSection({ category, assets, allAssets, onChanged }) {
   const slug = CATEGORY_TO_SLUG[category];
   return (
     <div data-testid={`section-${slug}`}>
-      <div className="flex items-end justify-between mb-5 pb-3 border-b border-white/5">
-        <div className="flex items-center gap-3">
-          <span
-            className="text-xs font-mono uppercase tracking-widest px-2.5 py-1 rounded-md border"
-            style={{ color: c.text, background: c.bg, borderColor: c.border }}
-          >
-            {category}
-          </span>
-          <h2 className="font-display text-2xl md:text-3xl font-black tracking-tighter">
-            Latest {category}
-          </h2>
-        </div>
-        <Link
-          to={`/category/${slug}`}
-          className="inline-flex items-center gap-1 text-sm text-zinc-400 hover:text-white btn-press"
-          data-testid={`view-all-${slug}`}
-        >
-          View all
-          <ChevronRight className="w-4 h-4" />
-        </Link>
-      </div>
+      <SectionHeader
+        eyebrow={category}
+        eyebrowColor={c?.text}
+        title={`Latest ${category.toLowerCase()}.`}
+        action={<ViewAllLink to={`/category/${slug}`} testId={`view-all-${slug}`} />}
+      />
       {assets.length === 0 ? (
-        <p className="text-sm text-zinc-500 italic py-6">
-          No {category.toLowerCase()} yet — moderators can drop them via the Upload modal.
+        <p className="rounded-[22px] px-6 py-8 text-[15px] text-ink-3 shadow-[inset_0_0_0_1px_var(--line)]">
+          No {category.toLowerCase()} yet. Moderators can add them from the Upload menu.
         </p>
       ) : (
         <AssetGrid assets={assets} onChanged={onChanged} allAssets={allAssets} />
       )}
-    </div>
-  );
-}
-
-function AssetGrid({ assets, featuredAssetId = "", onChanged, allAssets }) {
-  return (
-    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {assets.map((a, idx) => (
-        <div key={a.id} className={`asset-3d-in ${a.id === featuredAssetId ? "featured-extension-slot" : ""}`} style={{ animationDelay: `${Math.min(idx, 12) * 60}ms` }}>
-          <AssetCard asset={a} featured={a.id === featuredAssetId} onChanged={onChanged} allAssets={allAssets || assets} />
-        </div>
-      ))}
     </div>
   );
 }
@@ -368,29 +383,28 @@ function FilteredView({
     ).length;
     return (
       <>
-        <h2 className="font-display text-lg font-semibold mb-4 flex items-center gap-2">
-          <Tv className="w-5 h-5 text-neon" /> Shows or Movies?
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-12" data-testid="home-torrent-branch-grid">
-          <TorrentBranchCard
+        <SubHeading icon={<Tv />}>Shows or movies?</SubHeading>
+        <div className="mb-12 grid grid-cols-1 gap-5 md:grid-cols-2" data-testid="home-torrent-branch-grid">
+          <BranchCard
             label="Shows"
             count={showCount}
-            icon={<Tv className="w-7 h-7" />}
+            icon={<Tv />}
             from="#0E2A5C"
             to="#040E26"
             accent="#3B82F6"
             onClick={() => setTorrentBranch("Shows")}
             testId="home-torrent-branch-shows"
           />
-          <TorrentBranchCard
+          <BranchCard
             label="Movies"
             count={movieCount}
-            icon={<Film className="w-7 h-7" />}
+            icon={<Film />}
             from="#3A0C18"
             to="#0A0204"
             accent="#EF4444"
             onClick={() => setTorrentBranch("Movies")}
             testId="home-torrent-branch-movies"
+            index={1}
           />
         </div>
       </>
@@ -402,21 +416,13 @@ function FilteredView({
     return (
       <>
         {filter === "Torrents" && (
-          <button
-            onClick={() => setTorrentBranch(null)}
-            className="inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-white mb-6 btn-press"
-            data-testid="home-back-to-torrent-branch"
-          >
-            <ChevronLeft className="w-4 h-4" /> Torrents
-          </button>
+          <BackButton onClick={() => setTorrentBranch(null)} testId="home-back-to-torrent-branch">
+            Torrents
+          </BackButton>
         )}
-        <h2 className="font-display text-lg font-semibold mb-4 flex items-center gap-2">
-          {filter === "Audios" ? (
-            <><Music2 className="w-5 h-5 text-neon" /> Choose an Audio Pack</>
-          ) : (
-            <><Tv className="w-5 h-5 text-neon" /> Choose a Show</>
-          )}
-        </h2>
+        <SubHeading icon={filter === "Audios" ? <Music2 /> : <Tv />}>
+          {filter === "Audios" ? "Choose an audio pack" : "Choose a show"}
+        </SubHeading>
         <CategoryPicker
           items={filter === "Audios" ? mergedAudioCreators : mergedShows}
           themes={filter === "Audios" ? CREATOR_THEMES : SHOW_THEMES}
@@ -442,25 +448,20 @@ function FilteredView({
   return (
     <>
       {filter === "Torrents" && torrentBranch === "Movies" && (
-        <button
-          onClick={() => setTorrentBranch(null)}
-          className="inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-white mb-6 btn-press"
-          data-testid="home-back-to-torrent-branch"
-        >
-          <ChevronLeft className="w-4 h-4" /> Torrents
-        </button>
+        <BackButton onClick={() => setTorrentBranch(null)} testId="home-back-to-torrent-branch">
+          Torrents
+        </BackButton>
       )}
       {showsPicker && sub && (
-        <button
-          onClick={() => setSub(null)}
-          className="inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-white mb-6 btn-press"
-          data-testid="back-to-picker"
-        >
-          <ChevronLeft className="w-4 h-4" /> All {filter === "Audios" ? "creators" : "shows"}
-        </button>
+        <>
+          <BackButton onClick={() => setSub(null)} testId="back-to-picker">
+            All {filter === "Audios" ? "creators" : "shows"}
+          </BackButton>
+          <SectionHeader eyebrow={filter} eyebrowColor={CATEGORY_COLORS[filter]?.text} title={sub} />
+        </>
       )}
       {filtered.length === 0 ? (
-        <EmptyState filter={filter} />
+        <HomeEmptyState filter={filter} />
       ) : (
         <AssetGrid assets={filtered} onChanged={load} allAssets={assets} />
       )}
@@ -468,76 +469,20 @@ function FilteredView({
   );
 }
 
-function TorrentBranchCard({ label, count, icon, from, to, accent, onClick, testId }) {
+function HomeEmptyState({ filter }) {
   return (
-    <button
-      onClick={onClick}
-      className="asset-3d-in relative h-44 rounded-2xl p-7 text-left btn-press overflow-hidden border border-white/5 hover:border-white/20 transition-colors group"
-      style={{ background: `linear-gradient(135deg, ${from} 0%, ${to} 100%)` }}
-      data-testid={testId}
+    <EmptyState
+      action={(
+        <Link to="/category/torrents" className="link-more">
+          Browse categories <ChevronRight className="h-4 w-4" />
+        </Link>
+      )}
     >
-      <div
-        className="absolute -top-10 -right-10 w-48 h-48 rounded-full opacity-30 blur-3xl pointer-events-none"
-        style={{ background: accent }}
-      />
-      <div className="relative flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-3 text-white">
-            {icon}
-            <span className="font-display text-3xl font-black tracking-tight">{label}</span>
-          </div>
-          <p className="mt-2 text-sm text-white/60">
-            {count} item{count === 1 ? "" : "s"}
-          </p>
-        </div>
-        <span className="text-xs uppercase tracking-widest text-white/70 group-hover:text-white">
-          Open →
-        </span>
-      </div>
-    </button>
-  );
-}
-
-function AssetSkeletonGrid() {
-  return (
-    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {Array.from({ length: 8 }).map((_, idx) => (
-        <div key={idx} className="rounded-2xl overflow-hidden border border-white/5 bg-[var(--site-surface)] animate-pulse">
-          <div className="aspect-video bg-white/5" />
-          <div className="p-5 space-y-3">
-            <div className="h-5 w-20 rounded bg-white/5" />
-            <div className="h-6 w-3/4 rounded bg-white/5" />
-            <div className="h-4 w-full rounded bg-white/5" />
-            <div className="h-10 w-full rounded-lg bg-white/5" />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function EmptyState({ filter }) {
-  return (
-    <div
-      className="relative overflow-hidden text-center py-24 border border-dashed border-white/10 rounded-2xl bg-white/[0.02]"
-      data-testid="empty-state"
-    >
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-neon/50 to-transparent" />
-      <Sparkles className="w-8 h-8 text-neon mx-auto mb-4 opacity-80" />
-      <h3 className="font-display text-2xl mb-2">No assets found</h3>
-      <p className="text-zinc-500 max-w-md mx-auto mb-6">
-        {filter === "Search"
-          ? "No assets matched that search. Try a title, creator, genre, show, or category name."
-          : filter === "All"
-            ? "The vault is empty. Moderators can unlock upload access and start dropping packs."
-            : `Nothing under "${filter}" yet. Try another category or check back soon.`}
-      </p>
-      <Link
-        to="/category/torrents"
-        className="inline-block text-neon text-sm font-mono uppercase tracking-widest border-b border-neon/40 hover:border-neon"
-      >
-        Browse categories →
-      </Link>
-    </div>
+      {filter === "Search"
+        ? "No assets matched that search. Try a title, creator, genre, show, or category name."
+        : filter === "All"
+          ? "The vault is empty. Moderators can unlock upload access and start dropping packs."
+          : `Nothing under "${filter}" yet. Try another category or check back soon.`}
+    </EmptyState>
   );
 }

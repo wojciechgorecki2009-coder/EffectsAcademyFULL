@@ -34,6 +34,14 @@ export function ThemeProvider({ children }) {
     localStorage.setItem("ea_theme", theme);
   }, [theme]);
 
+  // "blue" is the light appearance in the Apple style; every other combination is dark.
+  const scheme = siteStyle === "apple" && theme === "blue" ? "light" : "dark";
+
+  useEffect(() => {
+    document.documentElement.dataset.scheme = scheme;
+    document.documentElement.style.colorScheme = scheme;
+  }, [scheme]);
+
   useEffect(() => {
     document.documentElement.dataset.font = font;
     localStorage.setItem("ea_font_v2", font);
@@ -46,6 +54,7 @@ export function ThemeProvider({ children }) {
 
   const value = useMemo(() => ({
     theme,
+    scheme,
     setTheme: (nextTheme) => {
       if (THEMES.has(nextTheme)) setThemeState(nextTheme);
     },
@@ -57,7 +66,7 @@ export function ThemeProvider({ children }) {
     setSiteStyle: (nextStyle) => {
       if (SITE_STYLES.has(nextStyle)) setSiteStyleState(nextStyle);
     },
-  }), [theme, font, siteStyle]);
+  }), [theme, scheme, font, siteStyle]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

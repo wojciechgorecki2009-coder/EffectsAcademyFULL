@@ -1,48 +1,42 @@
 import { Link } from "react-router-dom";
 import { AlertTriangle, LockKeyhole, Mail, Scale, ShieldCheck } from "lucide-react";
+import { PageIntro } from "@/components/Library";
+import { Reveal } from "@/lib/motion";
 
 const SUPPORT_EMAIL = "EffectsAcademy2026@hotmail.com";
 
 function LegalShell({ eyebrow, title, description, icon: Icon, children }) {
   return (
-    <section className="max-w-5xl mx-auto px-6 pt-28 pb-16 page-soft-enter">
-      <div className="rounded-3xl border border-white/10 bg-white/[0.025] p-6 md:p-10 overflow-hidden relative">
-        <div className="absolute -top-32 right-0 w-80 h-80 bg-neon/10 blur-3xl rounded-full pointer-events-none" />
-        <div className="relative">
-          <div className="w-12 h-12 rounded-xl bg-neon/10 border border-neon/30 flex items-center justify-center mb-4">
-            <Icon className="w-5 h-5 text-neon" />
-          </div>
-          <p className="text-xs font-mono uppercase tracking-[0.28em] text-neon mb-3">{eyebrow}</p>
-          <h1 className="font-display text-4xl md:text-5xl font-black tracking-tighter mb-3">{title}</h1>
-          <p className="text-zinc-400 leading-relaxed max-w-3xl">{description}</p>
-          <div className="mt-6 flex flex-wrap gap-3 text-sm">
-            <a href={`mailto:${SUPPORT_EMAIL}`} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 hover:border-neon/40 hover:text-neon btn-press">
-              <Mail className="w-4 h-4" /> Contact support
-            </a>
-            <Link to="/dmca" className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 hover:border-neon/40 hover:text-neon btn-press">
-              <ShieldCheck className="w-4 h-4" /> DMCA requests
-            </Link>
-          </div>
-        </div>
-      </div>
-      <div className="mt-8 grid gap-5">{children}</div>
+    <section className="mx-auto max-w-4xl px-5 pb-24 pt-32 md:pt-36">
+      <PageIntro eyebrow={eyebrow} icon={<Icon />} title={title}>
+        {description}
+      </PageIntro>
+      <Reveal className="mt-8 flex flex-wrap gap-2" delay={0.35}>
+        <a href={`mailto:${SUPPORT_EMAIL}`} className="btn btn-sm btn-secondary">
+          <Mail /> Contact support
+        </a>
+        <Link to="/dmca" className="btn btn-sm btn-secondary">
+          <ShieldCheck /> DMCA requests
+        </Link>
+      </Reveal>
+      <div className="mt-14 grid gap-4">{children}</div>
     </section>
   );
 }
 
 function Card({ title, children, icon: Icon = ShieldCheck }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-[var(--site-surface)] p-6">
-      <div className="flex items-start gap-3">
-        <div className="mt-0.5 w-9 h-9 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-          <Icon className="w-4 h-4 text-neon" />
-        </div>
-        <div>
-          <h2 className="font-display text-xl font-bold mb-2">{title}</h2>
-          <div className="text-sm text-zinc-400 leading-relaxed space-y-3">{children}</div>
+    <Reveal className="surface rounded-[24px] p-6 md:p-7" y={20} blur={6}>
+      <div className="flex items-start gap-4">
+        <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[rgb(var(--tint)/0.1)] text-tint">
+          <Icon className="h-4 w-4" />
+        </span>
+        <div className="min-w-0">
+          <h2 className="mb-2 font-display text-[1.1875rem] font-semibold tracking-[-0.02em] text-ink">{title}</h2>
+          <div className="space-y-3 text-[15px] leading-relaxed text-ink-2 [&_a]:text-tint [&_a:hover]:underline">{children}</div>
         </div>
       </div>
-    </div>
+    </Reveal>
   );
 }
 
@@ -74,10 +68,10 @@ export function TermsPage() {
         <p>Do not use AI tools to create illegal, harmful, deceptive, or rights-infringing content. Generated results may vary and should be reviewed before use in public projects.</p>
       </Card>
       <Card title="Copyright and takedowns">
-        <p>If you believe your copyrighted work appears on Effects Academy without permission, use the DMCA page or email <a className="text-neon" href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>.</p>
+        <p>If you believe your copyrighted work appears on Effects Academy without permission, use the DMCA page or email <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>.</p>
       </Card>
       <Card title="Contact">
-        <p>Questions, support requests, and moderation issues can be sent to <a className="text-neon" href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>.</p>
+        <p>Questions, support requests, and moderation issues can be sent to <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>.</p>
       </Card>
     </LegalShell>
   );
@@ -110,7 +104,7 @@ export function PrivacyPage() {
         <p>AI text image generations are linked to your signed-in account so Effects Academy can enforce free and premium usage limits, prevent abuse, and show saved generations to eligible users.</p>
       </Card>
       <Card title="Email and support">
-        <p>DMCA notices and suggestions may be delivered to <a className="text-neon" href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a> so the team can review them.</p>
+        <p>DMCA notices and suggestions may be delivered to <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a> so the team can review them.</p>
       </Card>
       <Card title="Your choices">
         <p>You can contact support to ask about account data, premium access, or submitted notices. For urgent copyright issues, use the DMCA page.</p>
@@ -132,7 +126,7 @@ export function SupportPage() {
       <Card title="Support email" icon={Mail}>
         <p>The main support email for Effects Academy is:</p>
         <a
-          className="inline-flex w-fit rounded-xl border border-neon/30 bg-neon/10 px-4 py-2 font-semibold text-neon hover:bg-neon/15 transition-colors"
+          className="btn btn-sm btn-tinted w-fit !no-underline"
           href={`mailto:${SUPPORT_EMAIL}?subject=${supportSubject}`}
         >
           {SUPPORT_EMAIL}
@@ -155,7 +149,7 @@ export function SupportPage() {
       <Card title="Copyright or takedown requests" icon={ShieldCheck}>
         <p>
           For copyright removal requests, please use the dedicated{" "}
-          <Link to="/dmca" className="text-neon hover:underline">DMCA page</Link>{" "}
+          <Link to="/dmca">DMCA page</Link>{" "}
           so the notice includes all the required information.
         </p>
       </Card>

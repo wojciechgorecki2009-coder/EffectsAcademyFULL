@@ -112,15 +112,15 @@ export default function EditCategoryModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="glass border-white/10 text-white max-w-lg max-h-[92vh] overflow-y-auto"
+        className="glass border-[var(--line)] text-ink max-w-lg max-h-[92vh] overflow-y-auto"
         data-testid="edit-category-modal"
       >
         <DialogHeader>
           <DialogTitle className="font-display text-2xl">
             {defaultDelete ? "Delete Category" : "Customize Category"}
           </DialogTitle>
-          <DialogDescription className="text-zinc-400">
-            <span className="text-zinc-200 font-semibold">{label}</span>
+          <DialogDescription className="text-ink-2">
+            <span className="text-ink font-semibold">{label}</span>
             {defaultDelete
               ? " — confirm to hide this category from the picker. Existing assets are kept."
               : " — set background image, colors, and blur for this group card."}
@@ -131,7 +131,7 @@ export default function EditCategoryModal({
           <div className="space-y-5">
             {/* Live preview */}
             <div
-              className="relative h-32 rounded-xl overflow-hidden border border-white/10"
+              className="relative h-32 rounded-xl overflow-hidden border border-[var(--line)]"
               style={{
                 background: `linear-gradient(135deg, ${colorFrom} 0%, ${colorTo} 100%)`,
               }}
@@ -153,7 +153,7 @@ export default function EditCategoryModal({
                   background: `linear-gradient(135deg, ${colorFrom}B3 0%, ${colorTo}E6 100%)`,
                 }}
               />
-              <div className="absolute inset-0 flex items-center justify-center font-display text-2xl font-black tracking-tight"
+              <div className="absolute inset-0 flex items-center justify-center font-display text-2xl font-bold tracking-tight"
                 style={{
                   color: textColor || "#fff",
                   textShadow: "0 2px 24px rgba(0,0,0,0.65)",
@@ -163,20 +163,20 @@ export default function EditCategoryModal({
             </div>
 
             <div>
-              <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">
+              <label className="text-xs font-semibold text-ink-3">
                 Category Name
               </label>
               <Input
                 value={categoryName}
                 onChange={(e) => setCategoryName(e.target.value)}
                 placeholder="Category name"
-                className="bg-white/5 border-white/10 mt-1"
+                className="bg-[var(--fill)] border-[var(--line)] mt-1"
                 data-testid="edit-cat-name"
               />
             </div>
 
             <div>
-              <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">
+              <label className="text-xs font-semibold text-ink-3">
                 Background Image
               </label>
               <div className="flex gap-2 mt-1">
@@ -184,10 +184,10 @@ export default function EditCategoryModal({
                   value={imageUrl}
                   onChange={(e) => setImageUrl(e.target.value)}
                   placeholder="https://... or upload"
-                  className="bg-white/5 border-white/10"
+                  className="bg-[var(--fill)] border-[var(--line)]"
                   data-testid="edit-cat-image-url"
                 />
-                <label className="cursor-pointer bg-white/5 border border-white/10 px-3 rounded-md flex items-center hover:bg-white/10 btn-press">
+                <label className="cursor-pointer bg-[var(--fill)] border border-[var(--line)] px-3 rounded-md flex items-center hover:bg-[var(--fill-2)] btn-press">
                   <Upload className="w-4 h-4" />
                   <input
                     type="file"
@@ -197,11 +197,11 @@ export default function EditCategoryModal({
                   />
                 </label>
               </div>
-              {uploading && <p className="mt-1 text-xs text-zinc-400">Uploading...</p>}
+              {uploading && <p className="mt-1 text-xs text-ink-2">Uploading...</p>}
             </div>
 
             <div>
-              <label className="text-xs font-mono uppercase tracking-widest text-zinc-500">
+              <label className="text-xs font-semibold text-ink-3">
                 Image Blur — {blur}px
               </label>
               <input
@@ -237,7 +237,7 @@ export default function EditCategoryModal({
                 onClick={reset}
                 disabled={saving}
                 variant="ghost"
-                className="bg-white/5 border border-white/10 hover:bg-white/10 text-zinc-300 btn-press"
+                className="bg-[var(--fill)] border border-[var(--line)] hover:bg-[var(--fill-2)] text-ink-2 btn-press"
                 title="Reset to defaults"
                 data-testid="edit-cat-reset"
               >
@@ -266,7 +266,7 @@ export default function EditCategoryModal({
 function ColorField({ label, value, onChange, testId }) {
   return (
     <div>
-      <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">
+      <label className="text-[10px] font-semibold text-ink-3">
         {label}
       </label>
       <div className="flex items-center gap-2 mt-1">
@@ -274,13 +274,13 @@ function ColorField({ label, value, onChange, testId }) {
           type="color"
           value={value || "#000000"}
           onChange={(e) => onChange(e.target.value)}
-          className="w-9 h-9 rounded cursor-pointer border border-white/10 bg-transparent shrink-0"
+          className="w-9 h-9 rounded cursor-pointer border border-[var(--line)] bg-transparent shrink-0"
           data-testid={testId}
         />
         <Input
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="bg-white/5 border-white/10 text-xs font-mono h-9"
+          className="bg-[var(--fill)] border-[var(--line)] text-xs font-mono h-9"
         />
       </div>
     </div>

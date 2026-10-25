@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, Captions, Check, Clipboard, Cpu, Download, FileAudio, Loader2, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
+import { PageIntro } from "@/components/Library";
 
 const ACCEPTED_AUDIO_TYPES = ["audio/mpeg", "audio/mp3", "audio/wav", "audio/x-wav", "audio/wave"];
 const MAX_AUDIO_MB = 25;
@@ -259,26 +260,18 @@ export default function TranscribePage() {
   };
 
   return (
-    <section className="max-w-[1200px] mx-auto px-6 md:px-12 pt-28 pb-24 ai-view-fade-up transcribe-page">
-      <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
-        <div>
-          <span className="inline-flex items-center gap-2 text-xs font-mono uppercase tracking-widest px-2.5 py-1 rounded-md border text-neon bg-neon/10 border-neon/20">
-            <Captions className="w-3.5 h-3.5" /> Transcribe
-          </span>
-          <h1 className="font-display text-4xl md:text-6xl font-black tracking-tighter mt-3">
-            Audio to captions.
-          </h1>
-          <p className="text-zinc-400 max-w-2xl mt-3 text-base md:text-lg">
-            Drop in an MP3 or WAV and get plain text plus caption files with timestamps for Premiere, web players, and editing workflows.
-          </p>
-        </div>
+    <section className="max-w-[1200px] mx-auto px-5 md:px-8 pt-32 md:pt-36 pb-24">
+      <div className="flex flex-wrap items-end justify-between gap-6 mb-10">
+        <PageIntro eyebrow="Transcribe" icon={<Captions />} title="Audio to captions.">
+          Drop in an MP3 or WAV and get plain text plus caption files with timestamps for Premiere, web players, and editing workflows.
+        </PageIntro>
 
-        <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 min-w-64">
-          <div className="flex items-center gap-2 text-sm text-white">
+        <div className="rounded-2xl border border-[var(--line)] bg-[var(--fill)] px-4 py-3 min-w-64">
+          <div className="flex items-center gap-2 text-sm text-ink">
             <Cpu className="w-4 h-4 text-neon" />
             Free browser-side tool
           </div>
-          <p className="text-xs text-zinc-500 mt-1">Your audio stays on your device · MP3/WAV up to {MAX_AUDIO_MB}MB</p>
+          <p className="text-xs text-ink-3 mt-1">Your audio stays on your device · MP3/WAV up to {MAX_AUDIO_MB}MB</p>
         </div>
       </div>
 
@@ -290,9 +283,9 @@ export default function TranscribePage() {
       </div>
 
       <form onSubmit={transcribe} className="grid lg:grid-cols-[0.9fr_1.1fr] gap-6">
-        <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 md:p-6 transcribe-surface">
+        <div className="rounded-[28px] border border-[var(--line)] bg-[var(--fill)] p-5 md:p-6 transcribe-surface">
           <label
-            className="group flex min-h-[360px] cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-white/15 bg-black/20 hover:bg-white/[0.035] transition-colors overflow-hidden text-center px-6 transcribe-dropzone"
+            className="group flex min-h-[360px] cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--line)] bg-[var(--fill)] hover:bg-[var(--fill)] transition-colors overflow-hidden text-center px-6 transcribe-dropzone"
             onDragOver={(e) => e.preventDefault()}
             onDrop={(e) => {
               e.preventDefault();
@@ -301,21 +294,21 @@ export default function TranscribePage() {
           >
             {file ? (
               <div className="w-full max-w-md">
-                <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-3xl bg-neon/15 text-neon border border-neon/20">
+                <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-[28px] bg-neon/15 text-neon border border-neon/20">
                   <FileAudio className="w-10 h-10" />
                 </div>
-                <p className="font-display text-2xl font-black text-white break-words">{file.name}</p>
-                <p className="text-sm text-zinc-500 mt-2">{formatBytes(file.size)}</p>
+                <p className="font-display text-2xl font-bold text-ink break-words">{file.name}</p>
+                <p className="text-sm text-ink-3 mt-2">{formatBytes(file.size)}</p>
                 {previewUrl && (
                   <audio controls src={previewUrl} className="mt-6 w-full audio-preview" />
                 )}
-                <p className="text-xs text-zinc-600 mt-5">Click to choose a different audio file</p>
+                <p className="text-xs text-ink-3 mt-5">Click to choose a different audio file</p>
               </div>
             ) : (
               <div>
                 <UploadCloud className="w-12 h-12 text-neon mx-auto mb-4" />
-                <p className="font-display text-2xl font-bold text-white">Drop audio here</p>
-                <p className="text-sm text-zinc-500 mt-2">MP3 or WAV under {MAX_AUDIO_MB}MB</p>
+                <p className="font-display text-2xl font-bold text-ink">Drop audio here</p>
+                <p className="text-sm text-ink-3 mt-2">MP3 or WAV under {MAX_AUDIO_MB}MB</p>
               </div>
             )}
             <input
@@ -329,7 +322,7 @@ export default function TranscribePage() {
           <button
             type="submit"
             disabled={!canTranscribe}
-            className="mt-5 relative w-full overflow-hidden rounded-2xl bg-neon text-black py-4 font-display font-black text-lg btn-press disabled:opacity-40 disabled:cursor-not-allowed"
+            className="mt-5 relative w-full overflow-hidden rounded-2xl bg-neon text-black py-4 font-display font-bold text-lg btn-press disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {transcribing && (
               <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent animate-pulse" />
@@ -341,12 +334,12 @@ export default function TranscribePage() {
           </button>
 
           {(transcribing || modelStatus) && (
-            <div className="mt-4 rounded-2xl border border-white/10 bg-black/25 p-4">
-              <div className="flex items-center justify-between gap-3 text-xs text-zinc-400">
+            <div className="mt-4 rounded-2xl border border-[var(--line)] bg-[var(--fill)] p-4">
+              <div className="flex items-center justify-between gap-3 text-xs text-ink-2">
                 <span className="capitalize">{modelStatus || "Preparing..."}</span>
                 {progress > 0 && progress < 100 ? <span>{progress}%</span> : null}
               </div>
-              <div className="mt-3 h-2 rounded-full bg-white/10 overflow-hidden">
+              <div className="mt-3 h-2 rounded-full bg-[var(--fill-2)] overflow-hidden">
                 <div
                   className="h-full rounded-full bg-neon transition-all duration-300"
                   style={{ width: `${transcribing ? Math.max(progress, 12) : progress}%` }}
@@ -356,19 +349,19 @@ export default function TranscribePage() {
           )}
         </div>
 
-        <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 md:p-6 transcribe-surface">
+        <div className="rounded-[28px] border border-[var(--line)] bg-[var(--fill)] p-5 md:p-6 transcribe-surface">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
             <div>
-              <h2 className="font-display text-2xl md:text-3xl font-black tracking-tight flex items-center gap-2">
+              <h2 className="font-display text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
                 <Captions className="w-5 h-5 text-neon" /> Transcript result
               </h2>
-              <p className="text-sm text-zinc-500 mt-1">{result ? segmentSummary : "Your text and timed captions will appear here."}</p>
+              <p className="text-sm text-ink-3 mt-1">{result ? segmentSummary : "Your text and timed captions will appear here."}</p>
             </div>
             <button
               type="button"
               onClick={copyTranscript}
               disabled={!result?.text}
-              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] px-4 py-2 text-sm text-white btn-press disabled:opacity-40 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--fill-2)] px-4 py-2 text-sm text-ink btn-press disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {result?.text ? <Check className="w-4 h-4" /> : <Clipboard className="w-4 h-4" />}
               Copy text
@@ -376,22 +369,22 @@ export default function TranscribePage() {
           </div>
 
           {transcribing ? (
-            <div className="min-h-[420px] rounded-2xl border border-dashed border-neon/20 bg-black/20 flex flex-col items-center justify-center text-center px-6 overflow-hidden relative">
+            <div className="min-h-[420px] rounded-2xl border border-dashed border-neon/20 bg-[var(--fill)] flex flex-col items-center justify-center text-center px-6 overflow-hidden relative">
               <div className="absolute inset-x-10 top-1/2 h-px bg-gradient-to-r from-transparent via-neon/60 to-transparent animate-pulse" />
               <Loader2 className="relative w-10 h-10 text-neon animate-spin mb-4" />
-              <p className="relative font-display text-xl font-black text-white">Working locally in your browser</p>
-              <p className="relative text-sm text-zinc-500 mt-2">
+              <p className="relative font-display text-xl font-bold text-ink">Working locally in your browser</p>
+              <p className="relative text-sm text-ink-3 mt-2">
                 {modelStatus || "Building timestamped captions."} Running for {elapsedSeconds}s.
               </p>
             </div>
           ) : result ? (
             <div className="space-y-4">
-              <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
-                <p className="text-xs font-mono uppercase tracking-widest text-zinc-500 mb-3">Plain text</p>
+              <div className="rounded-2xl border border-[var(--line)] bg-[var(--fill)] p-4">
+                <p className="text-xs font-semibold text-ink-3 mb-3">Plain text</p>
                 <textarea
                   value={result.text}
                   readOnly
-                  className="w-full min-h-[220px] rounded-2xl bg-black/30 border border-white/10 p-4 text-white leading-7 outline-none resize-y"
+                  className="w-full min-h-[220px] rounded-2xl bg-[var(--fill)] border border-[var(--line)] p-4 text-ink leading-7 outline-none resize-y"
                 />
               </div>
 
@@ -399,31 +392,31 @@ export default function TranscribePage() {
                 <button
                   type="button"
                   onClick={() => downloadTextFile(result.srt, `${baseFilename}.srt`, "application/x-subrip;charset=utf-8")}
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-neon text-black px-4 py-4 font-display font-black btn-press"
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-neon text-black px-4 py-4 font-display font-bold btn-press"
                 >
                   <Download className="w-4 h-4" /> Download SRT
                 </button>
                 <button
                   type="button"
                   onClick={() => downloadTextFile(result.vtt, `${baseFilename}.vtt`, "text/vtt;charset=utf-8")}
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-4 font-display font-black text-white btn-press"
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[var(--line)] bg-[var(--fill-2)] px-4 py-4 font-display font-bold text-ink btn-press"
                 >
                   <Download className="w-4 h-4" /> Download VTT
                 </button>
                 <button
                   type="button"
                   onClick={() => downloadTextFile(result.text, `${baseFilename}.txt`, "text/plain;charset=utf-8")}
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-4 font-display font-black text-white btn-press"
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[var(--line)] bg-[var(--fill-2)] px-4 py-4 font-display font-bold text-ink btn-press"
                 >
                   <Download className="w-4 h-4" /> Download TXT
                 </button>
               </div>
             </div>
           ) : (
-            <div className="min-h-[420px] rounded-2xl border border-dashed border-white/10 bg-black/20 flex flex-col items-center justify-center text-center px-6">
-              <Captions className="w-12 h-12 text-zinc-600 mb-4" />
-              <p className="font-display text-2xl font-black text-white">Ready when your audio is</p>
-              <p className="text-sm text-zinc-500 max-w-md mt-2">
+            <div className="min-h-[420px] rounded-2xl border border-dashed border-[var(--line)] bg-[var(--fill)] flex flex-col items-center justify-center text-center px-6">
+              <Captions className="w-12 h-12 text-ink-3 mb-4" />
+              <p className="font-display text-2xl font-bold text-ink">Ready when your audio is</p>
+              <p className="text-sm text-ink-3 max-w-md mt-2">
                 Upload your file, press transcribe, then download captions for Premiere or copy the transcript.
               </p>
             </div>

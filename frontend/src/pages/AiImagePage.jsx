@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Wand2, UploadCloud, Image as ImageIcon, Download, Crown, ShieldCheck, Sparkles, AlertCircle, Loader2, Database, HardDrive, RefreshCw, X, MessageSquareText, Palette } from "lucide-react";
+import { Wand2, UploadCloud, Image as ImageIcon, Download, Crown, Sparkles, AlertCircle, Loader2, Database, HardDrive, RefreshCw, X, MessageSquareText, Palette } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { hasPremiumAccess, useAuth } from "@/lib/auth";
+import { PageIntro } from "@/components/Library";
 
 const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
 
@@ -188,69 +189,54 @@ export default function AiImagePage() {
 
   if (!authLoading && !user) {
     return (
-      <section className="max-w-3xl mx-auto px-6 pt-32 pb-24 page-soft-enter">
-        <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-8 md:p-10 text-center overflow-hidden relative">
-          <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-72 h-72 bg-neon/10 blur-3xl rounded-full pointer-events-none" />
-          <ShieldCheck className="relative w-10 h-10 text-neon mx-auto mb-4" />
-          <h1 className="relative font-display text-3xl md:text-4xl font-black tracking-tight mb-3">
-            Sign in to use AI Tools
-          </h1>
-          <p className="relative text-zinc-400 mb-6">
-            We use your Google account to track your monthly AI image generation limit.
-          </p>
-          <Link
-            to="/login?returnTo=/ai-image"
-            className="relative inline-flex items-center justify-center rounded-xl bg-neon text-black px-5 py-3 font-semibold btn-press"
-          >
-            Sign in with Google
-          </Link>
-        </div>
+      <section className="relative max-w-3xl mx-auto px-5 pt-36 pb-24 text-center">
+        <span className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-[18px] bg-tint text-tint-ink shadow-[0_10px_30px_-8px_rgb(var(--tint)/0.6)]">
+          <Wand2 className="h-7 w-7" />
+        </span>
+        <PageIntro title="Sign in to use AI Tools" center>
+          We use your Google account to track your monthly AI image generation limit.
+        </PageIntro>
+        <Link to="/login?returnTo=/ai-image" className="btn btn-primary btn-lg mt-8">
+          Sign in with Google
+        </Link>
       </section>
     );
   }
 
   if (canUseStorage && storageOpen) {
     return (
-      <section className="max-w-[1200px] mx-auto px-6 md:px-12 pt-28 pb-24 ai-view-fade-up">
-        <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
-          <div>
-            <span className="inline-flex items-center gap-2 text-xs font-mono uppercase tracking-widest px-2.5 py-1 rounded-md border text-purple-200 bg-purple-300/10 border-purple-300/20">
-              <Database className="w-3.5 h-3.5" /> AI Storage
-            </span>
-            <h1 className="font-display text-4xl md:text-5xl font-black tracking-tighter mt-3">
-              Storage
-            </h1>
-            <p className="text-zinc-400 max-w-2xl mt-2">
-              Your previous AI text generations are saved here. Full cloud folders will come later.
-            </p>
-          </div>
+      <section className="max-w-[1200px] mx-auto px-5 md:px-8 pt-32 md:pt-36 pb-24">
+        <div className="flex flex-wrap items-end justify-between gap-6 mb-10">
+          <PageIntro eyebrow="AI Storage" icon={<Database />} title="Storage">
+            Your previous AI text generations are saved here. Full cloud folders will come later.
+          </PageIntro>
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
               onClick={() => setStorageOpen(false)}
-              className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-3 text-sm text-white btn-press hover:bg-white/[0.08]"
+              className="inline-flex items-center gap-2 rounded-2xl border border-[var(--line)] bg-[var(--fill-2)] px-4 py-3 text-sm text-ink btn-press hover:bg-[var(--fill-2)]"
             >
               <Wand2 className="w-4 h-4" />
               Back to generator
             </button>
-            <div className="rounded-2xl border border-white/10 bg-black/25 px-4 py-3">
-              <p className="text-[10px] uppercase tracking-widest text-zinc-500">Saved data</p>
-              <p className="text-sm font-semibold text-white flex items-center gap-2 mt-1">
+            <div className="rounded-2xl border border-[var(--line)] bg-[var(--fill)] px-4 py-3">
+              <p className="text-[10px] uppercase tracking-widest text-ink-3">Saved data</p>
+              <p className="text-sm font-semibold text-ink flex items-center gap-2 mt-1">
                 <HardDrive className="w-4 h-4 text-purple-300" />
                 {formatBytes(storage?.total_bytes || 0)}
-                <span className="text-zinc-500 font-normal">/ {storage?.count || 0} items</span>
+                <span className="text-ink-3 font-normal">/ {storage?.count || 0} items</span>
               </p>
             </div>
           </div>
         </div>
 
-        <div className="rounded-3xl border border-purple-300/15 bg-gradient-to-br from-purple-950/20 via-white/[0.03] to-black/30 p-5 md:p-6">
+        <div className="rounded-[28px] border border-purple-300/15 bg-gradient-to-br from-purple-950/20 via-white/[0.03] to-black/30 p-5 md:p-6">
           <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
             <div>
-              <h2 className="font-display text-2xl md:text-3xl font-black tracking-tight flex items-center gap-2">
+              <h2 className="font-display text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
                 <Database className="w-5 h-5 text-purple-300" /> Previous generations
               </h2>
-              <p className="text-sm text-zinc-500 mt-1">
+              <p className="text-sm text-ink-3 mt-1">
                 Saved automatically for Premium users and moderators.
               </p>
             </div>
@@ -258,7 +244,7 @@ export default function AiImagePage() {
               type="button"
               onClick={loadStorage}
               disabled={storageLoading}
-              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] px-4 py-3 text-sm text-white btn-press disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--fill-2)] px-4 py-3 text-sm text-ink btn-press disabled:opacity-50"
             >
               <RefreshCw className={`w-4 h-4 ${storageLoading ? "animate-spin" : ""}`} />
               Refresh
@@ -266,7 +252,7 @@ export default function AiImagePage() {
           </div>
 
           {storageLoading && !storage ? (
-            <div className="min-h-80 rounded-2xl border border-dashed border-white/10 bg-black/20 flex items-center justify-center text-zinc-500">
+            <div className="min-h-80 rounded-2xl border border-dashed border-[var(--line)] bg-[var(--fill)] flex items-center justify-center text-ink-3">
               <Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading storage...
             </div>
           ) : storage?.items?.length ? (
@@ -285,19 +271,19 @@ export default function AiImagePage() {
                         setSelectedStorageItem(item);
                       }
                     }}
-                    className="rounded-2xl border border-white/10 bg-black/30 overflow-hidden group cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:border-purple-300/35 hover:bg-white/[0.035] hover:shadow-[0_22px_70px_rgba(88,28,135,0.18)] focus:outline-none focus:border-purple-300/50"
+                    className="rounded-2xl border border-[var(--line)] bg-[var(--fill)] overflow-hidden group cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:border-purple-300/35 hover:bg-[var(--fill)] hover:shadow-[0_22px_70px_rgba(88,28,135,0.18)] focus:outline-none focus:border-purple-300/50"
                     aria-label={`Open generation details for ${item.replacement_text || "AI text edit"}`}
                   >
-                    <div className="aspect-video bg-black/40 overflow-hidden">
+                    <div className="aspect-video bg-[var(--fill)] overflow-hidden">
                       <img src={imageSrc} alt={item.replacement_text || "Stored AI generation"} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
                     </div>
                     <div className="p-4">
-                      <p className="text-sm font-semibold text-white line-clamp-2">{item.replacement_text || "AI text edit"}</p>
+                      <p className="text-sm font-semibold text-ink line-clamp-2">{item.replacement_text || "AI text edit"}</p>
                       {item.style_notes && (
-                        <p className="text-xs text-zinc-500 mt-1 line-clamp-2">{item.style_notes}</p>
+                        <p className="text-xs text-ink-3 mt-1 line-clamp-2">{item.style_notes}</p>
                       )}
                       <div className="flex items-center justify-between gap-3 mt-4">
-                        <div className="text-[11px] text-zinc-600">
+                        <div className="text-[11px] text-ink-3">
                           <p>{formatStorageDate(item.created_at)}</p>
                           <p>{formatBytes(item.size_bytes || 0)}</p>
                         </div>
@@ -307,7 +293,7 @@ export default function AiImagePage() {
                             e.stopPropagation();
                             downloadStoredItem(item);
                           }}
-                          className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2 text-xs text-white btn-press"
+                          className="inline-flex items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--fill-2)] px-3 py-2 text-xs text-ink btn-press"
                         >
                           <Download className="w-3.5 h-3.5" /> Download
                         </button>
@@ -319,10 +305,10 @@ export default function AiImagePage() {
               })}
             </div>
           ) : (
-            <div className="min-h-80 rounded-2xl border border-dashed border-white/10 bg-black/20 flex flex-col items-center justify-center text-center px-6">
-              <Database className="w-10 h-10 text-zinc-600 mb-4" />
-              <p className="font-display text-2xl font-black text-white">No saved generations yet</p>
-              <p className="text-sm text-zinc-500 mt-1">Generate an AI text edit and it will appear in your storage automatically.</p>
+            <div className="min-h-80 rounded-2xl border border-dashed border-[var(--line)] bg-[var(--fill)] flex flex-col items-center justify-center text-center px-6">
+              <Database className="w-10 h-10 text-ink-3 mb-4" />
+              <p className="font-display text-2xl font-bold text-ink">No saved generations yet</p>
+              <p className="text-sm text-ink-3 mt-1">Generate an AI text edit and it will appear in your storage automatically.</p>
               <button
                 type="button"
                 onClick={() => setStorageOpen(false)}
@@ -340,18 +326,18 @@ export default function AiImagePage() {
             onClick={() => setSelectedStorageItem(null)}
           >
             <div
-              className="w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-3xl border border-purple-300/20 bg-[#07070c] shadow-[0_30px_120px_rgba(0,0,0,0.65)]"
+              className="w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-[28px] border border-purple-300/20 bg-panel shadow-[0_30px_120px_rgba(0,0,0,0.65)]"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between gap-4 border-b border-white/10 p-5 md:p-6">
+              <div className="flex items-center justify-between gap-4 border-b border-[var(--line)] p-5 md:p-6">
                 <div>
                   <p className="text-xs uppercase tracking-[0.22em] text-purple-200/70">Saved generation</p>
-                  <h3 className="font-display text-2xl md:text-3xl font-black text-white mt-1">Generation details</h3>
+                  <h3 className="font-display text-2xl md:text-3xl font-bold text-ink mt-1">Generation details</h3>
                 </div>
                 <button
                   type="button"
                   onClick={() => setSelectedStorageItem(null)}
-                  className="rounded-2xl border border-white/10 bg-white/[0.05] p-3 text-zinc-300 btn-press hover:text-white"
+                  className="rounded-2xl border border-[var(--line)] bg-[var(--fill-2)] p-3 text-ink-2 btn-press hover:text-ink"
                   aria-label="Close generation details"
                 >
                   <X className="w-5 h-5" />
@@ -359,7 +345,7 @@ export default function AiImagePage() {
               </div>
 
               <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-5 p-5 md:p-6">
-                <div className="rounded-2xl border border-white/10 bg-black/35 overflow-hidden">
+                <div className="rounded-2xl border border-[var(--line)] bg-[var(--fill)] overflow-hidden">
                   <img
                     src={`data:${selectedStorageItem.mime_type || "image/png"};base64,${selectedStorageItem.image_base64}`}
                     alt={selectedStorageItem.replacement_text || "Stored AI generation"}
@@ -368,41 +354,41 @@ export default function AiImagePage() {
                 </div>
 
                 <div className="space-y-4">
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-white mb-3">
+                  <div className="rounded-2xl border border-[var(--line)] bg-[var(--fill)] p-4">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-ink mb-3">
                       <MessageSquareText className="w-4 h-4 text-purple-300" />
                       Prompt used
                     </div>
-                    <p className="text-sm leading-6 text-zinc-300 whitespace-pre-wrap">
+                    <p className="text-sm leading-6 text-ink-2 whitespace-pre-wrap">
                       {selectedStorageItem.replacement_text || "No prompt was saved for this generation."}
                     </p>
                   </div>
 
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-white mb-3">
+                  <div className="rounded-2xl border border-[var(--line)] bg-[var(--fill)] p-4">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-ink mb-3">
                       <Palette className="w-4 h-4 text-purple-300" />
                       Style notes
                     </div>
-                    <p className="text-sm leading-6 text-zinc-300 whitespace-pre-wrap">
+                    <p className="text-sm leading-6 text-ink-2 whitespace-pre-wrap">
                       {selectedStorageItem.style_notes || "No style notes were added."}
                     </p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
-                      <p className="text-[10px] uppercase tracking-widest text-zinc-500">Created</p>
-                      <p className="text-sm text-white mt-1">{formatStorageDate(selectedStorageItem.created_at) || "Unknown"}</p>
+                    <div className="rounded-2xl border border-[var(--line)] bg-[var(--fill)] p-4">
+                      <p className="text-[10px] uppercase tracking-widest text-ink-3">Created</p>
+                      <p className="text-sm text-ink mt-1">{formatStorageDate(selectedStorageItem.created_at) || "Unknown"}</p>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
-                      <p className="text-[10px] uppercase tracking-widest text-zinc-500">Size</p>
-                      <p className="text-sm text-white mt-1">{formatBytes(selectedStorageItem.size_bytes || 0)}</p>
+                    <div className="rounded-2xl border border-[var(--line)] bg-[var(--fill)] p-4">
+                      <p className="text-[10px] uppercase tracking-widest text-ink-3">Size</p>
+                      <p className="text-sm text-ink mt-1">{formatBytes(selectedStorageItem.size_bytes || 0)}</p>
                     </div>
                   </div>
 
                   <button
                     type="button"
                     onClick={() => downloadStoredItem(selectedStorageItem)}
-                    className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-neon text-black px-5 py-4 font-display font-black btn-press"
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-neon text-black px-5 py-4 font-display font-bold btn-press"
                   >
                     <Download className="w-5 h-5" />
                     Download generation
@@ -417,19 +403,11 @@ export default function AiImagePage() {
   }
 
   return (
-    <section className="max-w-[1200px] mx-auto px-6 md:px-12 pt-28 pb-24 ai-view-fade-up">
-      <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
-        <div>
-          <span className="inline-flex items-center gap-2 text-xs font-mono uppercase tracking-widest px-2.5 py-1 rounded-md border text-neon bg-neon/10 border-neon/20">
-            <Wand2 className="w-3.5 h-3.5" /> AI Tools
-          </span>
-          <h1 className="font-display text-4xl md:text-5xl font-black tracking-tighter mt-3">
-            AI Image Text Editor
-          </h1>
-          <p className="text-zinc-400 max-w-2xl mt-2">
-            Upload an image with text, tell the AI what it should say, and download an edited version.
-          </p>
-        </div>
+    <section className="max-w-[1200px] mx-auto px-5 md:px-8 pt-32 md:pt-36 pb-24">
+      <div className="flex flex-wrap items-end justify-between gap-6 mb-10">
+        <PageIntro eyebrow="AI Tools" icon={<Wand2 />} title="AI Image Text Editor">
+          Upload an image with text, tell the AI what it should say, and download an edited version.
+        </PageIntro>
         <div className="flex flex-wrap items-center gap-3">
           {canUseStorage && (
             <button
@@ -441,8 +419,8 @@ export default function AiImagePage() {
               Open storage
             </button>
           )}
-          <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 min-w-56">
-            <div className="flex items-center gap-2 text-sm text-white">
+          <div className="rounded-2xl border border-[var(--line)] bg-[var(--fill)] px-4 py-3 min-w-56">
+            <div className="flex items-center gap-2 text-sm text-ink">
               {hasPremiumAccess(user) ? (
                 <Crown className="w-4 h-4 text-purple-300" />
               ) : (
@@ -450,7 +428,7 @@ export default function AiImagePage() {
               )}
               {limitLabel(user, usage)}
             </div>
-            <p className="text-xs text-zinc-500 mt-1">
+            <p className="text-xs text-ink-3 mt-1">
               {usageLoading ? "Checking usage..." : planCopy}
             </p>
           </div>
@@ -476,9 +454,9 @@ export default function AiImagePage() {
       )}
 
       <form onSubmit={generate} className="grid lg:grid-cols-[0.95fr_1.05fr] gap-6">
-        <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 md:p-6">
+        <div className="rounded-[28px] border border-[var(--line)] bg-[var(--fill)] p-5 md:p-6">
           <label
-            className="group flex min-h-[360px] cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-white/15 bg-black/20 hover:bg-white/[0.035] transition-colors overflow-hidden"
+            className="group flex min-h-[360px] cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--line)] bg-[var(--fill)] hover:bg-[var(--fill)] transition-colors overflow-hidden"
             onDragOver={(e) => e.preventDefault()}
             onDrop={(e) => {
               e.preventDefault();
@@ -491,7 +469,7 @@ export default function AiImagePage() {
               <div className="text-center px-6">
                 <UploadCloud className="w-12 h-12 text-neon mx-auto mb-4" />
                 <p className="font-display text-2xl font-bold">Drop an image here</p>
-                <p className="text-sm text-zinc-500 mt-2">PNG, JPG, JPEG, or WEBP under 8MB</p>
+                <p className="text-sm text-ink-3 mt-2">PNG, JPG, JPEG, or WEBP under 8MB</p>
               </div>
             )}
             <input
@@ -503,9 +481,9 @@ export default function AiImagePage() {
           </label>
         </div>
 
-        <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 md:p-6 space-y-5">
+        <div className="rounded-[28px] border border-[var(--line)] bg-[var(--fill)] p-5 md:p-6 space-y-5">
           <div>
-            <label className="text-xs font-mono uppercase tracking-widest text-zinc-500 mb-2 block">
+            <label className="text-xs font-semibold text-ink-3 mb-2 block">
               What should the text say?
             </label>
             <textarea
@@ -513,28 +491,28 @@ export default function AiImagePage() {
               onChange={(e) => setReplacementText(e.target.value)}
               maxLength={280}
               placeholder='Example: Change the main title to "Effects Academy Pack"'
-              className="w-full min-h-28 rounded-2xl bg-black/30 border border-white/10 p-4 text-white placeholder:text-zinc-600 outline-none focus:border-neon/60"
+              className="w-full min-h-28 rounded-2xl bg-[var(--fill)] border border-[var(--line)] p-4 text-ink placeholder:text-ink-3 outline-none focus:border-tint/60"
             />
-            <p className="text-xs text-zinc-600 mt-1">{replacementText.length}/280</p>
+            <p className="text-xs text-ink-3 mt-1">{replacementText.length}/280</p>
           </div>
 
           <div>
-            <label className="text-xs font-mono uppercase tracking-widest text-zinc-500 mb-2 block">
-              Style notes <span className="text-zinc-700 normal-case tracking-normal">(optional)</span>
+            <label className="text-xs font-semibold text-ink-3 mb-2 block">
+              Style notes <span className="text-ink-3 normal-case tracking-normal">(optional)</span>
             </label>
             <textarea
               value={styleNotes}
               onChange={(e) => setStyleNotes(e.target.value)}
               maxLength={700}
               placeholder="Example: Keep the same font, glow, angle, and colour."
-              className="w-full min-h-24 rounded-2xl bg-black/30 border border-white/10 p-4 text-white placeholder:text-zinc-600 outline-none focus:border-neon/60"
+              className="w-full min-h-24 rounded-2xl bg-[var(--fill)] border border-[var(--line)] p-4 text-ink placeholder:text-ink-3 outline-none focus:border-tint/60"
             />
           </div>
 
           <button
             type="submit"
             disabled={!canGenerate}
-            className="relative w-full overflow-hidden rounded-2xl bg-neon text-black py-4 font-display font-black text-lg btn-press disabled:opacity-40 disabled:cursor-not-allowed"
+            className="relative w-full overflow-hidden rounded-2xl bg-neon text-black py-4 font-display font-bold text-lg btn-press disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {generating && (
               <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent animate-pulse" />
@@ -545,39 +523,39 @@ export default function AiImagePage() {
             </span>
           </button>
 
-          <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-zinc-400">
-            Free users get <span className="text-white font-bold">5</span> generations/month. Premium users get <span className="text-white font-bold">30</span> generations/month.
+          <div className="rounded-2xl border border-[var(--line)] bg-[var(--fill)] p-4 text-sm text-ink-2">
+            Free users get <span className="text-ink font-bold">5</span> generations/month. Premium users get <span className="text-ink font-bold">30</span> generations/month.
           </div>
         </div>
       </form>
 
-      <div className="mt-8 rounded-3xl border border-white/10 bg-white/[0.03] p-5 md:p-6">
+      <div className="mt-8 rounded-[28px] border border-[var(--line)] bg-[var(--fill)] p-5 md:p-6">
         <div className="flex items-center justify-between gap-4 mb-4">
-          <h2 className="font-display text-2xl font-black tracking-tight flex items-center gap-2">
+          <h2 className="font-display text-2xl font-bold tracking-tight flex items-center gap-2">
             <ImageIcon className="w-5 h-5 text-neon" /> Result
           </h2>
           <button
             onClick={downloadResult}
             disabled={!resultUrl}
-            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] px-4 py-2 text-sm text-white btn-press disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--fill-2)] px-4 py-2 text-sm text-ink btn-press disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Download className="w-4 h-4" /> Download
           </button>
         </div>
         {generating ? (
-          <div className="min-h-72 rounded-2xl border border-dashed border-neon/20 bg-black/20 flex flex-col items-center justify-center text-center px-6 overflow-hidden relative">
+          <div className="min-h-72 rounded-2xl border border-dashed border-neon/20 bg-[var(--fill)] flex flex-col items-center justify-center text-center px-6 overflow-hidden relative">
             <div className="absolute inset-x-10 top-1/2 h-px bg-gradient-to-r from-transparent via-neon/60 to-transparent animate-pulse" />
             <Loader2 className="relative w-10 h-10 text-neon animate-spin mb-4" />
-            <p className="relative font-display text-xl font-black text-white">Generating your Ai text edit</p>
-            <p className="relative text-sm text-zinc-500 mt-2">
+            <p className="relative font-display text-xl font-bold text-ink">Generating your Ai text edit</p>
+            <p className="relative text-sm text-ink-3 mt-2">
               This usually takes around 20–60 seconds. Running for {elapsedSeconds}s.
             </p>
           </div>
         ) : resultUrl ? (
-          <img src={resultUrl} alt="Generated AI edit" className="w-full rounded-2xl border border-white/10 bg-black/30 object-contain max-h-[720px]" />
+          <img src={resultUrl} alt="Generated AI edit" className="w-full rounded-2xl border border-[var(--line)] bg-[var(--fill)] object-contain max-h-[720px]" />
         ) : (
-          <div className="min-h-72 rounded-2xl border border-dashed border-white/10 bg-black/20 flex items-center justify-center text-center px-6">
-            <p className="text-zinc-500">
+          <div className="min-h-72 rounded-2xl border border-dashed border-[var(--line)] bg-[var(--fill)] flex items-center justify-center text-center px-6">
+            <p className="text-ink-3">
               Your edited image will appear here after generation.
             </p>
           </div>

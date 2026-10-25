@@ -1,0 +1,9 @@
+.emote {
+  display: inline-block;
+  vertical-align: middle;
+  height: 28px;
+  width: auto;
+  max-width: 96px;
+  object-fit: contain;
+}
+h1 { letter-spacing: 0; }

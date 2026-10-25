@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BitStudio Multichat</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/emotes.css">
+</head>
+<body>
+  <main class="dock">
+    <header>
+      <h1>Multichat</h1>
+      <div class="status" aria-label="Connection status"><span id="twitch-dot" title="Twitch"></span><span id="youtube-dot" title="YouTube"></span></div>
+      <button id="settings-button" class="icon-button" type="button" title="Accounts and settings" aria-label="Accounts and settings">&#9881;</button>
+    </header>
+    <section id="accounts" class="accounts hidden" aria-label="Accounts">
+      <div id="account-name">Not signed in</div>
+      <div class="account-actions">
+        <button id="twitch-connect" type="button">Connect Twitch</button>
+        <button id="youtube-connect" type="button">Connect YouTube</button>
+        <button id="youtube-disconnect" type="button" class="secondary hidden">Disconnect YouTube</button>
+        <button id="logout" type="button" class="secondary hidden">Sign out</button>
+      </div>
+      <div id="device-panel" class="device-panel hidden">
+        <div>Open Twitch activation in a regular browser:</div>
+        <a id="device-url" target="_blank" rel="noopener noreferrer"></a>
+        <div>Code: <strong id="device-code"></strong></div>
+      </div>
+      <div id="youtube-panel" class="device-panel hidden">
+        <div>Open this link in your regular browser to connect YouTube:</div>
+        <input id="youtube-url" readonly aria-label="YouTube connection link">
+        <button id="copy-youtube-url" type="button" class="secondary">Copy link</button>
+      </div>
+    </section>
+    <div id="messages" class="messages" role="log" aria-live="polite"><p class="empty">Connect Twitch to see chat.</p></div>
+    <form id="composer" class="composer">
+      <select id="destination" aria-label="Send to"><option value="both">Both</option><option value="twitch">Twitch</option><option value="youtube">YouTube</option></select>
+      <input id="message" maxlength="450" placeholder="Send a message" autocomplete="off" aria-label="Message">
+      <button type="submit">Send</button>
+    </form>
+    <div id="notice" class="notice hidden" role="status"></div>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>

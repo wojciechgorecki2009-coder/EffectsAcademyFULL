@@ -30,6 +30,27 @@
     />
     <meta name="twitter:image" content="https://effectsacademy.com/apple-touch-icon.png" />
 
+    <script>
+      // Apply saved appearance before first paint (mirrors src/lib/theme.jsx) to avoid a theme flash.
+      (function () {
+        try {
+          var ls = window.localStorage;
+          var style = ls.getItem("ea_site_style");
+          if (!ls.getItem("ea_site_style_apple_default_v1") && (!style || style === "default")) style = "apple";
+          if (["default", "apple", "sleek"].indexOf(style) < 0) style = "apple";
+          var theme = ls.getItem("ea_theme");
+          if (!ls.getItem("ea_theme_dark_default_v1") && (!theme || theme === "blue")) theme = "dark";
+          if (["dark", "blue", "gray"].indexOf(theme) < 0) theme = "dark";
+          var font = ls.getItem("ea_font_v2");
+          if (["space", "outfit", "mono"].indexOf(font) < 0) font = "outfit";
+          var root = document.documentElement;
+          root.dataset.siteStyle = style;
+          root.dataset.theme = theme;
+          root.dataset.font = font;
+          root.dataset.scheme = style === "apple" && theme === "blue" ? "light" : "dark";
+        } catch (e) {}
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600&display=swap" rel="stylesheet" />

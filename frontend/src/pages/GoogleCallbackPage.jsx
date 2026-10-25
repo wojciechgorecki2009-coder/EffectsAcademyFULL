@@ -18,7 +18,7 @@ export default function GoogleCallbackPage() {
   }, []);
 
   return (
-    <section className="min-h-screen flex items-center justify-center text-zinc-300">
+    <section className="min-h-screen flex items-center justify-center text-ink-2">
       Finishing Google sign-in&hellip;
     </section>
   );

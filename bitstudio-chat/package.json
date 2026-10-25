@@ -1,0 +1,15 @@
+{
+  "name": "bitstudio-hosted-chat",
+  "version": "0.1.0",
+  "private": true,
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "mongodb": "^6.20.0",
+    "ws": "^8.18.3"
+  }
+}

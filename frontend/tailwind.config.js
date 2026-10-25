@@ -1,12 +1,12 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  darkMode: ["class"],
+  darkMode: ["variant", "&:is(:root[data-scheme=\"dark\"] *)"],
   content: ["./src/**/*.{js,jsx,ts,tsx}", "./public/index.html"],
   theme: {
     extend: {
       fontFamily: {
-        display: ['Outfit', 'system-ui', 'sans-serif'],
-        body: ['Manrope', 'system-ui', 'sans-serif'],
+        display: ['var(--font-display)'],
+        body: ['var(--font-text)'],
         mono: ['JetBrains Mono', 'monospace'],
       },
       colors: {
@@ -22,9 +22,29 @@ module.exports = {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
+        // Design tokens (defined per style/theme in index.css as RGB triplets).
+        ink: {
+          DEFAULT: 'rgb(var(--ink) / <alpha-value>)',
+          2: 'rgb(var(--ink-2) / <alpha-value>)',
+          3: 'rgb(var(--ink-3) / <alpha-value>)',
+        },
+        canvas: 'rgb(var(--canvas) / <alpha-value>)',
+        panel: {
+          DEFAULT: 'rgb(var(--panel) / <alpha-value>)',
+          2: 'rgb(var(--panel-2) / <alpha-value>)',
+        },
+        hairline: 'rgb(var(--ink) / 0.1)',
+        tint: {
+          DEFAULT: 'rgb(var(--tint) / <alpha-value>)',
+          ink: 'rgb(var(--tint-ink) / <alpha-value>)',
+        },
         neon: '#5257ff',
         violet: '#8b5cff',
         discord: '#5865F2',
+      },
+      transitionTimingFunction: {
+        'out-expo': 'cubic-bezier(0.16, 1, 0.3, 1)',
+        spring: 'var(--ease-spring)',
       },
       borderRadius: {
         lg: 'var(--radius)',

@@ -1,105 +1,136 @@
-import { useEffect, useState } from "react";
-import { Search, Sparkles } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { motion, useReducedMotion, useScroll, useSpring, useTransform } from "framer-motion";
+import { Search, Sparkles, X } from "lucide-react";
+import LiquidGlass from "@/components/LiquidGlass";
+import { CountUp, EASE_OUT, KineticText } from "@/lib/motion";
 
 const HERO_BACKGROUND = "/media/hero-background-poster.jpg";
 
 export default function Hero({ query, setQuery, totalAssets }) {
-  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const sectionRef = useRef(null);
+  const inputRef = useRef(null);
+  const reduce = useReducedMotion();
 
+  // Scroll-linked exit: the hero recedes like a layer being pushed back in comp space.
+  const { scrollYProgress } = useScroll({ target: sectionRef, offset: ["start start", "end start"] });
+  const progress = useSpring(scrollYProgress, { stiffness: 140, damping: 30, mass: 0.6 });
+  const contentY = useTransform(progress, [0, 1], [0, -90]);
+  const contentScale = useTransform(progress, [0, 1], [1, 0.92]);
+  const contentOpacity = useTransform(progress, [0, 0.75], [1, 0]);
+  const bgY = useTransform(progress, [0, 1], [0, 160]);
+  const bgScale = useTransform(progress, [0, 1], [1.08, 1.22]);
+
+  // "/" focuses search from anywhere, like most pro tools.
   useEffect(() => {
-    const handler = (e) => {
-      const x = (e.clientX / window.innerWidth - 0.5) * 30;
-      const y = (e.clientY / window.innerHeight - 0.5) * 20;
-      setPan({ x, y });
+    const onKey = (event) => {
+      if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey) return;
+      const target = event.target;
+      if (target?.closest?.("input, textarea, select, [contenteditable='true']")) return;
+      event.preventDefault();
+      inputRef.current?.focus();
     };
-    window.addEventListener("mousemove", handler);
-    return () => window.removeEventListener("mousemove", handler);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  const fade = (delay) => ({
+    initial: reduce ? false : { opacity: 0, y: 18, filter: "blur(10px)" },
+    // Clearing filter afterwards matters: a filtered ancestor would cut glass off from the backdrop.
+    animate: { opacity: 1, y: 0, filter: "blur(0px)", transitionEnd: { filter: "none" } },
+    transition: { duration: 1.1, ease: EASE_OUT, delay },
+  });
 
   return (
     <section
-      className="relative isolate overflow-hidden min-h-[64vh] md:min-h-[58vh] flex flex-col items-center justify-center text-center px-6 pt-24 pb-12 md:pt-20 md:pb-10"
+      ref={sectionRef}
+      className="relative isolate flex min-h-[82vh] flex-col items-center justify-center overflow-hidden px-5 pb-20 pt-36 text-center md:min-h-[86vh] md:pt-40"
       data-testid="hero-section"
     >
-      {/* Lightweight local hero background. Keep animated media off Render to protect bandwidth. */}
-      <div
-        className="absolute inset-0 -z-10 overflow-hidden pointer-events-none"
-        style={{
-          transform: `translate3d(${pan.x * 0.4}px, ${pan.y * 0.4}px, 0) scale(1.05)`,
-          transition: "transform 0.3s ease-out",
-        }}
-      >
+      {/* Background composition */}
+      <motion.div className="absolute inset-0 -z-10" style={reduce ? undefined : { y: bgY, scale: bgScale }} aria-hidden="true">
         <img
           src={HERO_BACKGROUND}
           alt=""
-          className="w-full h-full object-cover"
-          style={{
-            filter: "blur(14px) brightness(1.1) saturate(1.25)",
-            opacity: 0.9,
-          }}
+          className="h-full w-full object-cover opacity-[0.35] [filter:blur(26px)_saturate(1.4)]"
           data-testid="hero-bg-gif"
         />
+      </motion.div>
+      <div className="aurora -z-10" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+        <span />
       </div>
-      {/* Soft blend layers */}
-      <div className="absolute inset-0 -z-10 hero-theme-overlay" />
-      <div className="absolute inset-0 -z-10 hero-theme-gradient" />
+      <div className="grain pointer-events-none absolute inset-0 -z-10" aria-hidden="true" />
       <div
-        className="absolute inset-0 -z-10 pointer-events-none"
+        className="pointer-events-none absolute inset-0 -z-10"
         style={{
           background:
-            "radial-gradient(60% 50% at 50% 45%, rgba(82,87,255,0.25) 0%, transparent 70%)",
+            "radial-gradient(120% 80% at 50% 30%, transparent 30%, rgb(var(--canvas) / 0.55) 75%), linear-gradient(to bottom, rgb(var(--canvas) / 0.15), transparent 35%, rgb(var(--canvas)) 96%)",
         }}
+        aria-hidden="true"
       />
 
-      <div
-        className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs uppercase tracking-widest text-zinc-200 mb-8 hero-bounce backdrop-blur-md"
-        data-testid="hero-badge"
+      <motion.div
+        className="flex w-full flex-col items-center"
+        style={reduce ? undefined : { y: contentY, scale: contentScale, opacity: contentOpacity }}
       >
-        <Sparkles className="w-3.5 h-3.5 text-neon" />
-        Free assets for video editors
-      </div>
+        <motion.div {...fade(0.05)}>
+          <LiquidGlass
+            className="mb-8 inline-flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-medium text-ink"
+            refract={false}
+            data-testid="hero-badge"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-tint" />
+            Free assets for video editors
+          </LiquidGlass>
+        </motion.div>
 
-      <h1
-        className="hero-bounce font-display font-black text-5xl md:text-7xl lg:text-8xl tracking-tighter leading-[0.95] mb-6"
-        data-testid="hero-title"
-        style={{ textShadow: "0 4px 40px rgba(0,0,0,0.6)" }}
-      >
-        Level up your{" "}
-        <span
-          style={{
-            color: "#4c61fc",
-            filter: "drop-shadow(0 0 30px rgba(76,97,252,0.55))",
-          }}
-        >
-          edits
-        </span>
-      </h1>
+        <h1 className="display-xl max-w-[14ch] text-ink" data-testid="hero-title">
+          <KineticText text="Level up your edits." delay={0.15} stagger={0.085} highlight={{ "edits.": "text-shimmer" }} />
+        </h1>
 
-      <p
-        className="hero-bounce hero-bounce-delay text-zinc-300 max-w-2xl text-base md:text-lg leading-relaxed mb-10"
-        data-testid="hero-description"
-        style={{ textShadow: "0 2px 20px rgba(0,0,0,0.6)" }}
-      >
-        Effects Academy is a curated vault for video editors: project files, overlays, presets, audios,
-        sound effects, torrents, premium packs, and AI tools in one clean library.
-      </p>
+        <motion.p className="lede mt-7 max-w-[38rem]" data-testid="hero-description" {...fade(0.55)}>
+          Effects Academy is a curated vault for video editors: project files, overlays, presets, audios,
+          sound effects, torrents, premium packs, and AI tools in one clean library.
+        </motion.p>
 
-      <div className="relative w-full max-w-2xl hero-bounce hero-bounce-delay">
-        <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400" />
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search assets..."
-          className="w-full h-14 pl-14 pr-6 bg-black/40 backdrop-blur-xl border border-white/15 rounded-2xl text-lg focus:border-neon/60 focus:outline-none transition-colors text-white placeholder:text-zinc-400"
-          data-testid="hero-search-input"
-        />
-      </div>
+        <motion.div className="mt-11 w-full max-w-[40rem]" {...fade(0.7)}>
+          <LiquidGlass className="group flex h-[3.75rem] items-center rounded-full pl-5 pr-2 transition-shadow duration-500 focus-within:shadow-[var(--glass-shadow),0_0_0_4px_rgb(var(--tint)/0.18)]" edge={24} strength={46}>
+            <Search className="h-5 w-5 shrink-0 text-ink-2 transition-colors duration-300 group-focus-within:text-tint" />
+            <input
+              ref={inputRef}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search assets, creators, genres..."
+              aria-label="Search assets"
+              className="bare h-full min-w-0 flex-1 bg-transparent px-3.5 text-[17px] text-ink outline-none placeholder:text-ink-3"
+              data-testid="hero-search-input"
+            />
+            {query ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery("");
+                  inputRef.current?.focus();
+                }}
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--fill-2)] text-ink-2 transition-transform duration-300 ease-spring hover:text-ink active:scale-90"
+                aria-label="Clear search"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            ) : (
+              <kbd className="mr-2 hidden h-7 min-w-7 items-center justify-center rounded-lg bg-[var(--fill-2)] px-2 font-mono text-xs text-ink-3 sm:flex">/</kbd>
+            )}
+          </LiquidGlass>
+        </motion.div>
 
-      {totalAssets > 0 && (
-        <p className="mt-6 text-xs font-mono uppercase tracking-widest text-zinc-400">
-          {totalAssets} assets and counting
-        </p>
-      )}
+        {totalAssets > 0 && (
+          <motion.p className="mt-6 text-[13px] font-medium text-ink-3" {...fade(0.85)}>
+            <CountUp value={totalAssets} className="tabular-nums text-ink-2" /> assets and counting
+          </motion.p>
+        )}
+      </motion.div>
     </section>
   );
 }

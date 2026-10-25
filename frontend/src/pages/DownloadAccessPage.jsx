@@ -84,7 +84,7 @@ export default function DownloadAccessPage() {
     <section className="min-h-[calc(100vh-4rem)] pt-28 pb-20 px-6 overflow-hidden relative">
       <div className="absolute inset-x-0 top-0 h-80 bg-[radial-gradient(circle_at_50%_0%,rgba(168,85,247,0.28),transparent_58%)] pointer-events-none" />
       <div className="relative max-w-4xl mx-auto">
-        <Link to="/category/premium" className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-white mb-10">
+        <Link to="/category/premium" className="inline-flex items-center gap-2 text-sm text-ink-2 hover:text-ink mb-10">
           <ArrowLeft className="w-4 h-4" /> Back to Premium assets
         </Link>
 
@@ -93,20 +93,20 @@ export default function DownloadAccessPage() {
             <Download className="w-8 h-8 text-purple-300" />
           </div>
           <p className="text-xs uppercase tracking-[0.34em] text-purple-300 font-mono mb-3">Premium download manager</p>
-          <h1 className="font-display text-4xl md:text-6xl font-black leading-none">
+          <h1 className="font-display text-4xl md:text-6xl font-bold leading-none">
             {access?.title || "Temporary premium link"}
           </h1>
-          <p className="text-zinc-400 mt-4 max-w-xl mx-auto">
+          <p className="text-ink-2 mt-4 max-w-xl mx-auto">
             This link is generated only after your Premium or moderator access is checked. It expires automatically to help protect premium drops.
           </p>
         </div>
 
-        <div className="glass border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl shadow-black/30">
+        <div className="glass border border-[var(--line)] rounded-[28px] p-6 md:p-8 shadow-2xl shadow-black/30">
           {loadingAccess ? (
             <div className="min-h-72 flex flex-col items-center justify-center text-center">
               <div className="w-12 h-12 rounded-full border-2 border-purple-300/20 border-t-purple-300 animate-spin mb-5" />
               <h2 className="font-display text-2xl">Checking access...</h2>
-              <p className="text-zinc-500 mt-2">One moment while we prepare your temporary link.</p>
+              <p className="text-ink-3 mt-2">One moment while we prepare your temporary link.</p>
             </div>
           ) : error ? (
             <div className="min-h-72 flex flex-col items-center justify-center text-center">
@@ -114,7 +114,7 @@ export default function DownloadAccessPage() {
                 <LockKeyhole className="w-7 h-7 text-red-300" />
               </div>
               <h2 className="font-display text-2xl">Access unavailable</h2>
-              <p className="text-zinc-400 mt-2 max-w-lg">{error}</p>
+              <p className="text-ink-2 mt-2 max-w-lg">{error}</p>
               <Link to="/premium" className="mt-6 bg-neon hover:bg-neon/90 text-white font-semibold px-6 py-3 rounded-xl btn-press">
                 Check Premium
               </Link>
@@ -122,7 +122,7 @@ export default function DownloadAccessPage() {
           ) : (
             <div className="space-y-7">
               <div className="flex flex-wrap items-center justify-center gap-3">
-                <span className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-zinc-200">
+                <span className="inline-flex items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--fill)] px-4 py-2 text-sm text-ink">
                   <Clock3 className="w-4 h-4 text-yellow-300" /> {formatRemaining(remaining)} remaining
                 </span>
                 <span className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-sm text-emerald-200">
@@ -133,21 +133,21 @@ export default function DownloadAccessPage() {
                 </span>
               </div>
 
-              <div className="h-2 rounded-full bg-white/[0.06] overflow-hidden">
+              <div className="h-2 rounded-full bg-[var(--fill-2)] overflow-hidden">
                 <div
                   className="h-full rounded-full bg-gradient-to-r from-purple-400 to-neon transition-all duration-1000"
                   style={{ width: `${progress}%` }}
                 />
               </div>
 
-              <div className="rounded-2xl border border-white/10 bg-black/30 p-5">
-                <p className="text-xs uppercase tracking-[0.26em] text-zinc-500 font-mono mb-3">Temporary Google Drive link</p>
+              <div className="rounded-2xl border border-[var(--line)] bg-[var(--fill)] p-5">
+                <p className="text-xs uppercase tracking-[0.26em] text-ink-3 font-mono mb-3">Temporary Google Drive link</p>
                 <div className="flex flex-col md:flex-row gap-3">
                   <button
                     type="button"
                     onClick={openDownload}
                     disabled={expired}
-                    className="flex-1 bg-neon hover:bg-neon/90 disabled:bg-white/10 disabled:text-zinc-500 text-white font-bold rounded-xl py-4 px-5 flex items-center justify-center gap-2 btn-press"
+                    className="flex-1 bg-neon hover:bg-neon/90 disabled:bg-[var(--fill-2)] disabled:text-ink-3 text-white font-bold rounded-xl py-4 px-5 flex items-center justify-center gap-2 btn-press"
                   >
                     <ExternalLink className="w-5 h-5" />
                     {expired ? "Link expired" : "Open Google Drive"}
@@ -156,12 +156,12 @@ export default function DownloadAccessPage() {
                     type="button"
                     onClick={copyLink}
                     disabled={expired}
-                    className="md:w-44 rounded-xl border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] disabled:opacity-40 text-white font-semibold py-4 px-5 flex items-center justify-center gap-2 btn-press"
+                    className="md:w-44 rounded-xl border border-[var(--line)] bg-[var(--fill)] hover:bg-[var(--fill-2)] disabled:opacity-40 text-ink font-semibold py-4 px-5 flex items-center justify-center gap-2 btn-press"
                   >
                     <Copy className="w-5 h-5" /> Copy
                   </button>
                 </div>
-                <p className="text-xs text-zinc-500 mt-4">
+                <p className="text-xs text-ink-3 mt-4">
                   If this page expires, go back to the Premium asset and press Download again to generate a fresh link.
                 </p>
               </div>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Crown, Copy, Download, Eye, ImageIcon, Link as LinkIcon, LockKeyhole, Pencil, Pin, Play, RefreshCw, Sparkles, Trash2 } from "lucide-react";
+import { AudioLines, Crown, Copy, Download, Eye, Film, ImageIcon, Link as LinkIcon, LockKeyhole, Pause, Pencil, Pin, Play, RefreshCw, Trash2 } from "lucide-react";
 import { CATEGORY_COLORS, FILE_BASE, api, buildFileUrl, buildDownloadUrl, deriveDownloadFilename, getAuthToken } from "@/lib/api";
 import { useUploadAccess } from "@/lib/uploadAccess";
 import { useAuth } from "@/lib/auth";
@@ -110,7 +110,7 @@ export default function AssetCard({ asset, featured = false, onChanged, allAsset
   const globalAudio = useGlobalAudio();
   const navigate = useNavigate();
   const ref = useRef(null);
-  const pressAnimationRef = useRef(null);
+
   const [editOpen, setEditOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
@@ -193,64 +193,8 @@ export default function AssetCard({ asset, featured = false, onChanged, allAsset
   const onMove = (e) => {
     if (!ref.current) return;
     const r = ref.current.getBoundingClientRect();
-    const pointerX = (e.clientX - r.left) / r.width;
-    const pointerY = (e.clientY - r.top) / r.height;
-    const tiltX = (0.5 - pointerY) * 7;
-    const tiltY = (pointerX - 0.5) * 8;
-    const parallaxX = (pointerX - 0.5) * 12;
-    const parallaxY = (pointerY - 0.5) * 12;
-    ref.current.style.setProperty("--asset-glow-x", `${Math.round(pointerX * 100)}%`);
-    ref.current.style.setProperty("--asset-glow-y", `${Math.round(pointerY * 100)}%`);
-    ref.current.style.setProperty("--asset-tilt-x", `${tiltX.toFixed(2)}deg`);
-    ref.current.style.setProperty("--asset-tilt-y", `${tiltY.toFixed(2)}deg`);
-    ref.current.style.setProperty("--asset-parallax-x", `${parallaxX.toFixed(2)}px`);
-    ref.current.style.setProperty("--asset-parallax-y", `${parallaxY.toFixed(2)}px`);
-  };
-  const onLeave = () => {
-    if (!ref.current) return;
-    ref.current.style.setProperty("--asset-glow-x", "50%");
-    ref.current.style.setProperty("--asset-glow-y", "18%");
-    ref.current.style.setProperty("--asset-tilt-x", "0deg");
-    ref.current.style.setProperty("--asset-tilt-y", "0deg");
-    ref.current.style.setProperty("--asset-parallax-x", "0px");
-    ref.current.style.setProperty("--asset-parallax-y", "0px");
-  };
-
-  const triggerPressPulse = (event) => {
-    if (!ref.current || event.button > 0) return;
-    if (document.documentElement.dataset.siteStyle !== "apple") return;
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) return;
-
-    pressAnimationRef.current?.cancel?.();
-    pressAnimationRef.current = ref.current.animate(
-      [
-        {
-          transform: "translate3d(0, -6px, 0) rotateX(var(--asset-tilt-x, 0deg)) rotateY(var(--asset-tilt-y, 0deg)) scale(1.01)",
-          offset: 0,
-        },
-        {
-          transform: "translate3d(0, -2px, 0) rotateX(0deg) rotateY(0deg) scale(0.955)",
-          offset: 0.2,
-        },
-        {
-          transform: "translate3d(0, -10px, 0) rotateX(var(--asset-tilt-x, 0deg)) rotateY(var(--asset-tilt-y, 0deg)) scale(1.032)",
-          offset: 0.58,
-        },
-        {
-          transform: "translate3d(0, -7px, 0) rotateX(var(--asset-tilt-x, 0deg)) rotateY(var(--asset-tilt-y, 0deg)) scale(1.006)",
-          offset: 0.8,
-        },
-        {
-          transform: "translate3d(0, -6px, 0) rotateX(var(--asset-tilt-x, 0deg)) rotateY(var(--asset-tilt-y, 0deg)) scale(1.01)",
-          offset: 1,
-        },
-      ],
-      {
-        duration: 1450,
-        easing: "cubic-bezier(0.16, 1, 0.22, 1)",
-        fill: "none",
-      }
-    );
+    ref.current.style.setProperty("--card-x", `${(((e.clientX - r.left) / r.width) * 100).toFixed(1)}%`);
+    ref.current.style.setProperty("--card-y", `${(((e.clientY - r.top) / r.height) * 100).toFixed(1)}%`);
   };
 
   const download = async () => {
@@ -392,154 +336,165 @@ export default function AssetCard({ asset, featured = false, onChanged, allAsset
     playAudio();
   };
 
+  const actionLabel = isLockedPremium
+    ? "Unlock Premium"
+    : isVideo
+      ? "Watch"
+      : hasAudioPlayback
+        ? (isActiveAudio && globalAudio.playing ? "Pause" : "Play")
+        : downloading
+          ? "Downloading..."
+          : "Download";
+  const ActionIcon = isLockedPremium
+    ? LockKeyhole
+    : (isVideo || hasAudioPlayback)
+      ? (isActiveAudio && globalAudio.playing ? Pause : Play)
+      : Download;
+  const metaParts = [
+    asset.creator_tag ? `${isAudio ? "Audio by" : "By"} ${asset.creator_tag}` : "",
+    displayGenre,
+    asset.ae_version ? `AE ${asset.ae_version}` : "",
+  ].filter(Boolean);
+
   return (
     <>
       <div
         ref={ref}
         onMouseMove={onMove}
-        onMouseLeave={onLeave}
-        onPointerDown={triggerPressPulse}
         onClick={handleCardClick}
         role={isLockedPremium || hasAudioPlayback ? "button" : undefined}
         tabIndex={isLockedPremium || hasAudioPlayback ? 0 : undefined}
         onKeyDown={handleCardKeyDown}
-        className={`tilt-card group rounded-2xl overflow-hidden bg-[var(--site-surface)] backdrop-blur-xl border transition-all duration-300 fade-in ${featured ? "featured-extension-card" : ""} ${isPremium ? "border-purple-300/20 shadow-[0_0_32px_rgba(168,85,247,0.13)] hover:border-purple-300/40" : "border-white/5 hover:border-white/15 hover:shadow-[0_18px_50px_rgba(0,0,0,0.28)]"} ${isLockedPremium || hasAudioPlayback ? "cursor-pointer" : ""}`}
+        className={`asset-card group ${featured ? "featured-extension-card" : ""} ${isPremium ? "is-premium" : ""} ${isActiveAudio ? "is-playing" : ""} ${isLockedPremium || hasAudioPlayback ? "cursor-pointer" : ""}`}
         data-testid={`asset-card-${asset.id}`}
         data-featured={featured ? "extension-launch" : undefined}
       >
-        <div className="aspect-video w-full bg-black/40 overflow-hidden relative">
-          {isPremium && <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-br from-purple-400/10 via-transparent to-transparent opacity-80" />}
+        <div className="asset-card-media">
           {thumbnailSrc ? (
             <button
               type="button"
               onClick={hasAudioPlayback ? playAudio : openPreview}
-              className={`block w-full h-full text-left ${hasAudioPlayback ? "cursor-pointer" : !isAudio || isVideo ? "cursor-zoom-in" : "cursor-default"}`}
+              className={`block h-full w-full text-left ${hasAudioPlayback ? "cursor-pointer" : !isAudio || isVideo ? "cursor-zoom-in" : "cursor-default"}`}
               title={hasAudioPlayback ? "Play audio" : isVideo ? "Watch video" : !isAudio ? "Open larger preview" : undefined}
             >
               <PreviewMedia
                 src={thumbnailSrc}
                 title={asset.title}
-                className="w-full h-full object-cover"
+                className="asset-card-image h-full w-full object-cover"
               />
             </button>
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-zinc-700 text-sm">
-              No preview
+            <div className="flex h-full w-full items-center justify-center text-ink-3">
+              {isAudio ? <AudioLines className="h-8 w-8" /> : <ImageIcon className="h-7 w-7" />}
             </div>
           )}
+
+          <div className="asset-card-sheen" aria-hidden="true" />
+
+          <div className="pointer-events-none absolute left-2.5 top-2.5 z-[2] flex flex-wrap gap-1.5">
+            {isPremium && (
+              <span className="media-chip chip text-[#ffd66b]">
+                <Crown /> Premium
+              </span>
+            )}
+            {isNew && (
+              <span className="media-chip chip">
+                <span className="dot text-[#30d158]" /> New
+              </span>
+            )}
+            {isUpdated && (
+              <span className="media-chip chip">
+                <RefreshCw className="text-[#ff9f0a]" /> Updated
+              </span>
+            )}
+          </div>
+
+          {(asset.external_url || asset.has_external_url) && !asset.file_url && (
+            <span className="media-chip chip pointer-events-none absolute right-2.5 top-2.5 z-[2]">
+              <LinkIcon /> External
+            </span>
+          )}
           {thumbnailIsVideo && (
-            <div className="absolute bottom-3 left-3 z-[2] bg-black/65 text-[10px] font-mono px-2 py-1 rounded-full text-white border border-white/10">
-              VIDEO PREVIEW
-            </div>
+            <span className="media-chip chip pointer-events-none absolute bottom-2.5 left-2.5 z-[2]">
+              <Film /> Motion preview
+            </span>
           )}
           {featured && (
             <div className="featured-extension-ribbon">
-              <Pin className="w-3 h-3" /> Featured launch
+              <Pin className="h-3 w-3" /> Featured launch
             </div>
           )}
-          {isVideo && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <span className="h-14 w-14 rounded-full bg-black/65 border border-white/15 flex items-center justify-center text-white shadow-[0_0_30px_rgba(239,68,68,0.25)]">
-                <Play className="w-6 h-6 ml-0.5" />
+
+          {(isVideo || hasAudioPlayback) && (
+            <div className={`asset-card-play ${isVideo || isActiveAudio ? "is-visible" : ""}`} aria-hidden="true">
+              <span>
+                {isActiveAudio && globalAudio.playing ? <Pause className="h-5 w-5" /> : <Play className="ml-0.5 h-5 w-5" />}
               </span>
             </div>
           )}
-          {hasAudioPlayback && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-200">
-              <span className="h-14 w-14 rounded-full bg-black/65 border border-white/15 flex items-center justify-center text-white shadow-[0_0_30px_rgba(82,87,255,0.35)]">
-                <Play className="w-6 h-6 ml-0.5" />
-              </span>
-            </div>
-          )}
-          <div className="absolute top-3 left-3 z-[2] flex flex-wrap gap-2">
-            {isPremium && (
-              <div className="bg-purple-500/90 text-white text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-lg shadow-purple-950/40">
-                <Crown className="w-3 h-3" /> PREMIUM
-              </div>
-            )}
-            {isNew && (
-              <div className="bg-emerald-400/90 text-black text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-1 shadow-lg shadow-emerald-950/30">
-                <Sparkles className="w-3 h-3" /> NEW
-              </div>
-            )}
-            {isUpdated && (
-              <div className="bg-amber-300/95 text-black text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-1 shadow-lg shadow-amber-950/30">
-                <RefreshCw className="w-3 h-3" /> UPDATED
-              </div>
-            )}
-          </div>
-          {(asset.external_url || asset.has_external_url) && !asset.file_url && (
-            <div className="absolute top-3 right-3 bg-black/60 text-[10px] font-mono px-2 py-1 rounded-full flex items-center gap-1 text-white border border-white/10">
-              <LinkIcon className="w-3 h-3" />
-              EXTERNAL
-            </div>
-          )}
+
           {isLockedPremium && (
-            <div className="absolute inset-0 bg-black/55 backdrop-blur-[2px] flex items-center justify-center" data-testid={`premium-lock-${asset.id}`}>
-              <div className="rounded-full border border-white/15 bg-black/70 px-4 py-2 flex items-center gap-2 text-sm font-semibold text-white">
-                <LockKeyhole className="w-4 h-4 text-purple-300" /> Premium locked
-              </div>
+            <div className="asset-card-lock" data-testid={`premium-lock-${asset.id}`}>
+              <span className="media-chip chip h-8 px-3.5 text-[12px]">
+                <LockKeyhole className="text-[#ffd66b]" /> Premium locked
+              </span>
+            </div>
+          )}
+
+          {isActiveAudio && globalAudio.playing && (
+            <div className="asset-card-eq" aria-hidden="true">
+              <i /><i /><i /><i />
             </div>
           )}
         </div>
 
-        <div className="p-5 space-y-3">
-          <div className="flex items-center justify-between">
-            <span
-              className="text-xs font-semibold uppercase tracking-wider px-2.5 py-1 rounded-md border"
-              style={{ color: color.text, background: color.bg, borderColor: color.border }}
-            >
+        <div className="flex flex-1 flex-col px-4 pb-4 pt-3">
+          <div className="flex items-center justify-between gap-3 text-[12px] font-medium">
+            <span className="inline-flex items-center gap-1.5 text-ink-2">
+              <span className="dot" style={{ color: color.text }} />
               {asset.category}
             </span>
-            {!isVideo && <div className="flex items-center gap-1.5 text-xs text-zinc-500 font-mono">
-              <Download className="w-3.5 h-3.5" />
-              {downloadCount}
-            </div>}
+            {!isVideo ? (
+              <span className="inline-flex items-center gap-1 tabular-nums text-ink-3" title="Downloads">
+                <Download className="h-3.5 w-3.5" />
+                {downloadCount}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 tabular-nums text-ink-3" title="Views">
+                <Eye className="h-3.5 w-3.5" />
+                {viewCount}
+              </span>
+            )}
           </div>
 
-          <h3 className="font-display font-semibold text-lg leading-tight line-clamp-1">
+          <h3 className="mt-1.5 line-clamp-1 font-display text-[17px] font-semibold leading-snug tracking-[-0.02em] text-ink">
             {asset.title}
           </h3>
 
           {isPremium && (
-            <p className="text-xs text-purple-200 flex items-center gap-1.5">
-              <Crown className="w-3.5 h-3.5" /> Included with membership
+            <p className="mt-0.5 flex items-center gap-1.5 text-[12.5px] text-ink-2">
+              <Crown className="h-3.5 w-3.5 text-[#ffb340]" /> Included with membership
             </p>
           )}
 
-          {asset.creator_tag && (
-            <p className="text-xs text-zinc-500">
-              {asset.category === "Audios" ? "Audio by " : "By "}
-              <span className="text-zinc-300">{asset.creator_tag}</span>
-            </p>
-          )}
-          {isVideo && (
-            <p className="text-xs text-zinc-500 flex items-center gap-1.5">
-              <Eye className="w-3.5 h-3.5" />
-              Views: <span className="text-zinc-300 font-mono">{viewCount}</span>
-            </p>
-          )}
-          {asset.ae_version && (
-            <p className="text-xs text-zinc-500">AE: <span className="text-zinc-300">{asset.ae_version}</span></p>
-          )}
-          {displayGenre && (
-            <p className="text-xs text-zinc-500">Genre: <span className="text-zinc-300">{displayGenre}</span></p>
+          {metaParts.length > 0 && (
+            <p className="mt-0.5 line-clamp-1 text-[12.5px] text-ink-3">{metaParts.join(" · ")}</p>
           )}
 
           {asset.description && (
-            <p className="text-sm text-zinc-400 line-clamp-2">{asset.description}</p>
+            <p className="mt-2 line-clamp-2 text-[13.5px] leading-relaxed text-ink-2">{asset.description}</p>
           )}
 
-          <div className="flex gap-2 pt-1">
+          <div className="mt-auto flex gap-2 pt-4">
             <button
               type="button"
               onClick={isLockedPremium ? openPremium : download}
               disabled={downloading}
-              className={`flex-1 ${isLockedPremium ? "bg-purple-500 hover:bg-purple-400" : "bg-neon hover:bg-neon/90"} text-white font-semibold rounded-lg py-2.5 text-sm flex items-center justify-center gap-2 btn-press disabled:opacity-70`}
+              className={`btn btn-sm flex-1 ${isLockedPremium ? "btn-secondary" : isActiveAudio ? "btn-primary" : "btn-tinted"}`}
               data-testid={`download-btn-${asset.id}`}
             >
-              {isLockedPremium ? <LockKeyhole className="w-4 h-4" /> : (isVideo || hasAudioPlayback) ? <Play className="w-4 h-4" /> : <Download className="w-4 h-4" />}
-              {isLockedPremium ? "Unlock Premium" : isVideo ? "Watch" : hasAudioPlayback ? (isActiveAudio && globalAudio.playing ? "Pause" : "Play") : downloading ? "Downloading..." : "Download"}
+              <ActionIcon />
+              {actionLabel}
             </button>
             {isUploader && !isLockedPremium && (
               <>
@@ -547,30 +502,33 @@ export default function AssetCard({ asset, featured = false, onChanged, allAsset
                   type="button"
                   onClick={duplicate}
                   disabled={duplicating}
-                  className="bg-white/5 hover:bg-white/10 border border-white/10 px-3 rounded-lg btn-press text-zinc-300 disabled:opacity-50"
+                  className="btn btn-sm btn-secondary btn-icon"
                   data-testid={`duplicate-btn-${asset.id}`}
                   title="Duplicate"
+                  aria-label="Duplicate"
                 >
-                  <Copy className="w-4 h-4" />
+                  <Copy />
                 </button>
                 <button
                   type="button"
                   onClick={() => setEditOpen(true)}
-                  className="bg-white/5 hover:bg-white/10 border border-white/10 px-3 rounded-lg btn-press text-zinc-300"
+                  className="btn btn-sm btn-secondary btn-icon"
                   data-testid={`edit-btn-${asset.id}`}
                   title="Edit"
+                  aria-label="Edit"
                 >
-                  <Pencil className="w-4 h-4" />
+                  <Pencil />
                 </button>
                 {canDelete && (
                   <button
                     type="button"
                     onClick={remove}
-                    className="bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 px-3 rounded-lg btn-press text-red-400"
+                    className="btn btn-sm btn-danger btn-icon"
                     data-testid={`delete-btn-${asset.id}`}
                     title="Delete"
+                    aria-label="Delete"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 />
                   </button>
                 )}
               </>
@@ -590,19 +548,21 @@ export default function AssetCard({ asset, featured = false, onChanged, allAsset
 
       {!isAudio && (
         <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-          <DialogContent className="glass border-white/10 text-white max-w-4xl max-h-[92vh] overflow-y-auto">
+          <DialogContent className="max-h-[92vh] max-w-4xl overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="font-display text-2xl flex items-center gap-2">
-                {isPremium && <Crown className="w-5 h-5 text-purple-300" />}
-                {isVideo && <Play className="w-5 h-5 text-red-300" />}
+              <p className="eyebrow eyebrow-c inline-flex items-center gap-1.5" style={{ "--c": color.text }}>
+                <span className="dot" /> {asset.category}
+              </p>
+              <DialogTitle className="flex items-center gap-2 font-display text-2xl font-semibold tracking-[-0.025em]">
+                {isPremium && <Crown className="h-5 w-5 text-[#ff9f0a]" />}
                 {asset.title}
               </DialogTitle>
-              <DialogDescription className="text-zinc-400">
+              <DialogDescription>
                 {isVideo ? "YouTube playback" : isPremium ? "Included with membership" : asset.category}
               </DialogDescription>
             </DialogHeader>
             {isVideo && youtubeEmbed ? (
-              <div className="aspect-video w-full overflow-hidden rounded-2xl border border-white/10 bg-black">
+              <div className="aspect-video w-full overflow-hidden rounded-2xl bg-black shadow-[var(--shadow-card)]">
                 <iframe
                   src={youtubeEmbed}
                   title={asset.title}
@@ -615,7 +575,7 @@ export default function AssetCard({ asset, featured = false, onChanged, allAsset
               thumbnailIsVideo ? (
                 <video
                   src={thumbnailSrc}
-                  className="w-full max-h-[60vh] object-contain rounded-2xl border border-white/10 bg-black/40"
+                  className="max-h-[60vh] w-full rounded-2xl bg-[var(--fill)] object-contain"
                   controls
                   muted
                   loop
@@ -626,34 +586,34 @@ export default function AssetCard({ asset, featured = false, onChanged, allAsset
                 <img
                   src={thumbnailSrc}
                   alt={asset.title}
-                  className="w-full max-h-[60vh] object-contain rounded-2xl border border-white/10 bg-black/40"
+                  className="max-h-[60vh] w-full rounded-2xl bg-[var(--fill)] object-contain"
                 />
               )
             ) : (
-              <div className="min-h-72 rounded-2xl border border-white/10 bg-black/40 flex items-center justify-center text-zinc-500">
-                <ImageIcon className="w-8 h-8" />
+              <div className="flex min-h-72 items-center justify-center rounded-2xl bg-[var(--fill)] text-ink-3">
+                <ImageIcon className="h-8 w-8" />
               </div>
             )}
-            {asset.description && <p className="text-sm text-zinc-300 leading-relaxed">{asset.description}</p>}
+            {asset.description && <p className="text-[15px] leading-relaxed text-ink-2">{asset.description}</p>}
 
             {relatedAssets.length > 0 && (
-              <div className="pt-4 border-t border-white/10">
-                <h4 className="font-display font-semibold mb-3">Related assets</h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="border-t border-[var(--line)] pt-5">
+                <h4 className="mb-3 font-display text-[15px] font-semibold text-ink">Related assets</h4>
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                   {relatedAssets.map((related) => {
                     const relatedThumb = related.thumbnail_url ? buildFileUrl(related.thumbnail_url) : "";
                     return (
-                      <div key={related.id} className="rounded-xl border border-white/10 bg-white/[0.03] overflow-hidden">
-                        <div className="aspect-video bg-black/40">
+                      <div key={related.id} className="overflow-hidden rounded-2xl bg-[var(--fill)]">
+                        <div className="aspect-video">
                           {relatedThumb ? (
-                            <PreviewMedia src={relatedThumb} title={related.title} className="w-full h-full object-cover" />
+                            <PreviewMedia src={relatedThumb} title={related.title} className="h-full w-full object-cover" />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center text-zinc-700 text-xs">No preview</div>
+                            <div className="flex h-full w-full items-center justify-center text-xs text-ink-3">No preview</div>
                           )}
                         </div>
                         <div className="p-3">
-                          <p className="text-sm font-semibold line-clamp-1">{related.title}</p>
-                          <p className="text-[11px] text-zinc-500 line-clamp-1">{related.creator_tag || related.category}</p>
+                          <p className="line-clamp-1 text-[13px] font-semibold text-ink">{related.title}</p>
+                          <p className="line-clamp-1 text-[11.5px] text-ink-3">{related.creator_tag || related.category}</p>
                         </div>
                       </div>
                     );

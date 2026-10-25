@@ -3,7 +3,10 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { Toaster } from "sonner";
 import { UploadAccessProvider } from "@/lib/uploadAccess";
 import { AuthProvider } from "@/lib/auth";
-import { ThemeProvider } from "@/lib/theme";
+import { motion, useReducedMotion } from "framer-motion";
+import { ThemeProvider, useTheme } from "@/lib/theme";
+import { EASE_OUT } from "@/lib/motion";
+import { useGlassSheen } from "@/components/LiquidGlass";
 import { API } from "@/lib/api";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
@@ -27,18 +30,26 @@ import "@/App.css";
 
 const ASSETS_CHANGED_EVENT = "effectsacademy:assets-changed";
 
-function MouseParallaxRoot({ children }) {
-  useEffect(() => {
-    const handler = (e) => {
-      const x = (e.clientX / window.innerWidth - 0.5) * 2;
-      const y = (e.clientY / window.innerHeight - 0.5) * 2;
-      document.documentElement.style.setProperty("--mx", x.toFixed(3));
-      document.documentElement.style.setProperty("--my", y.toFixed(3));
-    };
-    window.addEventListener("mousemove", handler);
-    return () => window.removeEventListener("mousemove", handler);
-  }, []);
+function GlassSheenRoot({ children }) {
+  useGlassSheen();
   return children;
+}
+
+// Each route enters like a new shot: a short rise with a de-blur.
+function RouteTransition({ children }) {
+  const { pathname } = useLocation();
+  const reduce = useReducedMotion();
+  return (
+    <motion.div
+      key={pathname}
+      initial={reduce ? false : { opacity: 0, y: 14, filter: "blur(8px)" }}
+      // Clearing the filter afterwards keeps fixed children and backdrop blur working normally.
+      animate={{ opacity: 1, y: 0, filter: "blur(0px)", transitionEnd: { filter: "none" } }}
+      transition={{ duration: 0.7, ease: EASE_OUT }}
+    >
+      {children}
+    </motion.div>
+  );
 }
 
 function ScrollToTopOnRouteChange() {
@@ -104,6 +115,7 @@ function RefreshableRoutes() {
 
   return (
     <main key={refreshKey}>
+      <RouteTransition>
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/category/:slug" element={<CategoryPage />} />
@@ -121,6 +133,7 @@ function RefreshableRoutes() {
         <Route path="/download/:token" element={<DownloadAccessPage />} />
         <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />
       </Routes>
+      </RouteTransition>
     </main>
   );
 }
@@ -128,10 +141,11 @@ function RefreshableRoutes() {
 function AppFrame() {
   const { pathname } = useLocation();
   const isSetupMiniSite = pathname === "/products-i-use";
+  const { scheme } = useTheme();
 
   return (
-    <MouseParallaxRoot>
-      <div className={`App min-h-screen bg-[var(--site-bg)] text-white transition-colors duration-300 ${isSetupMiniSite ? "setup-mini-site-shell" : ""}`}>
+    <GlassSheenRoot>
+      <div className={`App min-h-screen ${isSetupMiniSite ? "setup-mini-site-shell" : ""}`}>
         <ScrollToTopOnRouteChange />
         <AnalyticsTracker />
         {!isSetupMiniSite ? <Nav /> : null}
@@ -141,18 +155,25 @@ function AppFrame() {
         <ExtensionLaunchAnnouncement />
         <PremiumTermsGate />
         <Toaster
-          theme="dark"
-          position="bottom-right"
+          theme={scheme}
+          position="top-center"
+          offset={88}
           toastOptions={{
             style: {
-              background: "rgba(13,13,20,0.95)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              color: "#fff",
+              background: "var(--glass-tint-strong)",
+              backdropFilter: "blur(30px) saturate(190%)",
+              WebkitBackdropFilter: "blur(30px) saturate(190%)",
+              boxShadow: "var(--glass-shadow), inset 0 0 0 1px var(--line)",
+              border: "0",
+              borderRadius: "22px",
+              color: "rgb(var(--ink))",
+              fontFamily: "var(--font-text)",
+              padding: "14px 18px",
             },
           }}
         />
       </div>
-    </MouseParallaxRoot>
+    </GlassSheenRoot>
   );
 }
 

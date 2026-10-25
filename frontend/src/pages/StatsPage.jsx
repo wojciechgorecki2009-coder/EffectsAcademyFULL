@@ -174,11 +174,11 @@ function PromoDatePicker({ label, value, onChange }) {
 
   return (
     <div className="relative">
-      <span className="text-xs uppercase tracking-[0.2em] text-zinc-500">{label}</span>
+      <span className="text-xs uppercase tracking-[0.2em] text-ink-3">{label}</span>
       <button
         type="button"
         onClick={() => setOpen((next) => !next)}
-        className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-left text-sm text-white outline-none transition hover:border-purple-300/35 focus:border-purple-300/50 focus:ring-2 focus:ring-purple-400/20"
+        className="mt-2 w-full rounded-xl border border-[var(--line)] bg-[var(--fill)] px-4 py-3 text-left text-sm text-ink outline-none transition hover:border-purple-300/35 focus:border-purple-300/50 focus:ring-2 focus:ring-purple-400/20"
       >
         <span className="flex items-center justify-between gap-3">
           <span>{formatDateTimeLocalLabel(value)}</span>
@@ -186,25 +186,25 @@ function PromoDatePicker({ label, value, onChange }) {
         </span>
       </button>
       {open && (
-        <div className="absolute left-0 top-full z-30 mt-2 w-[min(21rem,calc(100vw-3rem))] rounded-2xl border border-purple-300/20 bg-[#0d0b14]/95 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.55)] backdrop-blur-xl">
+        <div className="absolute left-0 top-full z-30 mt-2 w-[min(21rem,calc(100vw-3rem))] rounded-2xl border border-purple-300/20 bg-panel p-4 shadow-[0_24px_80px_rgba(0,0,0,0.55)] backdrop-blur-xl">
           <div className="flex items-center justify-between gap-3">
             <button
               type="button"
               onClick={() => setViewDate((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))}
-              className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm text-zinc-200 hover:bg-white/10"
+              className="rounded-lg border border-[var(--line)] bg-[var(--fill)] px-3 py-1.5 text-sm text-ink hover:bg-[var(--fill-2)]"
             >
               ‹
             </button>
-            <p className="font-semibold text-white">{monthLabel}</p>
+            <p className="font-semibold text-ink">{monthLabel}</p>
             <button
               type="button"
               onClick={() => setViewDate((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))}
-              className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm text-zinc-200 hover:bg-white/10"
+              className="rounded-lg border border-[var(--line)] bg-[var(--fill)] px-3 py-1.5 text-sm text-ink hover:bg-[var(--fill-2)]"
             >
               ›
             </button>
           </div>
-          <div className="mt-4 grid grid-cols-7 gap-1 text-center text-[11px] uppercase tracking-[0.16em] text-zinc-500">
+          <div className="mt-4 grid grid-cols-7 gap-1 text-center text-[11px] uppercase tracking-[0.16em] text-ink-3">
             {["S", "M", "T", "W", "T", "F", "S"].map((day, index) => <span key={`${day}-${index}`}>{day}</span>)}
           </div>
           <div className="mt-2 grid grid-cols-7 gap-1">
@@ -218,7 +218,7 @@ function PromoDatePicker({ label, value, onChange }) {
                   className={`aspect-square rounded-xl text-sm font-semibold transition ${
                     selected
                       ? "bg-neon text-white shadow-[0_0_24px_rgba(82,87,255,0.35)]"
-                      : "bg-white/[0.035] text-zinc-300 hover:bg-purple-400/15 hover:text-white"
+                      : "bg-[var(--fill)] text-ink-2 hover:bg-purple-400/15 hover:text-ink"
                   }`}
                 >
                   {day.getDate()}
@@ -229,18 +229,18 @@ function PromoDatePicker({ label, value, onChange }) {
             })}
           </div>
           <label className="mt-4 block">
-            <span className="text-xs uppercase tracking-[0.2em] text-zinc-500">Time</span>
+            <span className="text-xs uppercase tracking-[0.2em] text-ink-3">Time</span>
             <input
               type="time"
               value={time}
               onChange={(event) => onChange(toLocalDateTimeValue(date, event.target.value))}
-              className="mt-2 w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none focus:border-purple-300/50"
+              className="mt-2 w-full rounded-xl border border-[var(--line)] bg-[var(--fill)] px-4 py-3 text-sm text-ink outline-none focus:border-purple-300/50"
             />
           </label>
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="mt-3 w-full rounded-xl border border-white/10 bg-white/[0.06] px-4 py-2.5 text-sm font-semibold text-zinc-100 hover:bg-white/10"
+            className="mt-3 w-full rounded-xl border border-[var(--line)] bg-[var(--fill-2)] px-4 py-2.5 text-sm font-semibold text-ink hover:bg-[var(--fill-2)]"
           >
             Done
           </button>
@@ -260,21 +260,21 @@ function StatCard({ icon: Icon, label, value, note, tone = "blue", sideValue, si
   return (
     <div className={`rounded-2xl border bg-gradient-to-br ${tones[tone]} p-5`}>
       <div className="flex items-center justify-between gap-4">
-        <p className="text-xs uppercase tracking-[0.24em] text-zinc-400">{label}</p>
-        <span className="w-10 h-10 rounded-xl bg-white/7 border border-white/10 flex items-center justify-center">
+        <p className="text-xs uppercase tracking-[0.24em] text-ink-2">{label}</p>
+        <span className="w-10 h-10 rounded-xl bg-white/7 border border-[var(--line)] flex items-center justify-center">
           <Icon className="w-5 h-5" />
         </span>
       </div>
-      <p className="font-display text-3xl font-black mt-4 text-white">
+      <p className="font-display text-3xl font-bold mt-4 text-ink">
         <AnimatedNumber value={value} />
       </p>
       {sideValue && (
-        <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
-          <p className="font-display text-lg font-black text-white leading-none">{sideValue}</p>
-          <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-zinc-500">{sideLabel}</p>
+        <div className="mt-3 rounded-xl border border-[var(--line)] bg-[var(--fill)] px-3 py-2">
+          <p className="font-display text-lg font-bold text-ink leading-none">{sideValue}</p>
+          <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-ink-3">{sideLabel}</p>
         </div>
       )}
-      {note && <p className="text-xs text-zinc-500 mt-1">{note}</p>}
+      {note && <p className="text-xs text-ink-3 mt-1">{note}</p>}
       {warning && <p className="mt-2 text-[11px] leading-snug text-amber-300">{warning}</p>}
     </div>
   );
@@ -282,7 +282,7 @@ function StatCard({ icon: Icon, label, value, note, tone = "blue", sideValue, si
 
 function ChartShell({ title, children, right }) {
   return (
-    <div className="rounded-3xl border border-white/10 bg-[var(--site-panel)] p-5 md:p-6">
+    <div className="rounded-[28px] border border-[var(--line)] bg-panel p-5 md:p-6">
       <div className="flex items-center justify-between gap-4 mb-5">
         <h2 className="font-display text-xl font-bold">{title}</h2>
         {right}
@@ -376,16 +376,16 @@ export default function StatsPage() {
   };
 
   if (loading) {
-    return <section className="min-h-screen pt-28 px-6 text-center text-zinc-500">Loading stats...</section>;
+    return <section className="min-h-screen pt-28 px-6 text-center text-ink-3">Loading stats...</section>;
   }
 
   if (!canView) {
     return (
       <section className="min-h-screen pt-28 px-6">
-        <div className="max-w-xl mx-auto rounded-3xl border border-white/10 bg-[var(--site-panel)] p-8 text-center">
-          <ShieldCheck className="w-10 h-10 text-zinc-500 mx-auto mb-4" />
-          <h1 className="font-display text-3xl font-black">Moderator stats only</h1>
-          <p className="text-zinc-400 mt-3">Sign in with an uploader or admin account to view site performance.</p>
+        <div className="max-w-xl mx-auto rounded-[28px] border border-[var(--line)] bg-panel p-8 text-center">
+          <ShieldCheck className="w-10 h-10 text-ink-3 mx-auto mb-4" />
+          <h1 className="font-display text-3xl font-bold">Moderator stats only</h1>
+          <p className="text-ink-2 mt-3">Sign in with an uploader or admin account to view site performance.</p>
           <Link to="/" className="inline-flex mt-6 rounded-xl bg-neon px-5 py-3 font-bold text-white btn-press">
             Back to browse
           </Link>
@@ -399,12 +399,12 @@ export default function StatsPage() {
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-5 mb-8">
           <div>
-            <Link to="/" className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-white mb-5">
+            <Link to="/" className="inline-flex items-center gap-2 text-sm text-ink-2 hover:text-ink mb-5">
               <ArrowLeft className="w-4 h-4" /> Back to browse
             </Link>
             <p className="text-xs uppercase tracking-[0.34em] text-neon font-mono mb-2">Moderator dashboard</p>
-            <h1 className="font-display text-4xl md:text-6xl font-black tracking-tighter">Site statistics</h1>
-            <p className="text-zinc-400 mt-3 max-w-2xl">
+            <h1 className="font-display text-4xl md:text-6xl font-bold tracking-[-0.035em]">Site statistics</h1>
+            <p className="text-ink-2 mt-3 max-w-2xl">
               Track visitor activity, downloads, online users, and active Premium members in one place.
             </p>
           </div>
@@ -416,7 +416,7 @@ export default function StatsPage() {
                 className={`rounded-xl px-4 py-2 text-sm font-semibold border btn-press ${
                   range === days
                     ? "bg-neon text-white border-neon"
-                    : "bg-white/5 border-white/10 text-zinc-300 hover:bg-white/10"
+                    : "bg-[var(--fill)] border-[var(--line)] text-ink-2 hover:bg-[var(--fill-2)]"
                 }`}
               >
                 {days} days
@@ -455,24 +455,24 @@ export default function StatsPage() {
           <StatCard icon={Download} label="Downloads" value={data?.summary?.total_downloads || 0} note="All-time asset total" tone="green" />
         </div>
 
-        <div className="mb-6 rounded-3xl border border-purple-300/15 bg-[var(--site-panel)] p-5 md:p-6">
+        <div className="mb-6 rounded-[28px] border border-purple-300/15 bg-panel p-5 md:p-6">
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5 mb-5">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-300/10 px-3 py-1 text-xs font-semibold text-purple-200 mb-3">
                 <BadgePercent className="w-3.5 h-3.5" /> Premium promotions
               </div>
-              <h2 className="font-display text-2xl font-black">Run a Premium sale</h2>
-              <p className="text-sm text-zinc-400 mt-2 max-w-2xl">
+              <h2 className="font-display text-2xl font-bold">Run a Premium sale</h2>
+              <p className="text-sm text-ink-2 mt-2 max-w-2xl">
                 Set a date range and discount percentage. While it is active, the Premium page and Stripe Checkout apply it automatically to new subscriptions.
               </p>
             </div>
             {data?.active_premium_promotion ? (
               <div className="rounded-2xl border border-emerald-300/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100">
-                <p className="font-semibold text-white">Active: {data.active_premium_promotion.name}</p>
+                <p className="font-semibold text-ink">Active: {data.active_premium_promotion.name}</p>
                 <p>{data.active_premium_promotion.percent_off}% off until {formatDateTime(data.active_premium_promotion.ends_at)}</p>
               </div>
             ) : (
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-zinc-400">
+              <div className="rounded-2xl border border-[var(--line)] bg-[var(--fill)] px-4 py-3 text-sm text-ink-2">
                 No Premium sale is active right now.
               </div>
             )}
@@ -480,23 +480,23 @@ export default function StatsPage() {
 
           <form onSubmit={createPromotion} className="grid md:grid-cols-2 xl:grid-cols-5 gap-3">
             <label className="block">
-              <span className="text-xs uppercase tracking-[0.2em] text-zinc-500">Name</span>
+              <span className="text-xs uppercase tracking-[0.2em] text-ink-3">Name</span>
               <input
                 value={promoForm.name}
                 onChange={(event) => setPromoForm((form) => ({ ...form, name: event.target.value }))}
-                className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm outline-none focus:border-purple-300/50"
+                className="mt-2 w-full rounded-xl border border-[var(--line)] bg-[var(--fill)] px-4 py-3 text-sm outline-none focus:border-purple-300/50"
                 placeholder="Premium sale"
               />
             </label>
             <label className="block">
-              <span className="text-xs uppercase tracking-[0.2em] text-zinc-500">Discount %</span>
+              <span className="text-xs uppercase tracking-[0.2em] text-ink-3">Discount %</span>
               <select
                 value={promoForm.percent_off}
                 onChange={(event) => setPromoForm((form) => ({ ...form, percent_off: event.target.value }))}
-                className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm outline-none focus:border-purple-300/50"
+                className="mt-2 w-full rounded-xl border border-[var(--line)] bg-[var(--fill)] px-4 py-3 text-sm outline-none focus:border-purple-300/50"
               >
                 {PROMOTION_DISCOUNTS.map((discount) => (
-                  <option key={discount} className="bg-[#111018] text-white" value={String(discount)}>
+                  <option key={discount} className="bg-panel text-ink" value={String(discount)}>
                     {discount}% off
                   </option>
                 ))}
@@ -513,20 +513,20 @@ export default function StatsPage() {
               onChange={(value) => setPromoForm((form) => ({ ...form, ends_at: value }))}
             />
             <label className="block">
-              <span className="text-xs uppercase tracking-[0.2em] text-zinc-500">Applies</span>
+              <span className="text-xs uppercase tracking-[0.2em] text-ink-3">Applies</span>
               <select
                 value={promoForm.duration}
                 onChange={(event) => setPromoForm((form) => ({ ...form, duration: event.target.value }))}
-                className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm outline-none focus:border-purple-300/50"
+                className="mt-2 w-full rounded-xl border border-[var(--line)] bg-[var(--fill)] px-4 py-3 text-sm outline-none focus:border-purple-300/50"
               >
-                <option className="bg-[#111018] text-white" value="once">First month only</option>
-                <option className="bg-[#111018] text-white" value="forever">Forever on that subscription</option>
+                <option className="bg-panel text-ink" value="once">First month only</option>
+                <option className="bg-panel text-ink" value="forever">Forever on that subscription</option>
               </select>
             </label>
             <button
               type="submit"
               disabled={promoBusy}
-              className="md:col-span-2 xl:col-span-5 rounded-xl bg-neon hover:bg-neon/90 disabled:bg-white/10 disabled:text-zinc-500 text-white font-bold py-3 btn-press"
+              className="md:col-span-2 xl:col-span-5 rounded-xl bg-neon hover:bg-neon/90 disabled:bg-[var(--fill-2)] disabled:text-ink-3 text-white font-bold py-3 btn-press"
             >
               {promoBusy ? "Saving promotion..." : "Create Premium promotion"}
             </button>
@@ -535,8 +535,8 @@ export default function StatsPage() {
           {(data?.premium_promotions || []).length > 0 && (
             <div className="mt-5 overflow-hidden">
               <table className="w-full table-fixed text-sm">
-                <thead className="text-left text-xs uppercase tracking-[0.2em] text-zinc-500">
-                  <tr className="border-b border-white/10">
+                <thead className="text-left text-xs uppercase tracking-[0.2em] text-ink-3">
+                  <tr className="border-b border-[var(--line)]">
                     <th className="w-[22%] py-3 pr-4">Promotion</th>
                     <th className="w-[12%] py-3 px-3">Discount</th>
                     <th className="w-[34%] py-3 px-3">Dates</th>
@@ -548,18 +548,18 @@ export default function StatsPage() {
                   {(data?.premium_promotions || []).map((promo) => {
                     const isActive = data?.active_premium_promotion?.id === promo.id;
                     return (
-                      <tr key={promo.id} className="border-b border-white/5">
-                        <td className="py-3 pr-4 font-semibold text-white break-words">{promo.name}</td>
-                        <td className="py-3 px-3 text-zinc-300">{promo.percent_off}%</td>
-                        <td className="py-3 px-3 text-zinc-400">
+                      <tr key={promo.id} className="border-b border-[var(--line)]">
+                        <td className="py-3 pr-4 font-semibold text-ink break-words">{promo.name}</td>
+                        <td className="py-3 px-3 text-ink-2">{promo.percent_off}%</td>
+                        <td className="py-3 px-3 text-ink-2">
                           <span className="flex min-w-0 items-center gap-2 leading-relaxed">
-                            <CalendarDays className="w-4 h-4 flex-shrink-0 text-zinc-500" />
+                            <CalendarDays className="w-4 h-4 flex-shrink-0 text-ink-3" />
                             <span className="min-w-0 break-words">
                               {formatDateTime(promo.starts_at)} → {formatDateTime(promo.ends_at)}
                             </span>
                           </span>
                         </td>
-                        <td className="py-3 px-3 text-zinc-400">{promo.duration === "forever" ? "Forever" : "First month"}</td>
+                        <td className="py-3 px-3 text-ink-2">{promo.duration === "forever" ? "Forever" : "First month"}</td>
                         <td className="py-3 pl-3 text-right">
                           {promo.enabled ? (
                             <button
@@ -569,14 +569,14 @@ export default function StatsPage() {
                               className={`inline-flex max-w-full items-center justify-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold btn-press ${
                                 isActive
                                   ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-200"
-                                  : "border-white/10 bg-white/[0.03] text-zinc-300 hover:bg-white/10"
+                                  : "border-[var(--line)] bg-[var(--fill)] text-ink-2 hover:bg-[var(--fill-2)]"
                               }`}
                             >
                               <Power className="w-3.5 h-3.5 flex-shrink-0" />
                               <span className="truncate">{isActive ? "Active · Disable" : "Scheduled · Disable"}</span>
                             </button>
                           ) : (
-                            <span className="text-zinc-500">Disabled</span>
+                            <span className="text-ink-3">Disabled</span>
                           )}
                         </td>
                       </tr>
@@ -647,15 +647,15 @@ export default function StatsPage() {
           </ChartShell>
         </div>
 
-        <div className="mt-6 rounded-3xl border border-white/10 bg-[var(--site-panel)] overflow-hidden">
-          <div className="px-5 md:px-6 py-5 border-b border-white/10 flex items-center justify-between">
+        <div className="mt-6 rounded-[28px] border border-[var(--line)] bg-panel overflow-hidden">
+          <div className="px-5 md:px-6 py-5 border-b border-[var(--line)] flex items-center justify-between">
             <h2 className="font-display text-xl font-bold">Asset download performance</h2>
-            <p className="text-xs text-zinc-500">Sorted by total downloads</p>
+            <p className="text-xs text-ink-3">Sorted by total downloads</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="text-left text-xs uppercase tracking-[0.2em] text-zinc-500">
-                <tr className="border-b border-white/10">
+              <thead className="text-left text-xs uppercase tracking-[0.2em] text-ink-3">
+                <tr className="border-b border-[var(--line)]">
                   <th className="px-5 md:px-6 py-4">Asset</th>
                   <th className="px-5 md:px-6 py-4">Category</th>
                   <th className="px-5 md:px-6 py-4">Creator</th>
@@ -664,16 +664,16 @@ export default function StatsPage() {
               </thead>
               <tbody>
                 {(data?.top_assets || []).map((asset) => (
-                  <tr key={asset.id} className="border-b border-white/5 hover:bg-white/[0.03]">
-                    <td className="px-5 md:px-6 py-4 font-semibold text-white">{asset.title}</td>
-                    <td className="px-5 md:px-6 py-4 text-zinc-400">{asset.category || "—"}</td>
-                    <td className="px-5 md:px-6 py-4 text-zinc-400">{asset.creator_tag || "—"}</td>
-                    <td className="px-5 md:px-6 py-4 text-right font-mono text-zinc-200">{compactNumber(asset.download_count || 0)}</td>
+                  <tr key={asset.id} className="border-b border-[var(--line)] hover:bg-[var(--fill)]">
+                    <td className="px-5 md:px-6 py-4 font-semibold text-ink">{asset.title}</td>
+                    <td className="px-5 md:px-6 py-4 text-ink-2">{asset.category || "—"}</td>
+                    <td className="px-5 md:px-6 py-4 text-ink-2">{asset.creator_tag || "—"}</td>
+                    <td className="px-5 md:px-6 py-4 text-right font-mono text-ink">{compactNumber(asset.download_count || 0)}</td>
                   </tr>
                 ))}
                 {!busy && (data?.top_assets || []).length === 0 && (
                   <tr>
-                    <td colSpan="4" className="px-6 py-12 text-center text-zinc-500">
+                    <td colSpan="4" className="px-6 py-12 text-center text-ink-3">
                       No download data yet. Once people start downloading assets, performance will appear here.
                     </td>
                   </tr>

@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, ShieldCheck } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { motion, useReducedMotion } from "framer-motion";
+import { ShieldCheck } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { useTheme } from "@/lib/theme";
+import { BackButton } from "@/components/Library";
+import { EASE_OUT, SPRING } from "@/lib/motion";
 
 export default function LoginPage() {
   const { user, config, loginWithGoogle, loginAsLocalViewer } = useAuth();
@@ -10,6 +14,8 @@ export default function LoginPage() {
   const buttonRef = useRef(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const { scheme } = useTheme();
+  const reduce = useReducedMotion();
   const returnTo = searchParams.get("returnTo") || "/premium";
   const safeReturnTo = returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "/premium";
 
@@ -48,7 +54,7 @@ export default function LoginPage() {
 });
       buttonRef.current.innerHTML = "";
       window.google.accounts.id.renderButton(buttonRef.current, {
-        theme: "filled_black",
+        theme: scheme === "light" ? "outline" : "filled_black",
         size: "large",
         shape: "pill",
         text: "continue_with",
@@ -73,7 +79,7 @@ export default function LoginPage() {
     return () => {
       script.onload = null;
     };
-  }, [config.google_client_id, loginWithGoogle, navigate, safeReturnTo]);
+  }, [config.google_client_id, loginWithGoogle, navigate, safeReturnTo, scheme]);
 
   const localLogin = async () => {
     setBusy(true);
@@ -89,24 +95,37 @@ export default function LoginPage() {
   };
 
   return (
-    <section className="min-h-[calc(100vh-4rem)] pt-28 pb-16 px-6 flex items-center justify-center" data-testid="login-page">
-      <div className="w-full max-w-md rounded-3xl border border-white/10 bg-[var(--site-panel)] p-8 md:p-10 shadow-2xl transition-colors duration-300">
-        <Link to="/" className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-white mb-8">
-          <ArrowLeft className="w-4 h-4" /> Back to browse
-        </Link>
-        <div className="w-12 h-12 rounded-2xl bg-neon/10 border border-neon/30 flex items-center justify-center mb-5">
-          <ShieldCheck className="w-6 h-6 text-neon" />
-        </div>
-        <h1 className="font-display text-3xl font-black tracking-tight">Sign in for Premium</h1>
-        <p className="text-zinc-400 mt-3 leading-relaxed">
+    <section className="relative flex min-h-[calc(100vh-4rem)] items-center justify-center overflow-hidden px-5 pb-20 pt-32" data-testid="login-page">
+      <div className="aurora -z-10 !opacity-50" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+      </div>
+      <motion.div
+        className="glass w-full max-w-[420px] rounded-[34px] p-8 md:p-10"
+        initial={reduce ? false : { opacity: 0, y: 30, scale: 0.96, filter: "blur(12px)" }}
+        animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)", transitionEnd: { filter: "none" } }}
+        transition={{ duration: 1, ease: EASE_OUT }}
+      >
+        <BackButton to="/">Browse</BackButton>
+        <motion.span
+          className="mb-6 flex h-14 w-14 items-center justify-center rounded-[18px] bg-tint text-tint-ink shadow-[0_10px_30px_-8px_rgb(var(--tint)/0.6)]"
+          initial={reduce ? false : { scale: 0.5, rotate: -20, opacity: 0 }}
+          animate={{ scale: 1, rotate: 0, opacity: 1 }}
+          transition={{ ...SPRING, delay: 0.2 }}
+        >
+          <ShieldCheck className="h-7 w-7" />
+        </motion.span>
+        <h1 className="font-display text-[2rem] font-bold leading-tight tracking-[-0.035em] text-ink">Sign in for Premium</h1>
+        <p className="mt-3 text-[15px] leading-relaxed text-ink-2">
           Google sign-in securely connects your subscription to one account across devices.
         </p>
 
-        <div className="mt-8 flex flex-col items-center gap-4">
+        <div className="mt-8 flex flex-col items-center gap-3">
           {config.google_client_id ? (
             <div ref={buttonRef} data-testid="google-login-button" />
           ) : (
-            <div className="w-full rounded-xl border border-amber-400/20 bg-amber-400/5 p-4 text-sm text-amber-200">
+            <div className="notice notice-warn w-full">
               Google Login will appear after <code>GOOGLE_CLIENT_ID</code> is configured on the server.
             </div>
           )}
@@ -114,19 +133,19 @@ export default function LoginPage() {
             <button
               onClick={localLogin}
               disabled={busy}
-              className="w-full rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 py-3 font-semibold btn-press"
+              className="btn btn-secondary btn-block"
               data-testid="dev-viewer-login"
             >
               {busy ? "Signing in…" : "Continue as Viewer (local preview)"}
             </button>
           )}
-          {error && <p className="text-sm text-red-400" data-testid="login-error">{error}</p>}
+          {error && <p className="text-[13px] text-[#ff453a]" data-testid="login-error">{error}</p>}
         </div>
 
-        <p className="text-xs text-zinc-600 mt-8 text-center">
+        <p className="mt-8 text-center text-[12px] leading-relaxed text-ink-3">
           We store only your Google account ID, email, display name, role, and subscription status.
         </p>
-      </div>
+      </motion.div>
     </section>
   );
 }
