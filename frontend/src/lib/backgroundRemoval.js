@@ -167,21 +167,6 @@ export async function removeBackground(file, { onStage, onProgress } = {}) {
   return { blob, url: URL.createObjectURL(blob), width, height, device: currentDevice() };
 }
 
-/** Flattens a transparent PNG onto a solid colour (same resolution, lossless PNG). */
-export async function flattenOnto(blob, color) {
-  const bitmap = await createImageBitmap(blob, { premultiplyAlpha: "none" });
-  const { canvas, ctx } = createCanvas(bitmap.width, bitmap.height);
-  ctx.fillStyle = color;
-  ctx.fillRect(0, 0, bitmap.width, bitmap.height);
-  ctx.drawImage(bitmap, 0, 0);
-  bitmap.close();
-  const out = await new Promise((resolve, reject) =>
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Could not create the PNG."))), "image/png")
-  );
-  canvas.width = 0;
-  return out;
-}
-
 export function formatBytes(bytes = 0) {
   if (!bytes) return "0 B";
   const units = ["B", "KB", "MB", "GB"];

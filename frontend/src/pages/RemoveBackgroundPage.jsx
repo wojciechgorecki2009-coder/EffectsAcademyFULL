@@ -9,7 +9,6 @@ import {
   MAX_FILE_BYTES,
   MAX_PIXELS,
   MODEL_DOWNLOAD_MB,
-  flattenOnto,
   formatBytes,
   loadRemover,
   readImageInfo,
@@ -21,13 +20,6 @@ const FEATURES = [
   { icon: ShieldCheck, label: "Nothing is uploaded" },
   { icon: Maximize2, label: "Full original resolution" },
   { icon: Check, label: "Free for everyone" },
-];
-
-const BACKGROUNDS = [
-  { id: "transparent", label: "Transparent" },
-  { id: "#ffffff", label: "White" },
-  { id: "#000000", label: "Black" },
-  { id: "custom", label: "Custom" },
 ];
 
 const STAGES = {
@@ -47,7 +39,7 @@ const CHECKER = {
 };
 
 /* Before/after viewer: the cut-out sits over the original and a handle wipes between them. */
-function CompareView({ originalUrl, resultUrl, background, width, height }) {
+function CompareView({ originalUrl, resultUrl, width, height }) {
   const reduce = useReducedMotion();
   const frameRef = useRef(null);
   const position = useMotionValue(100);
@@ -75,12 +67,10 @@ function CompareView({ originalUrl, resultUrl, background, width, height }) {
     position.set(Math.max(0, Math.min(100, next)));
   };
 
-  const backdrop = background === "transparent" ? CHECKER : { backgroundColor: background };
-
   return (
     <div
       ref={frameRef}
-      className="relative mx-auto max-h-[70vh] touch-none select-none overflow-hidden rounded-[20px]"
+      className="relative mx-auto w-full touch-none select-none overflow-hidden rounded-[20px]"
       style={{ aspectRatio: `${width} / ${height}`, maxWidth: `min(100%, calc(70vh * ${width / height}))` }}
       onPointerDown={(e) => {
         if (!resultUrl) return;
@@ -93,7 +83,7 @@ function CompareView({ originalUrl, resultUrl, background, width, height }) {
     >
       <img src={originalUrl} alt="Original" className="absolute inset-0 h-full w-full object-contain" draggable={false} />
       {resultUrl && (
-        <motion.div className="absolute inset-0" style={{ clipPath: clip, ...backdrop }}>
+        <motion.div className="absolute inset-0" style={{ clipPath: clip, ...CHECKER }}>
           <img src={resultUrl} alt="Background removed" className="absolute inset-0 h-full w-full object-contain" draggable={false} />
         </motion.div>
       )}
@@ -125,12 +115,7 @@ export default function RemoveBackgroundPage() {
   const [modelProgress, setModelProgress] = useState(0);
   const [modelState, setModelState] = useState("idle"); // idle | loading | ready | error
   const [result, setResult] = useState(null);
-  const [background, setBackground] = useState("transparent");
-  const [customColor, setCustomColor] = useState("#0071e3");
   const [error, setError] = useState("");
-  const downloads = useRef(new Map());
-
-  const activeBackground = background === "custom" ? customColor : background;
 
   useEffect(() => () => originalUrl && URL.revokeObjectURL(originalUrl), [originalUrl]);
   useEffect(() => () => result?.url && URL.revokeObjectURL(result.url), [result]);
@@ -170,7 +155,6 @@ export default function RemoveBackgroundPage() {
       toast.error(`That image is ${Math.round((dims.width * dims.height) / 1e6)} megapixels. The limit is 100 megapixels.`);
       return;
     }
-    downloads.current.clear();
     setFile(next);
     setOriginalUrl(URL.createObjectURL(next));
     setInfo(dims);
@@ -185,7 +169,6 @@ export default function RemoveBackgroundPage() {
     setStatus("working");
     setError("");
     setResult(null);
-    downloads.current.clear();
     try {
       const output = await removeBackground(file, { onStage: setStage, onProgress: onModelProgress });
       setModelState("ready");
@@ -200,12 +183,7 @@ export default function RemoveBackgroundPage() {
   const download = async () => {
     if (!result) return;
     try {
-      let blob = result.blob;
-      if (activeBackground !== "transparent") {
-        blob = downloads.current.get(activeBackground) || (await flattenOnto(result.blob, activeBackground));
-        downloads.current.set(activeBackground, blob);
-      }
-      const url = URL.createObjectURL(blob);
+      const url = URL.createObjectURL(result.blob);
       const link = document.createElement("a");
       link.href = url;
       link.download = `${(file?.name || "image").replace(/\.[^.]+$/, "")}-no-background.png`;
@@ -297,7 +275,6 @@ export default function RemoveBackgroundPage() {
                 <CompareView
                   originalUrl={originalUrl}
                   resultUrl={result?.url}
-                  background={activeBackground}
                   width={info.width}
                   height={info.height}
                 />
@@ -333,50 +310,10 @@ export default function RemoveBackgroundPage() {
         </Reveal>
 
         <Reveal className="surface rounded-[28px] p-6" delay={0.08}>
-          <h2 className="font-display text-[1.25rem] font-semibold tracking-[-0.02em] text-ink">Background</h2>
-          <div className="mt-4 grid grid-cols-2 gap-2" role="radiogroup" aria-label="Background">
-            {BACKGROUNDS.map((b) => {
-              const active = background === b.id;
-              const swatch = b.id === "transparent" ? CHECKER : { backgroundColor: b.id === "custom" ? customColor : b.id };
-              return (
-                <button
-                  key={b.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={active}
-                  onClick={() => setBackground(b.id)}
-                  className={`relative flex items-center gap-2.5 rounded-[14px] px-3 py-2.5 text-left text-[13.5px] font-medium transition-colors duration-300 ${active ? "text-ink" : "text-ink-2 hover:bg-[var(--fill)]"}`}
-                  data-testid={`remove-bg-background-${b.id.replace("#", "")}`}
-                >
-                  {active && (
-                    <motion.span
-                      layoutId="remove-bg-lens"
-                      className="absolute inset-0 rounded-[14px] bg-[rgb(var(--tint)/0.1)] shadow-[inset_0_0_0_1.5px_rgb(var(--tint)/0.65)]"
-                      transition={SPRING}
-                    />
-                  )}
-                  <span className="relative h-5 w-5 shrink-0 rounded-full shadow-[inset_0_0_0_1px_var(--line-strong)]" style={swatch} />
-                  <span className="relative">{b.label}</span>
-                </button>
-              );
-            })}
-          </div>
-          <AnimatePresence initial={false}>
-            {background === "custom" && (
-              <motion.label
-                className="mt-3 flex items-center gap-3 overflow-hidden rounded-[14px] bg-[var(--fill)] px-3 py-2 text-[13px] text-ink-2"
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.4, ease: EASE_OUT }}
-              >
-                <input type="color" value={customColor} onChange={(e) => setCustomColor(e.target.value)} className="bare h-8 w-10 cursor-pointer rounded-lg border-0 bg-transparent p-0" />
-                <span className="font-mono uppercase text-ink">{customColor}</span>
-              </motion.label>
-            )}
-          </AnimatePresence>
+          <h2 className="font-display text-[1.25rem] font-semibold tracking-[-0.02em] text-ink">Cut-out</h2>
+          <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink-2">Transparent PNG, ready to drop into any edit.</p>
 
-          <div className="mt-5 flex items-start gap-2.5 rounded-[16px] bg-[rgb(48_209_88/0.1)] px-3.5 py-3 text-[13px] leading-snug text-ink">
+          <div className="mt-4 flex items-start gap-2.5 rounded-[16px] bg-[rgb(48_209_88/0.1)] px-3.5 py-3 text-[13px] leading-snug text-ink">
             <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-[#30d158]" />
             <span>
               {info
@@ -415,7 +352,7 @@ export default function RemoveBackgroundPage() {
                     <Download /> Download PNG
                   </button>
                   <p className="text-center text-[12px] text-ink-3">
-                    {result.width}×{result.height} · {activeBackground === "transparent" ? "transparent background" : "flattened onto your colour"}
+                    {result.width}×{result.height} · transparent background
                   </p>
                 </motion.div>
               ) : (
