@@ -42,7 +42,7 @@ const checkoutErrorMessage = (err, fallback) => {
   return fallback;
 };
 
-const twitchMessage = (state, broadcaster = "mrbit100", discount = 15) => {
+const twitchMessage = (state, broadcaster = "mrbit1000", discount = 15) => {
   if (state === "linked") return `Twitch linked. Subscriber discount unlocked for ${discount}% off Premium.`;
   if (state === "not_subscribed") return `Twitch linked, but that account is not currently subscribed to ${broadcaster}.`;
   if (state === "cancelled") return "Twitch linking was cancelled.";
@@ -289,7 +289,7 @@ export default function PremiumPage() {
             animate={{ opacity: 1, y: 0, filter: "blur(0px)", transitionEnd: { filter: "none" } }}
             transition={{ duration: 1, ease: EASE_OUT, delay: 0.45 }}
           >
-            Premium packs, project files, presets, curated resources, and the After Effects extension, all included with your monthly membership.
+            Premium on Effects Academy unlocks our more sophisticated project files, a bigger allowance for our tools across the site, and now our built-in After Effects extension.
           </motion.p>
         </header>
 
@@ -388,7 +388,7 @@ export default function PremiumPage() {
                         </span>
                       </p>
                       <p className="mt-1 text-[14px] leading-relaxed text-ink-2">
-                        Subscribe to <span className="font-semibold text-ink">{config.twitch_broadcaster_login || "mrbit100"}</span> on Twitch, then link Twitch here before checkout.
+                        Subscribe to <span className="font-semibold text-ink">{config.twitch_broadcaster_login || "mrbit1000"}</span> on Twitch, then link Twitch here before checkout.
                       </p>
                       {user?.twitch_login && (
                         <p className={`mt-2 text-[12.5px] font-medium ${user.twitch_discount_eligible ? "text-[#248a3d] dark:text-[#30d158]" : "text-[#c93400] dark:text-[#ff9f0a]"}`}>

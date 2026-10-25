@@ -69,7 +69,7 @@ Optional Twitch subscriber discount:
 - `TWITCH_CLIENT_ID`
 - `TWITCH_CLIENT_SECRET`
 - `TWITCH_REDIRECT_URI`
-- `TWITCH_BROADCASTER_LOGIN` — defaults to `mrbit100`
+- `TWITCH_BROADCASTER_LOGIN` — defaults to `mrbit1000`
 - `TWITCH_BROADCASTER_ID` — optional, but recommended once you know your Twitch channel ID
 - `TWITCH_DISCOUNT_PERCENT` — defaults to `15`
 - `STRIPE_TWITCH_COUPON_ID` — Stripe coupon ID for the 15% subscriber discount. Use the internal coupon ID from Stripe, not a customer-facing promotion code.

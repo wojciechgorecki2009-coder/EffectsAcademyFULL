@@ -20,7 +20,7 @@ export function AuthProvider({ children }) {
     google_login_uri: "",
     stripe_configured: false,
     twitch_configured: false,
-    twitch_broadcaster_login: "mrbit100",
+    twitch_broadcaster_login: "mrbit1000",
     twitch_discount_percent: 15,
     stripe_twitch_coupon_configured: false,
     active_premium_promotion: null,
