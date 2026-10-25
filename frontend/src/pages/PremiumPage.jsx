@@ -7,6 +7,7 @@ import { EASE_OUT, KineticText, Reveal, Stagger, StaggerItem } from "@/lib/motio
 import { api } from "@/lib/api";
 import { hasPremiumAccess, useAuth } from "@/lib/auth";
 import TwitchIcon from "@/components/TwitchIcon";
+import AfterEffectsLogo from "@/components/AfterEffectsLogo";
 
 const BENEFITS = [
   "All premium assets included with membership",
@@ -443,9 +444,7 @@ export default function PremiumPage() {
               <Reveal delay={0.12}>
                 <div id="after-effects-extension" className="surface scroll-mt-28 rounded-[26px] p-6">
                   <div className="flex items-start gap-4">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-[13px] font-bold text-[#9999ff]" style={{ background: "#00005b" }}>
-                      Ae
-                    </span>
+                    <AfterEffectsLogo className="h-11 w-11 shrink-0 drop-shadow-[0_6px_16px_rgb(0_0_91/0.35)]" />
                     <div className="min-w-0 flex-1">
                       <p className="text-[15px] font-semibold text-ink">After Effects extension access</p>
                       <p className="mt-1 text-[14px] leading-relaxed text-ink-2">

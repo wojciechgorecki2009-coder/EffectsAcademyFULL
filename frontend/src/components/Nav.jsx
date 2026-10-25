@@ -1,7 +1,7 @@
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Lock, Upload, LogOut, UserCircle, Crown, Settings2, Check, BarChart3, BadgePercent, ChevronRight, X } from "lucide-react";
+import { Lock, Upload, LogOut, UserCircle, Crown, Settings2, Check, BarChart3, BadgePercent, ChevronRight } from "lucide-react";
 import DiscordIcon from "@/components/DiscordIcon";
 import TwitchIcon from "@/components/TwitchIcon";
 import LiquidGlass from "@/components/LiquidGlass";
@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { useUploadAccess } from "@/lib/uploadAccess";
 import AccessUploadModal from "@/components/AccessUploadModal";
@@ -22,27 +23,16 @@ import { EASE_OUT, SPRING } from "@/lib/motion";
 const ASSETS_CHANGED_EVENT = "effectsacademy:assets-changed";
 
 const THEME_OPTIONS = [
-  { value: "dark", label: "Dark" },
-  { value: "blue", label: "Blue", note: "Default" },
-  { value: "gray", label: "Gray" },
-];
-
-const APPLE_THEME_OPTIONS = [
-  { value: "dark", label: "Dark" },
-  { value: "blue", label: "Light", note: "Default" },
+  { value: "dark", label: "Dark", note: "Default" },
+  { value: "blue", label: "Light" },
   { value: "gray", label: "Gray" },
 ];
 
 const FONT_OPTIONS = [
+  { value: "system", label: "San Francisco", note: "Default" },
+  { value: "outfit", label: "Outfit" },
   { value: "space", label: "Space Grotesk" },
-  { value: "outfit", label: "Outfit", note: "Default" },
   { value: "mono", label: "JetBrains Mono" },
-];
-
-const STYLE_OPTIONS = [
-  { value: "default", label: "Default" },
-  { value: "apple", label: "Apple" },
-  { value: "sleek", label: "Sleek" },
 ];
 
 const PRIMARY_TABS = [
@@ -86,7 +76,14 @@ function IconButton({ as: Tag = "button", className = "", children, ...props }) 
   );
 }
 
-function SettingsGroup({ title, options, value, onSelect, testPrefix }) {
+const FONT_FAMILIES = {
+  system: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, sans-serif",
+  outfit: "'Outfit', sans-serif",
+  space: "'Space Grotesk', sans-serif",
+  mono: "'JetBrains Mono', monospace",
+};
+
+function SettingsGroup({ title, options, value, onSelect, testPrefix, previewFonts = false }) {
   return (
     <div className="px-1 pb-1">
       <div className="px-2.5 pb-1.5 pt-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">{title}</div>
@@ -97,7 +94,7 @@ function SettingsGroup({ title, options, value, onSelect, testPrefix }) {
           className="flex cursor-pointer items-center justify-between gap-6 rounded-xl px-2.5 py-2 text-[0.9rem] text-ink focus:bg-[var(--fill-2)] focus:text-ink"
           data-testid={`${testPrefix}-${option.value}`}
         >
-          <span>
+          <span style={previewFonts ? { fontFamily: FONT_FAMILIES[option.value] } : undefined}>
             {option.label}
             {option.note ? <span className="ml-1.5 text-ink-3">{option.note}</span> : null}
           </span>
@@ -105,6 +102,71 @@ function SettingsGroup({ title, options, value, onSelect, testPrefix }) {
         </DropdownMenuItem>
       ))}
     </div>
+  );
+}
+
+const menuItemClass =
+  "flex cursor-pointer items-center gap-3 rounded-xl px-2.5 py-2 text-[0.9rem] text-ink focus:bg-[var(--fill-2)] focus:text-ink [&>svg]:h-4 [&>svg]:w-4 [&>svg]:text-ink-2";
+
+/*
+ * Everything account-related lives behind one avatar: plan, Stats for
+ * moderators, upload access and sign out. Keeps the bar to a few icons.
+ */
+function AccountMenu({ user, hasPremium, canViewStats, isUploader, localPasswordEnabled, onAccessUpload, onLockUploader, onLogout }) {
+  const navigate = useNavigate();
+  const initial = (user.name || user.email || "?").trim().charAt(0).toUpperCase();
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="relative ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--fill-2)] text-[14px] font-semibold text-ink transition-transform duration-300 ease-spring hover:scale-105 active:scale-90"
+          data-testid="nav-account-button"
+          title={user.email ? `Signed in as ${user.email}` : "Signed in"}
+          aria-label="Account menu"
+        >
+          {user.picture ? <img src={user.picture} alt="" className="h-full w-full rounded-full object-cover" referrerPolicy="no-referrer" /> : initial}
+          {hasPremium && (
+            <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#ffb340] text-black shadow-[0_0_0_2px_rgb(var(--panel))]">
+              <Crown className="h-2.5 w-2.5" strokeWidth={2.5} />
+            </span>
+          )}
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="glass min-w-64 rounded-[22px] border-0 p-1.5 text-ink" align="end" sideOffset={14}>
+        <div className="px-2.5 pb-2.5 pt-2">
+          <p className="truncate text-[14px] font-semibold text-ink">{user.name || "Signed in"}</p>
+          <p className="truncate text-[12.5px] text-ink-3">{user.email}</p>
+          <span className={`mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${hasPremium ? "bg-[#ffb340]/15 text-[#c27a00] dark:text-[#ffb340]" : "bg-[var(--fill-2)] text-ink-2"}`}>
+            {hasPremium ? <><Crown className="h-3 w-3" /> Premium</> : "Free plan"}
+          </span>
+        </div>
+        <DropdownMenuSeparator className="mx-2.5 my-1 h-px bg-[var(--line)]" />
+        <DropdownMenuItem className={menuItemClass} onClick={() => navigate("/premium")}>
+          {hasPremium ? <Crown /> : <UserCircle />}
+          {hasPremium ? "Manage Premium" : "Get Premium"}
+        </DropdownMenuItem>
+        {canViewStats && (
+          <DropdownMenuItem className={menuItemClass} onClick={() => navigate("/stats")} data-testid="nav-tab-stats">
+            <BarChart3 /> Stats
+          </DropdownMenuItem>
+        )}
+        {!isUploader && (
+          <DropdownMenuItem className={menuItemClass} onClick={onAccessUpload} data-testid="access-upload-btn">
+            <Lock /> Access Upload
+          </DropdownMenuItem>
+        )}
+        {isUploader && localPasswordEnabled && (
+          <DropdownMenuItem className={menuItemClass} onClick={onLockUploader} data-testid="lock-uploader-btn">
+            <Lock /> Lock uploader
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuSeparator className="mx-2.5 my-1 h-px bg-[var(--line)]" />
+        <DropdownMenuItem className={menuItemClass} onClick={onLogout} data-testid="nav-sign-out">
+          <LogOut /> Sign out
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -138,16 +200,14 @@ function Segmented({ options, value, onSelect, layoutId }) {
 export default function Nav() {
   const { isUploader, lock, localPasswordEnabled } = useUploadAccess();
   const { user, hasPremium, logout, config } = useAuth();
-  const { theme, setTheme, font, setFont, siteStyle, setSiteStyle } = useTheme();
+  const { theme, setTheme, font, setFont } = useTheme();
   const [accessOpen, setAccessOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const navigate = useNavigate();
   const { pathname } = useLocation();
   const scrolled = useScrolled();
   const reduce = useReducedMotion();
   const canViewStats = ["Admin", "Uploader"].includes(user?.role);
-  const themeOptions = siteStyle === "apple" ? APPLE_THEME_OPTIONS : THEME_OPTIONS;
   const activePromotion = config?.active_premium_promotion;
   const promotionPercent = Number(activePromotion?.percent_off || 0);
   const showPromotionBanner = Boolean(activePromotion && promotionPercent > 0);
@@ -159,6 +219,11 @@ export default function Nav() {
   useEffect(() => {
     document.documentElement.style.setProperty("--sticky-top", showPromotionBanner ? "6.75rem" : "5.25rem");
   }, [showPromotionBanner]);
+
+  const lockUploader = () => {
+    lock();
+    toast.success("Locked uploader session.");
+  };
 
   const notifyAssetsChanged = () => {
     window.dispatchEvent(new Event(ASSETS_CHANGED_EVENT));
@@ -208,7 +273,7 @@ export default function Nav() {
             edge={20}
             strength={42}
           >
-            <div className="relative flex h-full items-center justify-between gap-2 pl-2 pr-2 sm:pl-2.5">
+            <div className="relative flex h-full items-center gap-2 pl-2 pr-2 sm:pl-2.5">
               <Link
                 to="/"
                 className="group relative z-10 flex shrink-0 items-center gap-2.5 rounded-full py-1 pl-0.5 pr-3 transition-transform duration-500 ease-spring active:scale-95"
@@ -224,10 +289,9 @@ export default function Nav() {
                 </span>
               </Link>
 
-              <nav className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 items-center gap-0.5 lg:flex" aria-label="Primary">
-                {tabs.map((t) => {
+              <nav className="hidden min-w-0 flex-1 items-center justify-center gap-0.5 lg:flex" aria-label="Primary">
+                {PRIMARY_TABS.map((t) => {
                   const active = isTabActive(t.to);
-                  const Icon = t.icon;
                   return (
                     <NavLink
                       key={t.to}
@@ -245,31 +309,13 @@ export default function Nav() {
                           transition={SPRING}
                         />
                       )}
-                      <span className="relative inline-flex items-center gap-1.5">
-                        {Icon ? <Icon className="h-3.5 w-3.5" /> : null}
-                        {t.label}
-                      </span>
+                      <span className="relative">{t.label}</span>
                     </NavLink>
                   );
                 })}
               </nav>
 
-              <div className="relative z-10 flex shrink-0 items-center gap-0.5">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <IconButton className="hidden sm:inline-flex" data-testid="nav-settings" title="Appearance" aria-label="Appearance settings">
-                      <Settings2 className="h-[17px] w-[17px]" />
-                    </IconButton>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="glass min-w-56 rounded-[22px] border-0 p-1.5 text-ink" align="end" sideOffset={14}>
-                    <SettingsGroup title="Website style" options={STYLE_OPTIONS} value={siteStyle} onSelect={setSiteStyle} testPrefix="site-style" />
-                    <div className="mx-2.5 my-1 h-px bg-[var(--line)]" />
-                    <SettingsGroup title="Appearance" options={themeOptions} value={theme} onSelect={setTheme} testPrefix="theme" />
-                    <div className="mx-2.5 my-1 h-px bg-[var(--line)]" />
-                    <SettingsGroup title="Font" options={FONT_OPTIONS} value={font} onSelect={setFont} testPrefix="font" />
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
+              <div className="relative z-10 ml-auto flex shrink-0 items-center gap-0.5 lg:ml-0">
                 <IconButton
                   as="a"
                   href="https://discord.gg/2VvMq3Pz85"
@@ -291,57 +337,61 @@ export default function Nav() {
                   title="Twitch subscriber discount"
                   aria-label="Twitch subscriber discount"
                 >
-                  <TwitchIcon className="h-[17px] w-[17px]" />
+                  <TwitchIcon className="h-[16px] w-[16px]" />
                 </IconButton>
 
-                {isUploader && localPasswordEnabled && (
-                  <IconButton
-                    onClick={() => {
-                      lock();
-                      toast.success("Locked uploader session.");
-                    }}
-                    data-testid="lock-uploader-btn"
-                    title="Lock uploader"
-                    aria-label="Lock uploader"
-                  >
-                    <LogOut className="h-4 w-4" />
-                  </IconButton>
-                )}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <IconButton className="hidden sm:inline-flex" data-testid="nav-settings" title="Appearance" aria-label="Appearance settings">
+                      <Settings2 className="h-[17px] w-[17px]" />
+                    </IconButton>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="glass min-w-56 rounded-[22px] border-0 p-1.5 text-ink" align="end" sideOffset={14}>
+                    <SettingsGroup title="Appearance" options={THEME_OPTIONS} value={theme} onSelect={setTheme} testPrefix="theme" />
+                    <div className="mx-2.5 my-1 h-px bg-[var(--line)]" />
+                    <SettingsGroup title="Font" options={FONT_OPTIONS} value={font} onSelect={setFont} testPrefix="font" previewFonts />
+                  </DropdownMenuContent>
+                </DropdownMenu>
 
-                {!isUploader ? (
-                  <IconButton onClick={() => setAccessOpen(true)} data-testid="access-upload-btn" title="Access Upload" aria-label="Access Upload">
-                    <Lock className="h-4 w-4" />
-                  </IconButton>
-                ) : (
+                {isUploader && (
                   <button
                     type="button"
                     onClick={() => setUploadOpen(true)}
-                    className="btn btn-sm btn-secondary mx-0.5 h-9"
+                    className="btn btn-sm btn-secondary mx-0.5 h-9 px-3 xl:px-3.5"
                     data-testid="open-upload-btn"
+                    title="Upload"
                   >
-                    <Upload /> <span className="hidden sm:inline">Upload</span>
+                    <Upload /> <span className="hidden xl:inline">Upload</span>
                   </button>
                 )}
 
                 {user ? (
-                  <div className="hidden items-center md:flex">
-                    <button
-                      onClick={() => navigate("/premium")}
-                      className="btn btn-sm btn-ghost h-9 px-3 text-ink"
-                      data-testid="nav-account-button"
-                      title={user.email ? `Signed in as ${user.email}` : "Signed in"}
-                    >
-                      {hasPremium ? <Crown className="text-[#ffb340]" /> : <UserCircle />}
-                      <span className="hidden xl:inline">{hasPremium ? "Premium" : "Account"}</span>
-                    </button>
-                    <IconButton onClick={logout} title="Sign out" aria-label="Sign out" data-testid="nav-sign-out">
-                      <LogOut className="h-4 w-4" />
-                    </IconButton>
-                  </div>
+                  <AccountMenu
+                    user={user}
+                    hasPremium={hasPremium}
+                    canViewStats={canViewStats}
+                    isUploader={isUploader}
+                    localPasswordEnabled={localPasswordEnabled}
+                    onAccessUpload={() => setAccessOpen(true)}
+                    onLockUploader={lockUploader}
+                    onLogout={logout}
+                  />
                 ) : (
-                  <Link to="/login" className="btn btn-sm btn-primary ml-1 hidden h-9 md:inline-flex" data-testid="nav-sign-in">
-                    Sign in
-                  </Link>
+                  <>
+                    {isUploader && localPasswordEnabled ? (
+                      <IconButton onClick={lockUploader} data-testid="lock-uploader-btn" title="Lock uploader" aria-label="Lock uploader">
+                        <LogOut className="h-4 w-4" />
+                      </IconButton>
+                    ) : null}
+                    {!isUploader ? (
+                      <IconButton onClick={() => setAccessOpen(true)} data-testid="access-upload-btn" title="Access Upload" aria-label="Access Upload">
+                        <Lock className="h-4 w-4" />
+                      </IconButton>
+                    ) : null}
+                    <Link to="/login" className="btn btn-sm btn-primary ml-1 hidden h-9 md:inline-flex" data-testid="nav-sign-in">
+                      Sign in
+                    </Link>
+                  </>
                 )}
 
                 <IconButton
@@ -434,9 +484,8 @@ export default function Nav() {
                     <p className="flex items-center gap-1.5 text-xs font-medium text-ink-3">
                       <Settings2 className="h-3.5 w-3.5" /> Appearance
                     </p>
-                    <Segmented options={STYLE_OPTIONS} value={siteStyle} onSelect={setSiteStyle} layoutId="m-style" />
-                    <Segmented options={themeOptions} value={theme} onSelect={setTheme} layoutId="m-theme" />
-                    <Segmented options={FONT_OPTIONS.map((o) => ({ ...o, label: o.label.split(" ")[0] }))} value={font} onSelect={setFont} layoutId="m-font" />
+                    <Segmented options={THEME_OPTIONS} value={theme} onSelect={setTheme} layoutId="m-theme" />
+                    <Segmented options={FONT_OPTIONS.map((o) => ({ ...o, label: o.value === "system" ? "SF" : o.label.split(" ")[0] }))} value={font} onSelect={setFont} layoutId="m-font" />
                   </div>
                 </div>
               </motion.div>

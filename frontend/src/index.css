@@ -26,12 +26,11 @@
     /* Type */
     --font-apple-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter Tight", "Inter", "Helvetica Neue", Arial, sans-serif;
     --font-apple-text: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Helvetica Neue", Arial, sans-serif;
-    --font-choice: 'Outfit', system-ui, sans-serif;
-    --font-display: var(--font-choice);
-    --font-text: var(--font-choice);
+    --font-display: var(--font-apple-display);
+    --font-text: var(--font-apple-text);
     --site-font: var(--font-text);
 
-    /* Default style · dark */
+    /* Base (dark) */
     --canvas: 0 0 0;
     --panel: 13 13 17;
     --panel-2: 20 20 26;
@@ -88,50 +87,22 @@
     --radius: 0.875rem;
   }
 
-  :root[data-font="outfit"] { --font-choice: 'Outfit', system-ui, sans-serif; }
-  :root[data-font="space"] { --font-choice: 'Space Grotesk', system-ui, sans-serif; }
-  :root[data-font="mono"] { --font-choice: 'JetBrains Mono', ui-monospace, monospace; }
-
-  :root[data-theme="blue"] {
-    --canvas: 5 5 10;
-    --panel: 14 14 22;
-    --panel-2: 21 21 32;
-    --glass-tint: rgb(24 24 40 / 0.45);
-    --glass-tint-strong: rgb(16 16 28 / 0.8);
-    --background: 240 33% 3%;
-    --card: 240 22% 7%;
-    --popover: 240 22% 7%;
+  /* Font setting. "system" (the default) keeps San Francisco / Inter. */
+  :root[data-font="outfit"] {
+    --font-display: 'Outfit', system-ui, sans-serif;
+    --font-text: 'Outfit', system-ui, sans-serif;
   }
-
-  :root[data-theme="gray"] {
-    --canvas: 24 25 28;
-    --panel: 36 38 43;
-    --panel-2: 44 46 52;
-    --ink-2: 174 176 184;
-    --ink-3: 128 130 138;
-    --glass-tint: rgb(52 54 60 / 0.48);
-    --glass-tint-strong: rgb(40 42 48 / 0.84);
-    --background: 225 7% 10%;
-    --card: 222 8% 16%;
-    --popover: 222 8% 15%;
-    --border: 222 6% 24%;
-    --input: 222 6% 24%;
+  :root[data-font="space"] {
+    --font-display: 'Space Grotesk', system-ui, sans-serif;
+    --font-text: 'Space Grotesk', system-ui, sans-serif;
   }
-
-  /* Sleek: monochrome, the accent is the foreground itself. */
-  :root[data-site-style="sleek"] {
-    --tint: 245 245 247;
-    --tint-ink: 0 0 0;
-    --primary: 240 11% 96%;
-    --primary-foreground: 0 0% 0%;
-    --ring: 240 11% 96%;
+  :root[data-font="mono"] {
+    --font-display: 'JetBrains Mono', ui-monospace, monospace;
+    --font-text: 'JetBrains Mono', ui-monospace, monospace;
   }
 
   /* ---------------- Apple style ---------------- */
   :root[data-site-style="apple"] {
-    --font-display: var(--font-apple-display);
-    --font-text: var(--font-apple-text);
-
     /* Light (theme value "blue") */
     --canvas: 245 245 247;
     --panel: 255 255 255;
@@ -313,6 +284,11 @@
 }
 
 .font-display { font-family: var(--font-display) !important; }
+
+/* Monospace glyphs collide at the tight tracking used for SF/Inter headlines */
+:root[data-font="mono"] body { letter-spacing: -0.015em; }
+:root[data-font="mono"] :is(h1, h2, h3, h4, .display-xl, .display-lg, .display-md) { letter-spacing: -0.04em !important; }
+:root[data-font="mono"] .display-xl { font-size: clamp(2.6rem, 7.4vw, 6rem); }
 .font-body { font-family: var(--font-text) !important; }
 
 :root[data-site-style="apple"] .font-mono {
@@ -526,7 +502,6 @@
   background: rgb(var(--tint) / 0.12);
   color: rgb(var(--tint));
 }
-:root[data-site-style="sleek"] .btn-tinted { background: var(--fill-2); color: rgb(var(--ink)); }
 .btn-tinted:hover:not(:disabled) {
   background: rgb(var(--tint));
   color: rgb(var(--tint-ink));
@@ -658,10 +633,6 @@ textarea.field { height: auto; padding: 0.85rem 1rem; line-height: 1.5; resize: 
   animation: text-shimmer 9s var(--ease-in-out) infinite;
 }
 
-:root[data-site-style="sleek"] .text-shimmer {
-  background-image: linear-gradient(100deg, #fff 0%, #8e8e93 35%, #fff 55%, #8e8e93 80%, #fff 100%);
-}
-
 @keyframes text-shimmer {
   0%, 100% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
@@ -737,7 +708,6 @@ textarea.field { height: auto; padding: 0.85rem 1rem; line-height: 1.5; resize: 
   background: radial-gradient(circle, rgb(90 200 250 / 0.55), transparent 62%);
   animation: aurora-b 44s var(--ease-in-out) infinite alternate-reverse;
 }
-:root[data-site-style="sleek"] .aurora span:nth-child(n) { filter: grayscale(1); }
 
 @keyframes aurora-a {
   0% { transform: translate3d(0, 0, 0) scale(1); }

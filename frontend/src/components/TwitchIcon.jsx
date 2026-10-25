@@ -1,3 +1,4 @@
+// Official Twitch "Glitch" mark (path from Simple Icons, CC0).
 export default function TwitchIcon({ className = "w-4 h-4", ...props }) {
   return (
     <svg
@@ -7,7 +8,7 @@ export default function TwitchIcon({ className = "w-4 h-4", ...props }) {
       className={className}
       {...props}
     >
-      <path d="M4.25 3 3 6.35v13.4h4.6V22h2.55l2.25-2.25h3.45L21 14.6V3H4.25Zm14.5 10.55-2.9 2.9H11.8l-2.25 2.25v-2.25H6.1V5.25h12.65v8.3Zm-2.25-5.1v4.25h-2.25V8.45h2.25Zm-6.15 0v4.25H8.1V8.45h2.25Z" />
+      <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z" />
     </svg>
   );
 }

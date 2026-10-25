@@ -2,8 +2,12 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 const ThemeContext = createContext(null);
 const THEMES = new Set(["dark", "blue", "gray"]);
-const FONTS = new Set(["space", "outfit", "mono"]);
-const SITE_STYLES = new Set(["default", "apple", "sleek"]);
+// "system" = San Francisco on Apple devices, Inter elsewhere. Stored under a new
+// key because the old key saved "outfit" for every visitor whether they chose it or not.
+const FONTS = new Set(["system", "outfit", "space", "mono"]);
+const FONT_KEY = "ea_font_v3";
+// The Apple style is now the only website style.
+const SITE_STYLE = "apple";
 
 export function ThemeProvider({ children }) {
   const [theme, setThemeState] = useState(() => {
@@ -16,17 +20,8 @@ export function ThemeProvider({ children }) {
     return THEMES.has(saved) ? saved : "dark";
   });
   const [font, setFontState] = useState(() => {
-    const saved = localStorage.getItem("ea_font_v2");
-    return FONTS.has(saved) ? saved : "outfit";
-  });
-  const [siteStyle, setSiteStyleState] = useState(() => {
-    const saved = localStorage.getItem("ea_site_style");
-    const migratedToAppleDefault = localStorage.getItem("ea_site_style_apple_default_v1");
-    if (!migratedToAppleDefault && (!saved || saved === "default")) {
-      localStorage.setItem("ea_site_style_apple_default_v1", "1");
-      return "apple";
-    }
-    return SITE_STYLES.has(saved) ? saved : "apple";
+    const saved = localStorage.getItem(FONT_KEY);
+    return FONTS.has(saved) ? saved : "system";
   });
 
   useEffect(() => {
@@ -34,8 +29,8 @@ export function ThemeProvider({ children }) {
     localStorage.setItem("ea_theme", theme);
   }, [theme]);
 
-  // "blue" is the light appearance in the Apple style; every other combination is dark.
-  const scheme = siteStyle === "apple" && theme === "blue" ? "light" : "dark";
+  // "blue" is the light appearance; dark and gray are dark appearances.
+  const scheme = theme === "blue" ? "light" : "dark";
 
   useEffect(() => {
     document.documentElement.dataset.scheme = scheme;
@@ -44,13 +39,12 @@ export function ThemeProvider({ children }) {
 
   useEffect(() => {
     document.documentElement.dataset.font = font;
-    localStorage.setItem("ea_font_v2", font);
+    localStorage.setItem(FONT_KEY, font);
   }, [font]);
 
   useEffect(() => {
-    document.documentElement.dataset.siteStyle = siteStyle;
-    localStorage.setItem("ea_site_style", siteStyle);
-  }, [siteStyle]);
+    document.documentElement.dataset.siteStyle = SITE_STYLE;
+  }, []);
 
   const value = useMemo(() => ({
     theme,
@@ -62,11 +56,8 @@ export function ThemeProvider({ children }) {
     setFont: (nextFont) => {
       if (FONTS.has(nextFont)) setFontState(nextFont);
     },
-    siteStyle,
-    setSiteStyle: (nextStyle) => {
-      if (SITE_STYLES.has(nextStyle)) setSiteStyleState(nextStyle);
-    },
-  }), [theme, scheme, font, siteStyle]);
+    siteStyle: SITE_STYLE,
+  }), [theme, scheme, font]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

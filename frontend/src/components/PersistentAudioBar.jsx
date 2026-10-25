@@ -1,8 +1,8 @@
-import { useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion, useAnimate, useReducedMotion } from "framer-motion";
 import { Download, Loader2, Music2, Pause, Play, Volume2, VolumeX, Repeat } from "lucide-react";
 import LiquidGlass from "@/components/LiquidGlass";
-import { EASE_OUT, SPRING, SPRING_SOFT } from "@/lib/motion";
+import { EASE_OUT, SPRING } from "@/lib/motion";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import {
@@ -62,10 +62,61 @@ function safeAudioTitle(title = "audio") {
   return (title || "audio").replace(/[<>:"/\\|?*]+/g, "_").trim() || "audio";
 }
 
+/*
+ * Entrance choreography, modelled on the Dynamic Island: the player appears
+ * as a small capsule carrying the artwork and a live equalizer, springs open
+ * to full width, then its controls fade up into place. Exit runs in reverse.
+ */
+const ISLAND_SPRING = { type: "spring", stiffness: 170, damping: 22, mass: 0.9 };
+
+const DOCK_VARIANTS = {
+  hidden: { y: 36, opacity: 0, transition: { duration: 0.3, ease: EASE_OUT, delay: 0.32 } },
+  shown: { y: 0, opacity: 1, transition: { duration: 0.45, ease: EASE_OUT } },
+};
+
+const ISLAND_VARIANTS = {
+  hidden: {
+    clipPath: "inset(16px 41% 16px 41% round 999px)",
+    transition: { ...ISLAND_SPRING, stiffness: 260, damping: 30, delay: 0.12 },
+  },
+  shown: {
+    // Ends outside the box (negative inset) so the glass shadow is never clipped,
+    // while keeping a value the exit animation can interpolate back from.
+    clipPath: "inset(-64px -12% -64px -12% round 30px)",
+    transition: { ...ISLAND_SPRING, delay: 0.12 },
+  },
+};
+
+const SEED_VARIANTS = {
+  hidden: { opacity: 1, scale: 0.9, filter: "blur(0px)", transition: { duration: 0.2 } },
+  shown: { opacity: 0, scale: 1.25, filter: "blur(6px)", transition: { duration: 0.35, ease: EASE_OUT, delay: 0.26 } },
+};
+
+const CONTENT_VARIANTS = {
+  hidden: { opacity: 0, y: 6, filter: "blur(8px)", transition: { duration: 0.16 } },
+  shown: {
+    opacity: 1,
+    y: 0,
+    filter: "blur(0px)",
+    transitionEnd: { filter: "none" },
+    transition: { duration: 0.55, ease: EASE_OUT, delay: 0.34 },
+  },
+};
+
 export default function PersistentAudioBar() {
   const audio = useGlobalAudio();
   const [generatingRate, setGeneratingRate] = useState(null);
   const reduce = useReducedMotion();
+  const [pulseScope, animatePulse] = useAnimate();
+  const lastTitle = useRef(audio.title);
+
+  // A gentle "breath" when the track changes while the player is already open.
+  useEffect(() => {
+    if (lastTitle.current && audio.title && lastTitle.current !== audio.title && pulseScope.current && !reduce) {
+      animatePulse(pulseScope.current, { scale: [1, 1.025, 1] }, { duration: 0.55, ease: EASE_OUT });
+    }
+    lastTitle.current = audio.title;
+  }, [audio.title, animatePulse, pulseScope, reduce]);
 
   const pct = audio.duration > 0 ? Math.min(100, (audio.progress / audio.duration) * 100) : 0;
   const downloadCurrent = () => {
@@ -184,12 +235,30 @@ export default function PersistentAudioBar() {
         <motion.div
           key="audio-dock"
           className="pointer-events-none fixed inset-x-3 bottom-3 z-50 md:bottom-5"
-          initial={reduce ? false : { y: 140, opacity: 0, scale: 0.94, filter: "blur(10px)" }}
-          animate={{ y: 0, opacity: 1, scale: 1, filter: "blur(0px)", transitionEnd: { filter: "none" } }}
-          exit={{ y: 140, opacity: 0, scale: 0.96, transition: { duration: 0.35, ease: EASE_OUT } }}
-          transition={{ ...SPRING_SOFT, opacity: { duration: 0.5 }, filter: { duration: 0.5 } }}
+          initial={reduce ? false : "hidden"}
+          animate="shown"
+          exit="hidden"
+          variants={DOCK_VARIANTS}
         >
-          <LiquidGlass className="pointer-events-auto mx-auto max-w-[920px] rounded-[30px] lg-strong" edge={26} strength={44}>
+          <div ref={pulseScope} className="mx-auto max-w-[920px]">
+          <LiquidGlass
+            as={motion.div}
+            className="pointer-events-auto rounded-[30px] lg-strong"
+            edge={26}
+            strength={44}
+            variants={ISLAND_VARIANTS}
+          >
+            {!reduce && (
+              <motion.div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center" variants={SEED_VARIANTS} aria-hidden="true">
+                <span className="flex items-center gap-2.5">
+                  <span className="h-8 w-8 overflow-hidden rounded-full bg-[var(--fill-2)]">
+                    {audio.thumbnail ? <img src={audio.thumbnail} alt="" className="h-full w-full object-cover" /> : null}
+                  </span>
+                  <span className="dock-seed-eq"><i /><i /><i /><i /><i /></span>
+                </span>
+              </motion.div>
+            )}
+            <motion.div variants={CONTENT_VARIANTS}>
             <div className="flex items-center gap-3 px-3 pb-2.5 pt-3 md:gap-4 md:px-4">
               <div className="relative hidden h-12 w-12 shrink-0 overflow-hidden rounded-[14px] bg-[var(--fill-2)] shadow-[0_4px_14px_rgb(0_0_0/0.18)] sm:block">
                 {audio.thumbnail ? (
@@ -297,7 +366,9 @@ export default function PersistentAudioBar() {
                 {volume}
               </div>
             </div>
+            </motion.div>
           </LiquidGlass>
+          </div>
         </motion.div>
       ) : null}
     </AnimatePresence>
