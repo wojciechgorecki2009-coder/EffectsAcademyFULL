@@ -17,6 +17,8 @@
     accent: "ea_extension_accent",
     motion: "ea_extension_motion",
     font: "ea_extension_font",
+    cardSize: "ea_extension_card_size",
+    uiScale: "ea_extension_ui_scale",
     captionFont: "ea_caption_font",
     captionFadeIn: "ea_caption_fade_in",
     captionIncreaseTracking: "ea_caption_increase_tracking"
@@ -29,9 +31,11 @@
     uiStyle: "apple", // single visual style, matching the website
     layoutMode: localStorage.getItem(STORAGE_KEYS.layoutMode) || "auto",
     density: localStorage.getItem(STORAGE_KEYS.density) || "comfortable",
-    accent: localStorage.getItem(STORAGE_KEYS.accent) || "blue",
+    accent: localStorage.getItem(STORAGE_KEYS.accent) || "mono",
     motion: localStorage.getItem(STORAGE_KEYS.motion) || "premium",
     font: localStorage.getItem(STORAGE_KEYS.font) || "modern",
+    cardSize: localStorage.getItem(STORAGE_KEYS.cardSize) || "medium",
+    uiScale: localStorage.getItem(STORAGE_KEYS.uiScale) || "default",
     premiumAccess: false,
     assets: [],
     category: "All",
@@ -80,6 +84,8 @@
     accentInput: document.getElementById("accentInput"),
     motionInput: document.getElementById("motionInput"),
     fontInput: document.getElementById("fontInput"),
+    cardSizeInput: document.getElementById("cardSizeInput"),
+    uiScaleInput: document.getElementById("uiScaleInput"),
     pairingCodeInput: document.getElementById("pairingCodeInput"),
     pairingCodeBtn: document.getElementById("pairingCodeBtn"),
     authTokenInput: document.getElementById("authTokenInput"),
@@ -96,6 +102,10 @@
   };
 
   var currentAudioAsset = null;
+  var cardCache = {};
+  var ENTER_ANIMATION_LIMIT = 12;
+  var FIRST_PAINT_CARDS = 24;
+  var assetRenderToken = 0;
   // Shown when an asset has no artwork.
   var PLACEHOLDER_ICONS = {
     "Audios": '<svg class="ui-icon thumb-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4M8 7v10M12 4v16M16 8v8M20 11v2" /></svg>',
@@ -284,6 +294,9 @@
     setBodyClass("accent-", state.accent);
     setBodyClass("motion-", state.motion);
     setBodyClass("font-", state.font);
+    setBodyClass("cards-", state.cardSize);
+    setBodyClass("scale-", state.uiScale);
+    if (typeof moveTabLens === "function") requestAnimationFrame(function () { moveTabLens(false); });
   }
 
   function bindPreference(input, key, storageKey) {
@@ -1218,104 +1231,144 @@
     var assets = visibleAssets();
     els.assetCount.textContent = String(assets.length);
     els.emptyState.classList.toggle("hidden", assets.length > 0);
-    els.assetGrid.innerHTML = "";
-
-    assets.forEach(function (asset) {
-      var card = document.createElement("article");
-      card.className = "card";
-      if (currentAudioAsset && currentAudioAsset.id === asset.id) card.classList.add("is-playing");
-      card.setAttribute("data-asset-id", asset.id || "");
-      // Cards cascade in two at a time, like rows revealing on the website.
-      card.style.animationDelay = Math.min(420, Math.floor(els.assetGrid.children.length / 2) * 45) + "ms";
-      enhanceAppleCardMotion(card);
-
-      var thumb = document.createElement("div");
-      thumb.className = "thumb";
-      var thumbnailUrl = fileUrl(asset.thumbnail_url || "");
-      if (thumbnailUrl) {
-        var image = document.createElement("img");
-        image.src = thumbnailUrl;
-        image.alt = asset.title || "Asset thumbnail";
-        image.loading = "lazy";
-        thumb.appendChild(image);
-      } else {
-        thumb.classList.add("thumb-empty");
-        thumb.innerHTML = PLACEHOLDER_ICONS[asset.category] || PLACEHOLDER_ICONS.default;
+    // Reuse cached cards: switching tabs or searching only re-orders existing
+    // nodes instead of rebuilding every card and reloading every thumbnail.
+    var renderToken = ++assetRenderToken;
+    var fragment = document.createDocumentFragment();
+    var deferred = document.createDocumentFragment();
+    var entering = [];
+    assets.forEach(function (asset, index) {
+      var key = asset.id || asset.title;
+      var card = cardCache[key];
+      if (!card) {
+        card = buildCard(asset);
+        cardCache[key] = card;
       }
-      if (asset.category === "Premium") {
-        var premiumChip = document.createElement("span");
-        premiumChip.className = "media-chip chip-tl premium";
-        premiumChip.textContent = "Premium";
-        thumb.appendChild(premiumChip);
-      }
-      if (isAudioAsset(asset) && asset.file_url) {
-        var playBubble = document.createElement("button");
-        playBubble.type = "button";
-        playBubble.className = "thumb-play";
-        setControlIcon(playBubble, "play", "Preview audio");
-        playBubble.onclick = function (event) {
-          event.stopPropagation();
-          previewAudio(asset);
-        };
-        thumb.appendChild(playBubble);
-      }
-
-      var body = document.createElement("div");
-      body.className = "card-body";
-
-      var meta = document.createElement("div");
-      meta.className = "meta";
-      var badge = document.createElement("span");
-      badge.className = "badge" + (asset.category === "Premium" ? " premium" : "");
-      badge.textContent = categoryLabel(asset);
-      if (CATEGORY_COLORS[asset.category]) badge.style.setProperty("--cat", CATEGORY_COLORS[asset.category]);
-      var downloads = document.createElement("span");
-      downloads.className = "downloads";
-      var downloadCount = Number(asset.download_count || 0);
-      downloads.textContent = "\u2193 " + downloadCount;
-      downloads.title = downloadCount + (downloadCount === 1 ? " download" : " downloads");
-      meta.appendChild(badge);
-      meta.appendChild(downloads);
-
-      var title = document.createElement("div");
-      title.className = "title";
-      title.textContent = asset.title || "Untitled asset";
-
-      var sub = document.createElement("div");
-      sub.className = "sub";
-      sub.textContent = subLabel(asset);
-
-      var actions = document.createElement("div");
-      actions.className = "actions";
-
-      var importBtn = document.createElement("button");
-      importBtn.type = "button";
-      importBtn.className = "primary";
-      importBtn.textContent = isArchiveAsset(asset) ? "Unpack + import" : isAudioAsset(asset) ? "Add to comp" : "Import";
-      importBtn.disabled = !canDirectImport(asset);
-      importBtn.onclick = function () { importAsset(asset, importBtn); };
-
-      var previewBtn = document.createElement("button");
-      previewBtn.type = "button";
-      previewBtn.className = "secondary";
-      previewBtn.classList.add("icon-only-button");
-      setControlIcon(previewBtn, isAudioAsset(asset) ? "play" : "external", isAudioAsset(asset) ? "Preview audio" : "Open asset link");
-      previewBtn.onclick = function () {
-        if (isAudioAsset(asset)) previewAudio(asset);
-        else openExternal(asset);
-      };
-
-      actions.appendChild(importBtn);
-      actions.appendChild(previewBtn);
-
-      body.appendChild(meta);
-      body.appendChild(title);
-      body.appendChild(sub);
-      body.appendChild(actions);
-      card.appendChild(thumb);
-      card.appendChild(body);
-      els.assetGrid.appendChild(card);
+      card.classList.remove("enter");
+      card.classList.toggle("is-playing", !!(currentAudioAsset && currentAudioAsset.id === asset.id));
+      if (entering.length < ENTER_ANIMATION_LIMIT) entering.push(card);
+      // First screenful now, the rest on the next frame, so the tab feels instant.
+      (index < FIRST_PAINT_CARDS ? fragment : deferred).appendChild(card);
     });
+    els.assetGrid.textContent = "";
+    els.assetGrid.scrollTop = 0;
+    els.assetGrid.appendChild(fragment);
+    if (deferred.childNodes.length) {
+      requestAnimationFrame(function () {
+        if (renderToken === assetRenderToken) els.assetGrid.appendChild(deferred);
+      });
+    }
+
+    // Only the first cards on screen animate in; the rest appear instantly.
+    if (entering.length) {
+      void els.assetGrid.offsetWidth;
+      entering.forEach(function (card, index) {
+        card.style.animationDelay = Math.floor(index / 2) * 35 + "ms";
+        card.classList.add("enter");
+      });
+    }
+  }
+
+  function buildCard(asset) {
+    var card = document.createElement("article");
+    card.className = "card";
+    if (currentAudioAsset && currentAudioAsset.id === asset.id) card.classList.add("is-playing");
+    card.setAttribute("data-asset-id", asset.id || "");
+    enhanceAppleCardMotion(card);
+
+    var thumb = document.createElement("div");
+    thumb.className = "thumb";
+    var thumbnailUrl = fileUrl(asset.thumbnail_url || "");
+    if (thumbnailUrl) {
+      var image = document.createElement("img");
+      image.src = thumbnailUrl;
+      image.alt = "";
+      image.loading = "lazy";
+      image.decoding = "async";
+      image.onerror = function () {
+        // Missing artwork: fall back to the category icon instead of a broken image.
+        image.remove();
+        thumb.classList.add("thumb-empty");
+        thumb.insertAdjacentHTML("afterbegin", PLACEHOLDER_ICONS[asset.category] || PLACEHOLDER_ICONS.default);
+      };
+      thumb.appendChild(image);
+    } else {
+      thumb.classList.add("thumb-empty");
+      thumb.innerHTML = PLACEHOLDER_ICONS[asset.category] || PLACEHOLDER_ICONS.default;
+    }
+    if (asset.category === "Premium") {
+      var premiumChip = document.createElement("span");
+      premiumChip.className = "media-chip chip-tl premium";
+      premiumChip.textContent = "Premium";
+      thumb.appendChild(premiumChip);
+    }
+    if (isAudioAsset(asset) && asset.file_url) {
+      var playBubble = document.createElement("button");
+      playBubble.type = "button";
+      playBubble.className = "thumb-play";
+      setControlIcon(playBubble, "play", "Preview audio");
+      playBubble.onclick = function (event) {
+        event.stopPropagation();
+        previewAudio(asset);
+      };
+      thumb.appendChild(playBubble);
+    }
+
+    var body = document.createElement("div");
+    body.className = "card-body";
+
+    var meta = document.createElement("div");
+    meta.className = "meta";
+    var badge = document.createElement("span");
+    badge.className = "badge" + (asset.category === "Premium" ? " premium" : "");
+    badge.textContent = categoryLabel(asset);
+    if (CATEGORY_COLORS[asset.category]) badge.style.setProperty("--cat", CATEGORY_COLORS[asset.category]);
+    var downloads = document.createElement("span");
+    downloads.className = "downloads";
+    var downloadCount = Number(asset.download_count || 0);
+    downloads.textContent = "\u2193 " + downloadCount;
+    downloads.title = downloadCount + (downloadCount === 1 ? " download" : " downloads");
+    meta.appendChild(badge);
+    meta.appendChild(downloads);
+
+    var title = document.createElement("div");
+    title.className = "title";
+    title.textContent = asset.title || "Untitled asset";
+
+    var sub = document.createElement("div");
+    sub.className = "sub";
+    sub.textContent = subLabel(asset);
+
+    var actions = document.createElement("div");
+    actions.className = "actions";
+
+    var importBtn = document.createElement("button");
+    importBtn.type = "button";
+    importBtn.className = "primary";
+    importBtn.textContent = isArchiveAsset(asset) ? "Unpack + import" : isAudioAsset(asset) ? "Add to comp" : "Import";
+    importBtn.disabled = !canDirectImport(asset);
+    importBtn.onclick = function () { importAsset(asset, importBtn); };
+
+    var previewBtn = document.createElement("button");
+    previewBtn.type = "button";
+    previewBtn.className = "secondary";
+    previewBtn.classList.add("icon-only-button");
+    setControlIcon(previewBtn, isAudioAsset(asset) ? "play" : "external", isAudioAsset(asset) ? "Preview audio" : "Open asset link");
+    previewBtn.onclick = function () {
+      if (isAudioAsset(asset)) previewAudio(asset);
+      else openExternal(asset);
+    };
+
+    actions.appendChild(importBtn);
+    actions.appendChild(previewBtn);
+
+    body.appendChild(meta);
+    body.appendChild(title);
+    body.appendChild(sub);
+    body.appendChild(actions);
+    card.appendChild(thumb);
+    card.appendChild(body);
+    return card;
   }
 
   function requestJson(url, requestOptions) {
@@ -1767,6 +1820,7 @@
 
   function renderSkeletons() {
     if (state.category === "Captions" || state.category === "Settings") return;
+    assetRenderToken += 1;
     els.emptyState.classList.add("hidden");
     els.assetGrid.classList.remove("hidden");
     els.assetGrid.innerHTML = "";
@@ -1793,6 +1847,7 @@
     return getJson(apiUrl("/extension/assets"))
       .then(function (assets) {
         setPremiumAccess(true);
+      cardCache = {};
       state.assets = (assets || []).filter(function (asset) {
           return ASSET_CATEGORIES.indexOf(asset.category) !== -1 && asset.category !== "Videos";
         });
@@ -1817,6 +1872,8 @@
     bindPreference(els.accentInput, "accent", STORAGE_KEYS.accent);
     bindPreference(els.motionInput, "motion", STORAGE_KEYS.motion);
     bindPreference(els.fontInput, "font", STORAGE_KEYS.font);
+    bindPreference(els.cardSizeInput, "cardSize", STORAGE_KEYS.cardSize);
+    bindPreference(els.uiScaleInput, "uiScale", STORAGE_KEYS.uiScale);
     if (els.captionFontInput) {
       els.captionFontInput.value = state.captionSettings.font;
       els.captionFontInput.addEventListener("focus", openCaptionFontMenu);
@@ -1889,6 +1946,8 @@
       els.accentInput,
       els.motionInput,
       els.fontInput,
+      els.cardSizeInput,
+      els.uiScaleInput,
       els.captionFadeInInput
     ].forEach(enhanceSelect);
   }
@@ -1896,9 +1955,14 @@
   function init() {
     initSettings();
     renderTabs();
+    var searchFrame = 0;
     els.searchInput.addEventListener("input", function () {
       state.search = els.searchInput.value || "";
-      renderAssets();
+      if (searchFrame) cancelAnimationFrame(searchFrame);
+      searchFrame = requestAnimationFrame(function () {
+        searchFrame = 0;
+        renderAssets();
+      });
     });
     els.refreshBtn.addEventListener("click", loadAssets);
     if (els.playerCloseBtn) els.playerCloseBtn.addEventListener("click", closeAudioPlayer);

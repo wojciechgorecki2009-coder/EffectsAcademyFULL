@@ -45,7 +45,7 @@
         <div class="settings-panel-header">
           <span class="eyebrow">Panel settings</span>
           <h2>Make it yours.</h2>
-          <p>Tune the layout, density, accent and motion of the panel. Changes apply instantly.</p>
+          <p>Tune the layout, card size, scale, accent and motion of the panel. Changes apply instantly.</p>
         </div>
 
         <div class="settings-grid">
@@ -67,6 +67,7 @@
           <label>
             Accent
             <select id="accentInput">
+              <option value="mono">Black &amp; white</option>
               <option value="blue">Blue</option>
               <option value="violet">Violet</option>
               <option value="emerald">Emerald</option>
@@ -78,6 +79,24 @@
             <select id="motionInput">
               <option value="premium">Full motion</option>
               <option value="calm">Calm</option>
+            </select>
+          </label>
+          <label>
+            Card size
+            <select id="cardSizeInput">
+              <option value="small">Small</option>
+              <option value="medium">Medium</option>
+              <option value="large">Large</option>
+              <option value="xlarge">Extra large</option>
+            </select>
+          </label>
+          <label>
+            Interface size
+            <select id="uiScaleInput">
+              <option value="small">Small</option>
+              <option value="default">Default</option>
+              <option value="large">Large</option>
+              <option value="xlarge">Extra large</option>
             </select>
           </label>
           <label class="settings-wide">
