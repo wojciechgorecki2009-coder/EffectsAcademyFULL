@@ -12,8 +12,7 @@ import AfterEffectsLogo from "@/components/AfterEffectsLogo";
 const BENEFITS = [
   "All premium assets included with membership",
   "Unlimited premium asset downloads",
-  "30 AI text generator credits every month",
-  "Higher quality AI text image generations",
+  "Access to the Effects Academy After Effects extension",
   "New exclusive drops every month",
   "Subscription tied securely to your Google account",
   "Manage or cancel anytime through Stripe",
@@ -21,9 +20,9 @@ const BENEFITS = [
 ];
 
 const COMPARISON_ROWS = [
-  { feature: "AI text generator credits", free: "5 / month", premium: "30 / month" },
-  { feature: "AI generation storage", free: "Basic recent results", premium: "Saved generation storage" },
-  { feature: "AI image quality", free: "Standard generations", premium: "Higher quality generations" },
+  { feature: "Free assets", free: true, premium: true },
+  { feature: "Video file converter", free: true, premium: true },
+  { feature: "After Effects extension", free: false, premium: true },
   { feature: "Premium assets", free: false, premium: true },
   { feature: "Premium presets", free: false, premium: true },
   { feature: "Premium project files", free: false, premium: true },
@@ -290,7 +289,7 @@ export default function PremiumPage() {
             animate={{ opacity: 1, y: 0, filter: "blur(0px)", transitionEnd: { filter: "none" } }}
             transition={{ duration: 1, ease: EASE_OUT, delay: 0.45 }}
           >
-            Premium packs, project files, presets, curated resources, higher quality AI text images, and more AI text generator credits included with your monthly membership.
+            Premium packs, project files, presets, curated resources, and the After Effects extension, all included with your monthly membership.
           </motion.p>
         </header>
 
@@ -370,7 +369,7 @@ export default function PremiumPage() {
             <Reveal delay={0.08}>
               <div className="notice notice-accent flex items-start gap-3 !rounded-[22px] !p-5">
                 <Crown className="mt-0.5 h-4 w-4 shrink-0 text-[#ff9f0a]" />
-                <span>Included with membership: every Premium asset plus 30 higher-quality AI text generations per month.</span>
+                <span>Included with membership: every Premium asset plus the Effects Academy After Effects extension.</span>
               </div>
             </Reveal>
 
@@ -555,7 +554,7 @@ export default function PremiumPage() {
           <SectionHeader eyebrow="Free vs Premium" title="Compare what you get." className="!mb-3" />
           <Reveal>
             <p className="max-w-2xl text-[15px] leading-relaxed text-ink-2">
-              Free members can browse, download free assets, and test the AI tools. Premium unlocks the full vault, higher AI limits, saved generation storage, and early beta features.
+              Free members can browse, download free assets, and use the video converter. Premium unlocks the full vault, the After Effects extension, and early beta features.
             </p>
           </Reveal>
 

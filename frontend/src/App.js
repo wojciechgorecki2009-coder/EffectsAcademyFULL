@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { BrowserRouter, Navigate, Routes, Route, useLocation } from "react-router-dom";
 import { Toaster } from "sonner";
 import { UploadAccessProvider } from "@/lib/uploadAccess";
 import { AuthProvider } from "@/lib/auth";
@@ -21,12 +21,13 @@ import LoginPage from "@/pages/LoginPage";
 import PremiumPage from "@/pages/PremiumPage";
 import GoogleCallbackPage from "@/pages/GoogleCallbackPage";
 import { PrivacyPage, SupportPage, TermsPage } from "@/pages/LegalPages";
-import AiImagePage from "@/pages/AiImagePage";
-import TranscribePage from "@/pages/TranscribePage";
 import SetupPage from "@/pages/SetupPage";
 import DownloadAccessPage from "@/pages/DownloadAccessPage";
 import StatsPage from "@/pages/StatsPage";
 import "@/App.css";
+
+// Loaded on demand so the converter (and ffmpeg) never weighs down other pages.
+const ConverterPage = lazy(() => import("@/pages/ConverterPage"));
 
 const ASSETS_CHANGED_EVENT = "effectsacademy:assets-changed";
 
@@ -126,8 +127,9 @@ function RefreshableRoutes() {
         <Route path="/support" element={<SupportPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/premium" element={<PremiumPage />} />
-        <Route path="/ai-image" element={<AiImagePage />} />
-        <Route path="/transcribe" element={<TranscribePage />} />
+        <Route path="/convert" element={<Suspense fallback={<div className="min-h-[70vh]" />}><ConverterPage /></Suspense>} />
+        <Route path="/ai-image" element={<Navigate to="/convert" replace />} />
+        <Route path="/transcribe" element={<Navigate to="/convert" replace />} />
         <Route path="/products-i-use" element={<SetupPage />} />
         <Route path="/stats" element={<StatsPage />} />
         <Route path="/download/:token" element={<DownloadAccessPage />} />

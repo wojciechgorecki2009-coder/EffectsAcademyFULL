@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   api,
@@ -9,7 +9,7 @@ import {
   SHOW_THEMES,
   SHOW_IMAGES,
 } from "@/lib/api";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
 import CategoryPicker from "@/components/CategoryPicker";
 import Hero from "@/components/Hero";
 import LiquidGlass from "@/components/LiquidGlass";
@@ -24,7 +24,7 @@ import {
   ViewAllLink,
 } from "@/components/Library";
 import { EASE_OUT, SPRING } from "@/lib/motion";
-import { Captions, ChevronRight, Music2, Tv, Film, Wand2 } from "lucide-react";
+import { ChevronRight, Music2, Tv, Film, RefreshCcw } from "lucide-react";
 
 const FILTER_TABS = ["All", ...CATEGORIES];
 const EXTENSION_PIN_END = new Date("2026-10-02T23:59:59+01:00").getTime();
@@ -89,6 +89,7 @@ export default function Home() {
   const [sub, setSub] = useState(null);
   const [torrentBranch, setTorrentBranch] = useState(null);
   const [overrides, setOverrides] = useState({ creator: {}, show: {} });
+  const [railActive, setRailActive] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -206,8 +207,8 @@ export default function Home() {
     <>
       <Hero query={query} setQuery={setQuery} totalAssets={assets.length} />
 
-      <section className="relative mx-auto max-w-[1320px] px-4 pb-28 sm:px-6 md:px-8" data-testid="asset-section">
-        <FilterBar filter={filter} setFilter={setFilter} countLabel={countLabel} />
+      <section className={`home-library relative mx-auto max-w-[1320px] px-4 pb-28 sm:px-6 md:px-8 ${railActive ? "has-rail" : ""}`} data-testid="asset-section">
+        <FilterBar filter={filter} setFilter={setFilter} countLabel={countLabel} onRailChange={setRailActive} />
 
         <div className="mt-10">
           {loading ? (
@@ -245,80 +246,166 @@ export default function Home() {
   );
 }
 
+const RAIL_SPRING = { type: "spring", stiffness: 190, damping: 27, mass: 1 };
+
+function useMediaQuery(query) {
+  const [matches, setMatches] = useState(() => typeof window !== "undefined" && window.matchMedia(query).matches);
+  useEffect(() => {
+    const media = window.matchMedia(query);
+    const onChange = () => setMatches(media.matches);
+    onChange();
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, [query]);
+  return matches;
+}
+
 /*
- * Sticky Liquid Glass filter bar. The active tab is a glass "lens" that glides
- * between options; content scrolling underneath shows through the material.
+ * Category filter. At rest it is a centered horizontal Liquid Glass bar. On
+ * desktop, once you scroll past it, the bar flies to the left edge of the page
+ * and becomes a vertical rail: the glass, the selection lens and every tab are
+ * shared-layout elements, so each one glides to its new slot. Scrolling back
+ * up reverses it. Smaller screens keep a sticky horizontal bar.
  */
-function FilterBar({ filter, setFilter, countLabel }) {
+function FilterBar({ filter, setFilter, countLabel, onRailChange }) {
+  const homeRef = useRef(null);
+  const isDesktop = useMediaQuery("(min-width: 1024px)");
+  const [rail, setRail] = useState(false);
+
+  useEffect(() => {
+    if (!isDesktop) {
+      setRail(false);
+      return undefined;
+    }
+    const node = homeRef.current;
+    const navBottom = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--sticky-top")) * 16 || 84;
+    const observer = new IntersectionObserver(
+      ([entry]) => setRail(!entry.isIntersecting && entry.boundingClientRect.top < navBottom),
+      { rootMargin: `-${navBottom}px 0px 0px 0px`, threshold: 0 }
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [isDesktop]);
+
+  useEffect(() => onRailChange?.(rail), [rail, onRailChange]);
+
   return (
-    <div className="sticky top-[var(--sticky-top,5.25rem)] z-30 -mx-1 flex items-center gap-3 px-1 py-2">
-      <LiquidGlass className="min-w-0 flex-1 rounded-full p-1 sm:flex-none" edge={18} strength={34}>
-        <div className="no-scrollbar flex items-center gap-0.5 overflow-x-auto" data-testid="filter-tabs">
-          {FILTER_TABS.map((t) => {
-            const active = filter === t;
-            const c = CATEGORY_COLORS[t];
-            return (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setFilter(t)}
-                className={`relative shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-[13.5px] font-medium tracking-[-0.01em] transition-colors duration-300 ${
-                  active ? "text-ink" : "text-ink-2 hover:text-ink"
-                }`}
-                aria-pressed={active}
-                data-testid={`filter-tab-${t.toLowerCase().replace(/\s+/g, "-")}`}
-              >
-                {active && (
-                  <motion.span
-                    layoutId="home-filter-lens"
-                    className="absolute inset-0 rounded-full bg-panel shadow-[0_1px_4px_rgb(0_0_0/0.14),inset_0_0_0_0.5px_var(--line-strong),inset_0_1px_0_rgb(255_255_255/0.12)]"
-                    transition={SPRING}
-                  />
-                )}
-                <span className="relative inline-flex items-center gap-1.5">
-                  {c ? (
-                    <span
-                      className="dot transition-transform duration-500 ease-spring"
-                      style={{ color: c.text, transform: active ? "scale(1)" : "scale(0)", width: active ? undefined : 0, marginRight: active ? undefined : -6 }}
-                    />
-                  ) : null}
-                  {t}
-                </span>
-              </button>
-            );
-          })}
-          <span className="mx-1.5 h-5 w-px shrink-0 bg-[var(--line-strong)]" aria-hidden="true" />
-          <Link
-            to="/ai-image"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-[13.5px] font-medium text-ink-2 transition-colors duration-300 hover:text-ink"
-            data-testid="filter-tab-ai-tools"
-          >
-            <Wand2 className="h-3.5 w-3.5 text-[#bf5af2]" />
-            AI Tools
-          </Link>
-          <Link
-            to="/transcribe"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-[13.5px] font-medium text-ink-2 transition-colors duration-300 hover:text-ink"
-            data-testid="filter-tab-transcribe"
-          >
-            <Captions className="h-3.5 w-3.5 text-[#64d2ff]" />
-            Transcribe
-          </Link>
-        </div>
-      </LiquidGlass>
+    <LayoutGroup id="home-filter">
+      <div
+        ref={homeRef}
+        className="relative z-30 -mx-1 flex min-h-[3.75rem] flex-col items-center justify-center px-1 py-2 max-lg:sticky max-lg:top-[var(--sticky-top,5.25rem)]"
+      >
+        {!rail && <FilterTabs orientation="horizontal" filter={filter} setFilter={setFilter} countLabel={countLabel} />}
+      </div>
       <AnimatePresence mode="popLayout" initial={false}>
-        <motion.p
-          key={countLabel}
-          className="ml-auto hidden shrink-0 text-[13px] font-medium tabular-nums text-ink-3 md:block"
-          initial={{ opacity: 0, y: 8, filter: "blur(4px)" }}
-          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-          exit={{ opacity: 0, y: -8, filter: "blur(4px)" }}
-          transition={{ duration: 0.4, ease: EASE_OUT }}
-        >
-          {countLabel}
-        </motion.p>
+        {!rail && (
+          <motion.p
+            key={countLabel}
+            className="mt-1 text-center text-[12.5px] font-medium tabular-nums text-ink-3"
+            initial={{ opacity: 0, y: 6, filter: "blur(4px)" }}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            exit={{ opacity: 0, y: -6, filter: "blur(4px)" }}
+            transition={{ duration: 0.4, ease: EASE_OUT }}
+          >
+            {countLabel}
+          </motion.p>
+        )}
       </AnimatePresence>
-    </div>
+      {rail && (
+        <div className="pointer-events-none fixed inset-y-0 left-4 z-40 hidden items-center pt-16 lg:flex xl:left-6">
+          <FilterTabs orientation="vertical" filter={filter} setFilter={setFilter} countLabel={countLabel} />
+        </div>
+      )}
+    </LayoutGroup>
+  );
+}
+
+function FilterTabs({ orientation, filter, setFilter, countLabel }) {
+  const vertical = orientation === "vertical";
+  const itemClass = `relative shrink-0 whitespace-nowrap rounded-full text-[13.5px] font-medium tracking-[-0.01em] transition-colors duration-300 ${
+    vertical ? "flex w-full items-center px-3.5 py-2 text-left" : "px-4 py-2"
+  }`;
+  return (
+    <LiquidGlass
+      as={motion.div}
+      layoutId="filter-glass"
+      layout
+      transition={RAIL_SPRING}
+      style={{ borderRadius: 26 }}
+      className={`pointer-events-auto p-1 ${vertical ? "w-[11.5rem]" : "max-w-full"}`}
+      edge={18}
+      strength={34}
+    >
+      <div
+        className={vertical ? "flex flex-col gap-0.5" : "no-scrollbar flex items-center gap-0.5 overflow-x-auto"}
+        data-testid="filter-tabs"
+        role="toolbar"
+        aria-label="Filter by category"
+        aria-orientation={orientation}
+      >
+        {FILTER_TABS.map((t) => {
+          const active = filter === t;
+          const c = CATEGORY_COLORS[t];
+          return (
+            <motion.button
+              key={t}
+              layoutId={`filter-tab-${t}`}
+              layout="position"
+              transition={RAIL_SPRING}
+              type="button"
+              onClick={() => setFilter(t)}
+              className={`${itemClass} ${active ? "text-ink" : "text-ink-2 hover:text-ink"}`}
+              aria-pressed={active}
+              data-testid={`filter-tab-${t.toLowerCase().replace(/\s+/g, "-")}`}
+            >
+              {active && (
+                <motion.span
+                  layoutId="home-filter-lens"
+                  className="absolute inset-0 rounded-full bg-panel shadow-[0_1px_4px_rgb(0_0_0/0.14),inset_0_0_0_0.5px_var(--line-strong),inset_0_1px_0_rgb(255_255_255/0.12)]"
+                  style={{ borderRadius: 999 }}
+                  transition={SPRING}
+                />
+              )}
+              <span className="relative inline-flex items-center gap-1.5">
+                {c ? (
+                  <span
+                    className="dot transition-transform duration-500 ease-spring"
+                    style={{ color: c.text, transform: active ? "scale(1)" : "scale(0)", width: active ? undefined : 0, marginRight: active ? undefined : -6 }}
+                  />
+                ) : null}
+                {t}
+              </span>
+            </motion.button>
+          );
+        })}
+        <motion.span
+          layoutId="filter-divider"
+          layout
+          transition={RAIL_SPRING}
+          className={vertical ? "mx-3 my-1.5 h-px shrink-0 bg-[var(--line-strong)]" : "mx-1.5 h-5 w-px shrink-0 bg-[var(--line-strong)]"}
+          aria-hidden="true"
+        />
+        <motion.div layoutId="filter-converter" layout="position" transition={RAIL_SPRING} className={vertical ? "w-full" : "shrink-0"}>
+          <Link
+            to="/convert"
+            className={`${itemClass} inline-flex items-center gap-1.5 text-ink-2 hover:text-ink`}
+            data-testid="filter-tab-converter"
+          >
+            <RefreshCcw className="h-3.5 w-3.5 text-tint" />
+            Converter
+          </Link>
+        </motion.div>
+        {vertical && (
+          <motion.p
+            className="px-3.5 pb-1.5 pt-2 text-[11.5px] font-medium tabular-nums text-ink-3"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1, transition: { delay: 0.3 } }}
+          >
+            {countLabel}
+          </motion.p>
+        )}
+      </div>
+    </LiquidGlass>
   );
 }
 

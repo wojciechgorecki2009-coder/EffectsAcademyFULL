@@ -30,7 +30,7 @@ export default function Footer() {
             </div>
             <p className="max-w-sm text-[13px] leading-relaxed text-ink-3">
               A curated library of free and premium editing assets for video editors, including project files,
-              overlays, presets, audios, sound effects, torrents, videos, and AI tools.
+              overlays, presets, audios, sound effects, torrents, videos, and a free video converter.
             </p>
             <a
               href={`mailto:${SUPPORT_EMAIL}`}
@@ -46,6 +46,7 @@ export default function Footer() {
             <li><Link to="/category/overlays" className={linkClass}>Overlays</Link></li>
             <li><Link to="/category/audios" className={linkClass}>Audios</Link></li>
             <li><Link to="/category/videos" className={linkClass}>Videos</Link></li>
+            <li><Link to="/convert" className={linkClass}>Video Converter</Link></li>
           </Column>
           <Column title="Community">
             <li><Link to="/category/sound-fx" className={linkClass}>Sound FX</Link></li>

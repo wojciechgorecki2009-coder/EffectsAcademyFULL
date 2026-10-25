@@ -247,39 +247,23 @@
    Tool pages
    ========================================================================== */
 
-.transcribe-surface {
-  background: rgb(var(--panel)) !important;
-  border-color: var(--line) !important;
-  box-shadow: var(--shadow-card);
-  transition:
-    transform 700ms var(--ease-spring-soft),
-    box-shadow 600ms var(--ease-out),
-    border-color 400ms var(--ease-out);
+/* Home library: make room for the vertical filter rail when the page margin is too narrow for it */
+.home-library { transition: padding-left 800ms var(--ease-out); }
+@media (min-width: 1024px) and (max-width: 1779px) {
+  .home-library.has-rail { padding-left: calc(11.5rem + 2.75rem); }
 }
 
-.transcribe-surface:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow-card-hover);
+/* Converter progress: a light sweep travels along the filled bar */
+.converter-progress { overflow: hidden; }
+.converter-progress::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.45), transparent);
+  transform: translateX(-100%);
+  animation: progress-sweep 1.4s var(--ease-in-out) infinite;
 }
-
-.transcribe-dropzone {
-  border-color: var(--line-strong) !important;
-  background:
-    radial-gradient(circle at 50% 0%, rgb(var(--tint) / 0.1), transparent 55%),
-    var(--fill) !important;
-  transition:
-    transform 700ms var(--ease-spring-soft),
-    border-color 400ms var(--ease-out),
-    background-color 400ms var(--ease-out);
-}
-
-.transcribe-dropzone:hover {
-  transform: scale(1.008);
-  border-color: rgb(var(--tint) / 0.45) !important;
-}
-
-.audio-preview { color-scheme: var(--audio-scheme, dark); }
-:root[data-scheme="light"] .audio-preview { --audio-scheme: light; }
+@keyframes progress-sweep { to { transform: translateX(100%); } }
 
 .setup-mini-site-shell {
   background: #000;

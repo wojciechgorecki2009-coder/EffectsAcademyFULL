@@ -46,6 +46,17 @@ let webpackConfig = {
         ],
       };
 
+      // Keep ffmpeg.wasm's runtime core import native (see plugins/ffmpeg-worker-loader.js).
+      webpackConfig.module.rules.push({
+        test: /@ffmpeg[\\/]ffmpeg[\\/]dist[\\/]esm[\\/]worker\.js$/,
+        loader: path.resolve(__dirname, "plugins/ffmpeg-worker-loader.js"),
+      });
+      // ffmpeg.wasm's optional custom-worker URL path (unused here) trips this warning.
+      webpackConfig.ignoreWarnings = [
+        ...(webpackConfig.ignoreWarnings || []),
+        { module: /@ffmpeg[\\/]ffmpeg/, message: /Critical dependency/ },
+      ];
+
       // Add health check plugin to webpack if enabled
       if (config.enableHealthCheck && healthPluginInstance) {
         webpackConfig.plugins.push(healthPluginInstance);
