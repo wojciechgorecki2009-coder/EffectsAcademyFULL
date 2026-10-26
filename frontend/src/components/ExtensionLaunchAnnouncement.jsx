@@ -146,9 +146,9 @@ export default function ExtensionLaunchAnnouncement() {
                 id="extension-update-title"
                 className="mt-2 font-display text-[1.85rem] font-semibold leading-[1.04] tracking-[-0.035em] text-ink sm:text-[2.4rem]"
               >
-                Rebuilt for
+                Updated
                 <br />
-                <span className="text-ink-2">the way you edit.</span>
+                <span className="text-ink-2">Extension</span>
               </motion.h2>
               <motion.p variants={rise} className="mt-3 text-[14px] leading-relaxed text-ink-2 sm:text-[15px]">
                 The Effects Academy After Effects extension has been updated with a fresh design, smoother motion and faster browsing.
