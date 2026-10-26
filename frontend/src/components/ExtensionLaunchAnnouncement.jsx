@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, PresenceContext, motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, AudioLines, Crown, Download, Folder, Gauge, Music2, Palette, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
@@ -111,7 +111,7 @@ export default function ExtensionLaunchAnnouncement() {
           className="dialog-overlay fixed inset-0 z-[90] flex justify-center overflow-y-auto overscroll-contain p-3 sm:p-6"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1, transition: { duration: 0.5, ease: EASE_OUT } }}
-          exit={{ opacity: 0, transition: { duration: 0.35, ease: EASE_OUT, delay: 0.05 } }}
+          exit={{ opacity: 0, pointerEvents: "none", transition: { duration: 0.35, ease: EASE_OUT, delay: 0.05 } }}
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) close();
           }}
@@ -135,7 +135,11 @@ export default function ExtensionLaunchAnnouncement() {
               <X className="h-4 w-4" />
             </button>
 
-            <PanelPreview reduce={reduce} />
+            {/* The preview's looping tab lens and re-flowing cards must never hold
+                up the dialog's exit, so they sit outside its presence tracking. */}
+            <PresenceContext.Provider value={null}>
+              <PanelPreview reduce={reduce} />
+            </PresenceContext.Provider>
 
             <motion.div className="flex flex-col p-5 pt-6 sm:p-8 md:py-10 md:pl-6 md:pr-10" variants={container} initial="hidden" animate="shown">
               <motion.p variants={rise} className="eyebrow inline-flex items-center gap-1.5 text-tint">
