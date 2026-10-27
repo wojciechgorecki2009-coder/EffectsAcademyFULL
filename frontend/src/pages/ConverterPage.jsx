@@ -25,6 +25,7 @@ import {
   ENGINE_SIZE_MB,
   FORMATS,
   FREE_MAX_BYTES,
+  OUTPUT_LIMIT_BYTES,
   PREMIUM_MAX_BYTES,
   cancelEngine,
   convertFile,
@@ -36,6 +37,7 @@ import {
   planConversion,
   probeFile,
 } from "@/lib/converter";
+import { canStream, cancelStream, pickSaveTarget, streamConvert, supportsStreamingSave } from "@/lib/streamConvert";
 
 const VIDEO_EXTENSIONS = ["mp4", "mov", "m4v", "webm", "mkv", "avi", "wmv", "flv", "mpg", "mpeg", "3gp", "ts", "mts", "m2ts", "ogv", "gif"];
 const GIF_FPS = [10, 15, 24, 30];
@@ -52,6 +54,7 @@ const STAGE_LABEL = {
   probe: "Reading your file",
   copy: "Copying streams",
   encode: "Converting",
+  stream: "Saving to your computer",
 };
 
 const FEATURES = [
@@ -124,7 +127,24 @@ export default function ConverterPage() {
 
   const selectedFormat = FORMATS.find((f) => f.id === format);
   const options = useMemo(() => ({ fps: gifFps, width: gifWidth, stereo }), [gifFps, gifWidth, stereo]);
-  const plan = useMemo(() => (info ? planConversion(info, format, options, file?.size || 0) : null), [info, format, options, file]);
+  const basePlan = useMemo(() => (info ? planConversion(info, format, options, file?.size || 0) : null), [info, format, options, file]);
+  // Files whose result would be too big for the in-browser engine stream straight to disk
+  // instead (Chrome and Edge on a computer), copying the video as-is.
+  const streaming = Boolean(file && info && file.size > OUTPUT_LIMIT_BYTES && supportsStreamingSave() && canStream(info, format));
+  const plan = useMemo(() => {
+    if (!basePlan || basePlan.error) return basePlan;
+    if (streaming) {
+      const audio = (info?.audio?.channels || 0) > 2 && stereo ? ` The ${describeChannels(info.audio)} audio is mixed down to stereo.` : "";
+      return {
+        lossless: true,
+        note: `Too big to build inside the browser, so it's saved straight to your computer as it converts: you'll choose where. Video copied as-is with no quality loss.${audio}`,
+      };
+    }
+    if (basePlan.forceEncode && !supportsStreamingSave()) {
+      return { ...basePlan, note: `${basePlan.note} Tip: Chrome or Edge on a computer can save files this size straight to disk in minutes, without re-encoding.` };
+    }
+    return basePlan;
+  }, [basePlan, streaming, info, stereo]);
   const surround = (info?.audio?.channels || 0) > 2 && format !== "gif";
 
   // Free object URLs when they are replaced or the page closes.
@@ -198,6 +218,10 @@ export default function ConverterPage() {
 
   const convert = async () => {
     if (!file || status === "converting") return;
+    if (streaming) {
+      convertToDisk();
+      return;
+    }
     setStatus("converting");
     setProgress(0);
     setElapsed(0);
@@ -220,7 +244,41 @@ export default function ConverterPage() {
     }
   };
 
+  const convertToDisk = async () => {
+    const name = `${file.name.replace(/\.[^.]+$/, "") || "video"}.${selectedFormat.ext}`;
+    let handle;
+    try {
+      handle = await pickSaveTarget(name, format); // must open straight from the click
+    } catch {
+      toast.error("Your browser couldn't open the Save dialog.");
+      return;
+    }
+    if (!handle) return;
+    setStatus("converting");
+    setStage("stream");
+    setProgress(0);
+    setElapsed(0);
+    setError("");
+    setResult(null);
+    try {
+      const output = await streamConvert(file, format, handle, { stereo, onProgress: setProgress });
+      setResult(output);
+      setStatus("done");
+    } catch (err) {
+      if (err?.message === "cancelled") return;
+      setError(err?.message || "Conversion failed. Try a different format.");
+      setStatus("error");
+    }
+  };
+
   const cancel = async () => {
+    if (stage === "stream") {
+      await cancelStream();
+      setStatus("idle");
+      setProgress(0);
+      toast("Conversion cancelled.");
+      return;
+    }
     await cancelEngine();
     setEngineState("idle");
     setStatus("idle");
@@ -540,7 +598,7 @@ export default function ConverterPage() {
       <AnimatePresence>
         {result && status === "done" && (
           <motion.div
-            key={result.url}
+            key={result.url || result.name}
             className="surface mt-5 overflow-hidden rounded-[28px]"
             initial={reduce ? false : { opacity: 0, y: 30, scale: 0.98, filter: "blur(10px)" }}
             animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)", transitionEnd: { filter: "none" } }}
@@ -550,7 +608,14 @@ export default function ConverterPage() {
           >
             <div className="grid gap-6 p-2.5 md:grid-cols-[1.1fr_0.9fr] md:items-center">
               <div className="flex min-h-[200px] items-center justify-center overflow-hidden rounded-[22px] bg-black">
-                {result.kind === "video" ? (
+                {result.streamed ? (
+                  <div className="flex flex-col items-center gap-3 px-6 py-10 text-center" style={{ color: "rgb(255 255 255 / 0.75)" }}>
+                    <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[rgb(48_209_88/0.15)] text-[#30d158]">
+                      <Check className="h-7 w-7" strokeWidth={2.5} />
+                    </span>
+                    <p className="text-[14px]">Saved to your computer</p>
+                  </div>
+                ) : result.kind === "video" ? (
                   <video src={result.url} className="max-h-[420px] w-full object-contain" controls playsInline />
                 ) : result.kind === "image" ? (
                   <img src={result.url} alt="Converted GIF" className="max-h-[420px] w-auto object-contain" />
@@ -569,12 +634,16 @@ export default function ConverterPage() {
                   <span className="font-semibold text-ink">{formatBytes(result.size)}</span>
                 </div>
                 <p className="mt-2 text-[13px] text-ink-2">
-                  {result.lossless ? "Converted without any quality loss." : "Converted at the highest quality settings for this format."}
+                  {result.streamed
+                    ? `Saved where you chose. The video was copied with no quality loss${result.lossless ? "." : " and the audio converted to stereo."}`
+                    : result.lossless ? "Converted without any quality loss." : "Converted at the highest quality settings for this format."}
                 </p>
                 <div className="mt-6 flex flex-wrap gap-2">
-                  <button type="button" onClick={downloadResult} className="btn btn-primary" data-testid="converter-download">
-                    <Download /> Download
-                  </button>
+                  {!result.streamed && (
+                    <button type="button" onClick={downloadResult} className="btn btn-primary" data-testid="converter-download">
+                      <Download /> Download
+                    </button>
+                  )}
                   <button type="button" onClick={() => setStatus("idle")} className="btn btn-secondary">
                     Convert to another format
                   </button>
