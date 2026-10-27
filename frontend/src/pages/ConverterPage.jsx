@@ -32,6 +32,7 @@ import {
   formatBytes,
   formatDuration,
   loadEngine,
+  describeChannels,
   planConversion,
   probeFile,
 } from "@/lib/converter";
@@ -109,6 +110,8 @@ export default function ConverterPage() {
   const [format, setFormat] = useState("mp4");
   const [gifFps, setGifFps] = useState(24);
   const [gifWidth, setGifWidth] = useState(720);
+  // Surround audio is mixed down to stereo unless the user picks "Keep".
+  const [stereo, setStereo] = useState(true);
   const [dragging, setDragging] = useState(false);
   const [engineState, setEngineState] = useState("idle"); // idle | loading | ready | error
   const [engineProgress, setEngineProgress] = useState(0);
@@ -120,8 +123,9 @@ export default function ConverterPage() {
   const [error, setError] = useState("");
 
   const selectedFormat = FORMATS.find((f) => f.id === format);
-  const gifOptions = useMemo(() => ({ fps: gifFps, width: gifWidth }), [gifFps, gifWidth]);
-  const plan = useMemo(() => (info ? planConversion(info, format, gifOptions, file?.size || 0) : null), [info, format, gifOptions, file]);
+  const options = useMemo(() => ({ fps: gifFps, width: gifWidth, stereo }), [gifFps, gifWidth, stereo]);
+  const plan = useMemo(() => (info ? planConversion(info, format, options, file?.size || 0) : null), [info, format, options, file]);
+  const surround = (info?.audio?.channels || 0) > 2 && format !== "gif";
 
   // Free object URLs when they are replaced or the page closes.
   useEffect(() => () => sourceUrl && URL.revokeObjectURL(sourceUrl), [sourceUrl]);
@@ -170,6 +174,7 @@ export default function ConverterPage() {
     setError("");
     setStatus("idle");
     setFormat(defaultFormatFor(next));
+    setStereo(true);
     if (await prepareEngine()) {
       try {
         const probed = await probeFile(next);
@@ -200,7 +205,7 @@ export default function ConverterPage() {
     setResult(null);
     try {
       const output = await convertFile(file, format, {
-        options: gifOptions,
+        options,
         onProgress: setProgress,
         onStage: setStage,
         onDownload: ({ received, total }) => total > 0 && setEngineProgress(received / total),
@@ -351,7 +356,12 @@ export default function ConverterPage() {
                       {width && height ? <span>{width}×{height}</span> : null}
                       {info?.video?.fps ? <span>{Math.round(info.video.fps * 100) / 100} fps</span> : null}
                       {info?.video?.codec ? <span className="uppercase">{info.video.codec}</span> : null}
-                      {info?.audio?.codec ? <span className="uppercase">{info.audio.codec}</span> : null}
+                      {info?.audio?.codec ? (
+                        <span>
+                          <span className="uppercase">{info.audio.codec}</span>
+                          {describeChannels(info.audio) ? ` · ${describeChannels(info.audio)}` : ""}
+                        </span>
+                      ) : null}
                     </p>
                   </div>
                   <button type="button" onClick={reset} disabled={converting} className="btn btn-sm btn-secondary">
@@ -413,6 +423,32 @@ export default function ConverterPage() {
                     <p className="label">Width (px)</p>
                     <Segmented options={GIF_WIDTHS} value={gifWidth} onChange={setGifWidth} layoutId="gif-width" />
                   </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence initial={false}>
+            {surround && (
+              <motion.div
+                key="audio-channels"
+                className="overflow-hidden"
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.45, ease: EASE_OUT }}
+              >
+                <div className="pt-5" data-testid="converter-audio-channels">
+                  <p className="label">Audio · this file has {describeChannels(info.audio)} sound</p>
+                  <Segmented
+                    options={[
+                      { value: "stereo", label: "Stereo" },
+                      { value: "keep", label: `Keep ${/^\d+\.\d+/.exec(info.audio.layout || "")?.[0] || `${info.audio.channels} channels`}` },
+                    ]}
+                    value={stereo ? "stereo" : "keep"}
+                    onChange={(value) => setStereo(value === "stereo")}
+                    layoutId="audio-channels"
+                  />
                 </div>
               </motion.div>
             )}

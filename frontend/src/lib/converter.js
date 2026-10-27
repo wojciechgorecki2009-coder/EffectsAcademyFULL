@@ -13,6 +13,9 @@ import { LITE } from "@/lib/device";
  * Quality policy: copy streams untouched whenever the target container can
  * hold them (zero loss, near-instant); otherwise re-encode only the streams
  * that need it, at visually lossless settings.
+ *
+ * Surround audio (5.1, 7.1, or any track with more than two channels) is
+ * mixed down to stereo by default; mono and stereo tracks are left as-is.
  */
 
 const CORE_BASE = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm";
@@ -166,6 +169,32 @@ export function extOf(name = "") {
   return match ? match[1].toLowerCase() : "";
 }
 
+// Channel counts for the layout names ffmpeg prints ("stereo", "5.1(side)", "6 channels"...).
+const NAMED_LAYOUTS = { mono: 1, stereo: 2, downmix: 2, quad: 4, hexagonal: 6, octagonal: 8, hexadecagonal: 16 };
+
+function channelsFromLayout(layout = "") {
+  const name = layout.trim().toLowerCase();
+  const count = /^(\d+) channels?/.exec(name);
+  if (count) return Number(count[1]);
+  const dotted = /^(\d+)\.(\d+)(?:\.(\d+))?/.exec(name);
+  if (dotted) return Number(dotted[1]) + Number(dotted[2]) + Number(dotted[3] || 0);
+  return NAMED_LAYOUTS[name.replace(/\(.*\)$/, "")] || 0;
+}
+
+/** "5.1 surround", "7.1 surround" or "6-channel", for notes and the file details. */
+export function describeChannels(audio) {
+  if (!audio?.channels) return "";
+  if (audio.channels === 1) return "mono";
+  if (audio.channels === 2) return "stereo";
+  const dotted = /^\d+\.\d+/.exec(audio.layout || "");
+  return dotted ? `${dotted[0]} surround` : `${audio.channels}-channel`;
+}
+
+/** Surround tracks become stereo unless the user chose to keep them. */
+export const needsDownmix = (info, options = {}) => (info?.audio?.channels || 0) > 2 && options.stereo !== false;
+
+const AUDIO_LABEL = { mp4: "AAC 320 kbps", mov: "AAC 320 kbps", mkv: "AAC 320 kbps", webm: "Opus 192 kbps", avi: "MP3 320 kbps" };
+
 function parseProbe(lines) {
   const text = lines.join("\n");
   const info = { duration: 0, video: null, audio: null };
@@ -182,8 +211,12 @@ function parseProbe(lines) {
       fps: fps ? Number(fps[1]) : 0,
     };
   }
-  const a = /Stream #\d+:\d+[^:]*: Audio: ([a-z0-9_]+)/i.exec(text);
-  if (a) info.audio = { codec: a[1].toLowerCase() };
+  const a = /Stream #\d+:\d+[^:]*: Audio: ([a-z0-9_]+)([^\n]*)/i.exec(text);
+  if (a) {
+    // e.g. "aac (LC), 48000 Hz, 5.1, fltp": the layout follows the sample rate.
+    const layout = /\d+ Hz, ([^,]+)/.exec(a[2])?.[1]?.trim() || "";
+    info.audio = { codec: a[1].toLowerCase(), layout, channels: channelsFromLayout(layout) };
+  }
   return info;
 }
 
@@ -197,34 +230,39 @@ const canCopy = (format, kind, codec) => {
 export function planConversion(info, formatId, options = {}, fileSize = 0) {
   const format = FORMATS.find((f) => f.id === formatId);
   if (!format || !info) return null;
+  const downmix = needsDownmix(info, options);
+  const downmixNote = downmix ? ` The ${describeChannels(info.audio)} audio is mixed down to stereo.` : "";
   if (format.kind === "audio") {
     if (!info.audio) return { error: "This file has no audio track to extract." };
-    if (formatId === "wav") return { lossless: true, note: "Uncompressed PCM audio, no quality loss." };
-    const copy = canCopy(formatId, "audio", info.audio.codec);
+    if (formatId === "wav") return { lossless: true, note: `Uncompressed PCM audio, no quality loss.${downmixNote}` };
+    const copy = !downmix && canCopy(formatId, "audio", info.audio.codec);
     return copy
       ? { lossless: true, note: "Audio stream copied as-is. No quality loss." }
-      : { lossless: false, note: formatId === "mp3" ? "Encoded at 320 kbps, the highest MP3 quality." : "Encoded as AAC at 320 kbps." };
+      : { lossless: false, note: `${formatId === "mp3" ? "Encoded at 320 kbps, the highest MP3 quality." : "Encoded as AAC at 320 kbps."}${downmixNote}` };
   }
   if (!info.video) return { error: "No video stream was found in this file." };
   if (format.kind === "image") {
     return { lossless: false, note: `GIF is limited to 256 colors. Using an optimized palette at ${options.fps || 24} fps.` };
   }
   const videoCopy = canCopy(formatId, "video", info.video.codec);
-  const audioCopy = !info.audio || canCopy(formatId, "audio", info.audio.codec);
+  const audioCopy = !info.audio || (!downmix && canCopy(formatId, "audio", info.audio.codec));
   if (videoCopy && fileSize > OUTPUT_LIMIT_BYTES) {
     return {
       lossless: false,
       forceEncode: true,
-      note: `Too large to copy as-is inside the browser (results must stay under ${OUTPUT_LIMIT_LABEL}), so it will be re-encoded at visually lossless quality. Expect this to take a long time.`,
+      note: `Too large to copy as-is inside the browser (results must stay under ${OUTPUT_LIMIT_LABEL}), so it will be re-encoded at visually lossless quality. Expect this to take a long time.${downmixNote}`,
     };
   }
   if (videoCopy && audioCopy) return { lossless: true, note: "Streams copied as-is. No re-encode, no quality loss, done in seconds." };
+  if (videoCopy && downmix) {
+    return { lossless: true, note: `Video copied as-is with no quality loss. The ${describeChannels(info.audio)} audio is mixed down to stereo (${AUDIO_LABEL[formatId]}).` };
+  }
   if (videoCopy) return { lossless: true, note: "Video copied as-is with no quality loss. Only the audio is converted (320 kbps)." };
   return {
     lossless: false,
-    note: fileSize > LARGE_ENCODE_BYTES
+    note: (fileSize > LARGE_ENCODE_BYTES
       ? "Re-encoded at visually lossless quality. A file this large can take a long time to re-encode in the browser."
-      : "Re-encoded at visually lossless quality. This can take a while on longer clips.",
+      : "Re-encoded at visually lossless quality. This can take a while on longer clips.") + downmixNote,
   };
 }
 
@@ -241,18 +279,21 @@ function buildArgs({ input, output, format, info, mode, options }) {
       output,
     ];
   }
+  // Standard stereo downmix: centre and surrounds folded into left/right.
+  const downmix = needsDownmix(info, options);
+  const stereo = downmix ? ["-ac", "2"] : [];
   if (format.kind === "audio") {
-    if (format.id === "wav") return [...base, "-vn", "-map", "0:a:0", "-c:a", "pcm_s16le", output];
-    if (format.id === "mp3") return [...base, "-vn", "-map", "0:a:0", "-c:a", "libmp3lame", "-b:a", "320k", output];
-    const copy = mode === "copy" && canCopy("m4a", "audio", info.audio?.codec);
-    return [...base, "-vn", "-map", "0:a:0", ...(copy ? ["-c:a", "copy"] : AUDIO_ENCODE.m4a), output];
+    if (format.id === "wav") return [...base, "-vn", "-map", "0:a:0", "-c:a", "pcm_s16le", ...stereo, output];
+    if (format.id === "mp3") return [...base, "-vn", "-map", "0:a:0", "-c:a", "libmp3lame", "-b:a", "320k", ...stereo, output];
+    const copy = mode === "copy" && !downmix && canCopy("m4a", "audio", info.audio?.codec);
+    return [...base, "-vn", "-map", "0:a:0", ...(copy ? ["-c:a", "copy"] : [...AUDIO_ENCODE.m4a, ...stereo]), output];
   }
 
   const videoCopy = mode === "copy" && canCopy(format.id, "video", info.video?.codec);
-  const audioCopy = mode === "copy" && canCopy(format.id, "audio", info.audio?.codec);
+  const audioCopy = mode === "copy" && !downmix && canCopy(format.id, "audio", info.audio?.codec);
   const args = [...base, "-map", "0:v:0", "-map", "0:a:0?"];
   args.push(...(videoCopy ? ["-c:v", "copy"] : VIDEO_ENCODE[format.id]));
-  if (info.audio) args.push(...(audioCopy ? ["-c:a", "copy"] : AUDIO_ENCODE[format.id]));
+  if (info.audio) args.push(...(audioCopy ? ["-c:a", "copy"] : [...AUDIO_ENCODE[format.id], ...stereo]));
   if (videoCopy && info.video?.codec === "hevc" && (format.id === "mp4" || format.id === "mov")) args.push("-tag:v", "hvc1");
   if (format.id === "mp4" || format.id === "mov") args.push("-movflags", "+faststart");
   args.push(output);
@@ -369,3 +410,4 @@ export function formatDuration(seconds = 0) {
   const s = Math.floor(seconds % 60).toString().padStart(2, "0");
   return `${m}:${s}`;
 }
+
