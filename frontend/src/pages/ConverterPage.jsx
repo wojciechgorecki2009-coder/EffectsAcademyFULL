@@ -246,8 +246,8 @@ export default function ConverterPage() {
   return (
     <section className="mx-auto max-w-[1200px] px-5 pb-28 pt-32 md:px-8 md:pt-36" data-testid="converter-page">
       <PageIntro eyebrow="Converter" icon={<RefreshCcw />} title="Convert any video.">
-        Turn an MP4 into a GIF, a MOV into an MP4, or pull the audio out, at the highest quality the format allows.
-        It all happens on your device, so nothing is uploaded and there&apos;s no queue.
+        Free video convertor for MP4, GIF, MOV and MKV&apos;s at lossless quality. Don&apos;t have to worry about Adobe
+        programs rejecting your file type anymore. Model runs locally on your device, with no queue.
       </PageIntro>
 
       <Reveal className="mt-7 flex flex-wrap gap-2" delay={0.35}>
