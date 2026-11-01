@@ -10,6 +10,7 @@ import {
   Info,
   Loader2,
   RefreshCcw,
+  Share,
   ShieldCheck,
   Sparkles,
   UploadCloud,
@@ -37,7 +38,16 @@ import {
   planConversion,
   probeFile,
 } from "@/lib/converter";
-import { canStream, cancelStream, pickSaveTarget, streamConvert, supportsStreamingSave } from "@/lib/streamConvert";
+import {
+  canStream,
+  cancelStream,
+  clearDeviceFiles,
+  createDeviceTarget,
+  pickSaveTarget,
+  removeDeviceFile,
+  streamConvert,
+  streamingMode,
+} from "@/lib/streamConvert";
 
 const VIDEO_EXTENSIONS = ["mp4", "mov", "m4v", "webm", "mkv", "avi", "wmv", "flv", "mpg", "mpeg", "3gp", "ts", "mts", "m2ts", "ogv", "gif"];
 const GIF_FPS = [10, 15, 24, 30];
@@ -55,6 +65,7 @@ const STAGE_LABEL = {
   copy: "Copying streams",
   encode: "Converting",
   stream: "Saving to your computer",
+  device: "Saving to your device",
 };
 
 const FEATURES = [
@@ -129,27 +140,36 @@ export default function ConverterPage() {
   const options = useMemo(() => ({ fps: gifFps, width: gifWidth, stereo }), [gifFps, gifWidth, stereo]);
   const basePlan = useMemo(() => (info ? planConversion(info, format, options, file?.size || 0) : null), [info, format, options, file]);
   // Files whose result would be too big for the in-browser engine stream straight to disk
-  // instead (Chrome and Edge on a computer), copying the video as-is.
-  const streaming = Boolean(file && info && file.size > OUTPUT_LIMIT_BYTES && supportsStreamingSave() && canStream(info, format));
+  // instead, copying the video as-is: into a file the user picks (Chrome and Edge on a
+  // computer) or into the site's private storage, then downloaded (phones, Safari, Firefox).
+  const saveMode = useMemo(() => streamingMode(), []);
+  const streaming = Boolean(file && info && file.size > OUTPUT_LIMIT_BYTES && saveMode && canStream(info, format));
   const plan = useMemo(() => {
     if (!basePlan || basePlan.error) return basePlan;
     if (streaming) {
       const audio = (info?.audio?.channels || 0) > 2 && stereo ? ` The ${describeChannels(info.audio)} audio is mixed down to stereo.` : "";
-      return {
-        lossless: true,
-        note: `Too big to build inside the browser, so it's saved straight to your computer as it converts: you'll choose where. Video copied as-is with no quality loss.${audio}`,
-      };
+      const where =
+        saveMode === "picker"
+          ? "it's saved straight to your computer as it converts: you'll choose where."
+          : `it's written to your device's storage as it converts, then downloaded. Needs about ${formatBytes(file.size)} free.`;
+      return { lossless: true, note: `Too big to build in memory, so ${where} Video copied as-is with no quality loss.${audio}` };
     }
-    if (basePlan.forceEncode && !supportsStreamingSave()) {
+    if (basePlan.forceEncode && !saveMode) {
       return { ...basePlan, note: `${basePlan.note} Tip: Chrome or Edge on a computer can save files this size straight to disk in minutes, without re-encoding.` };
     }
     return basePlan;
-  }, [basePlan, streaming, info, stereo]);
+  }, [basePlan, streaming, saveMode, file, info, stereo]);
   const surround = (info?.audio?.channels || 0) > 2 && format !== "gif";
 
   // Free object URLs when they are replaced or the page closes.
   useEffect(() => () => sourceUrl && URL.revokeObjectURL(sourceUrl), [sourceUrl]);
   useEffect(() => () => result?.url && URL.revokeObjectURL(result.url), [result]);
+  // Results kept in the site's storage are deleted once replaced or the page closes,
+  // along with any left over from an earlier visit.
+  useEffect(() => () => result?.deviceFile && removeDeviceFile(result.deviceFile), [result]);
+  useEffect(() => {
+    if (saveMode === "device") clearDeviceFiles();
+  }, [saveMode]);
 
   useEffect(() => {
     if (status !== "converting") return undefined;
@@ -180,9 +200,9 @@ export default function ConverterPage() {
     }
     if (next.size > maxBytes) {
       if (!hasPremium && next.size <= PREMIUM_MAX_BYTES) {
-        toast.error(`That file is ${formatBytes(next.size)}. Free accounts can convert up to 2 GB. Premium raises the limit to 10 GB.`);
+        toast.error(`That file is ${formatBytes(next.size)}. Free accounts can convert up to 2 GB. Premium raises the limit to 12 GB.`);
       } else {
-        toast.error(`That file is ${formatBytes(next.size)}. The converter supports files up to ${hasPremium ? "10" : "2"} GB.`);
+        toast.error(`That file is ${formatBytes(next.size)}. The converter supports files up to ${hasPremium ? "12" : "2"} GB.`);
       }
       return;
     }
@@ -246,25 +266,31 @@ export default function ConverterPage() {
 
   const convertToDisk = async () => {
     const name = `${file.name.replace(/\.[^.]+$/, "") || "video"}.${selectedFormat.ext}`;
+    const toDevice = saveMode === "device";
     let handle;
-    try {
-      handle = await pickSaveTarget(name, format); // must open straight from the click
-    } catch {
-      toast.error("Your browser couldn't open the Save dialog.");
-      return;
+    if (!toDevice) {
+      try {
+        handle = await pickSaveTarget(name, format); // must open straight from the click
+      } catch {
+        toast.error("Your browser couldn't open the Save dialog.");
+        return;
+      }
+      if (!handle) return;
     }
-    if (!handle) return;
     setStatus("converting");
-    setStage("stream");
+    setStage(toDevice ? "device" : "stream");
     setProgress(0);
     setElapsed(0);
     setError("");
     setResult(null);
     try {
-      const output = await streamConvert(file, format, handle, { stereo, onProgress: setProgress });
-      setResult(output);
+      if (toDevice) handle = await createDeviceTarget(file, name);
+      const output = await streamConvert(file, format, handle, { stereo, name, onProgress: setProgress });
+      // On the device the result is shown and downloaded like any other; on a computer it's already saved.
+      setResult(toDevice ? { ...output, streamed: false, copied: true, deviceFile: handle.name, url: URL.createObjectURL(output.file) } : output);
       setStatus("done");
     } catch (err) {
+      if (toDevice && handle) removeDeviceFile(handle.name);
       if (err?.message === "cancelled") return;
       setError(err?.message || "Conversion failed. Try a different format.");
       setStatus("error");
@@ -272,7 +298,7 @@ export default function ConverterPage() {
   };
 
   const cancel = async () => {
-    if (stage === "stream") {
+    if (stage === "stream" || stage === "device") {
       await cancelStream();
       setStatus("idle");
       setProgress(0);
@@ -294,6 +320,16 @@ export default function ConverterPage() {
     document.body.appendChild(link);
     link.click();
     link.remove();
+  };
+
+  // Phones can hand the result to the share sheet (Save Video to Photos, Files, AirDrop…).
+  const canShare = Boolean(LITE && result?.file && navigator.canShare?.({ files: [result.file] }));
+  const shareResult = async () => {
+    try {
+      await navigator.share({ files: [result.file], title: result.name });
+    } catch (err) {
+      if (err?.name !== "AbortError") toast.error("Couldn't open the share sheet. Use Download instead.");
+    }
   };
 
   const width = info?.video?.width || meta?.width;
@@ -353,7 +389,7 @@ export default function ConverterPage() {
                   {dragging ? "Drop to load it" : LITE ? "Choose a video" : "Drop a video here"}
                 </p>
                 <p className="mt-2 max-w-sm text-[14px] leading-relaxed text-ink-2">
-                  {LITE ? "Tap to pick one from your files or library" : <>or <span className="text-tint group-hover:underline">choose a file</span></>}. MP4, MOV, WebM, MKV, AVI and more, up to {hasPremium ? "10 GB" : "2 GB"}.
+                  {LITE ? "Tap to pick one from your files or library" : <>or <span className="text-tint group-hover:underline">choose a file</span></>}. MP4, MOV, WebM, MKV, AVI and more, up to {hasPremium ? "12 GB" : "2 GB"}.
                 </p>
                 {!hasPremium && (
                   <Link
@@ -361,7 +397,7 @@ export default function ConverterPage() {
                     onClick={(e) => e.stopPropagation()}
                     className="mt-3 inline-flex items-center gap-1 rounded-full bg-[rgb(255_179_64/0.14)] px-3 py-1 text-[12px] font-semibold text-[#c27a00] hover:underline dark:text-[#ffb340]"
                   >
-                    Premium converts files up to 10 GB
+                    Premium converts files up to 12 GB
                   </Link>
                 )}
                 <input
@@ -636,12 +672,19 @@ export default function ConverterPage() {
                 <p className="mt-2 text-[13px] text-ink-2">
                   {result.streamed
                     ? `Saved where you chose. The video was copied with no quality loss${result.lossless ? "." : " and the audio converted to stereo."}`
+                    : result.copied
+                    ? `The video was copied with no quality loss${result.lossless ? "." : " and the audio converted to stereo."}`
                     : result.lossless ? "Converted without any quality loss." : "Converted at the highest quality settings for this format."}
                 </p>
                 <div className="mt-6 flex flex-wrap gap-2">
                   {!result.streamed && (
                     <button type="button" onClick={downloadResult} className="btn btn-primary" data-testid="converter-download">
                       <Download /> Download
+                    </button>
+                  )}
+                  {canShare && (
+                    <button type="button" onClick={shareResult} className="btn btn-secondary" data-testid="converter-share">
+                      <Share /> Share
                     </button>
                   )}
                   <button type="button" onClick={() => setStatus("idle")} className="btn btn-secondary">

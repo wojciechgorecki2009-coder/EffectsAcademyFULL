@@ -12,6 +12,7 @@ import {
   StreamTarget,
   canEncodeAudio,
 } from "mediabunny";
+import { formatBytes } from "@/lib/converter";
 
 /*
  * Streaming conversions for files too big for the in-browser ffmpeg engine.
@@ -19,13 +20,16 @@ import {
  * ffmpeg.wasm has to build its whole output in memory (about 1.75 GB at most).
  * When the video can go into the new container as-is (e.g. an HEVC MKV into
  * MP4), this path uses Mediabunny instead: it reads the input in pieces and
- * writes the result straight into the file the user picked in the browser's
- * Save dialog, so size is limited only by disk space. The video is copied
- * untouched; only the audio is converted when needed (surround mixed down to
- * stereo, or a codec the container can't hold).
+ * writes the result straight to disk, so size is limited only by free space.
+ * The video is copied untouched; only the audio is converted when needed
+ * (surround mixed down to stereo, or a codec the container can't hold).
  *
- * Needs the File System Access API: Chrome, Edge and other Chromium browsers
- * on a computer.
+ * Two places to write to:
+ * - "picker": the file the user chooses in the browser's Save dialog (File
+ *   System Access API: Chrome, Edge and other Chromium browsers on a computer).
+ * - "device": a file in the site's private storage (Origin Private File
+ *   System), which is then downloaded or shared. Covers phones (Android Chrome,
+ *   iOS Safari 26+) and Safari or Firefox on a computer.
  */
 
 // ffmpeg's codec names (from the probe) → Mediabunny's.
@@ -39,11 +43,19 @@ const OUTPUT_FORMAT = {
   mkv: () => new MkvOutputFormat(),
 };
 const MIME = { mp4: "video/mp4", mov: "video/quicktime", mkv: "video/x-matroska" };
+const DEVICE_DIR = "converter";
 
 let active = null;
 
-export const supportsStreamingSave = () =>
-  typeof window !== "undefined" && typeof window.showSaveFilePicker === "function" && typeof window.AudioDecoder === "function";
+/** Where this browser can stream a conversion to: "picker", "device" or null (neither). */
+export function streamingMode() {
+  if (typeof window === "undefined" || typeof window.AudioDecoder !== "function") return null;
+  if (typeof window.showSaveFilePicker === "function") return "picker";
+  if (typeof navigator.storage?.getDirectory === "function" && typeof window.FileSystemFileHandle?.prototype?.createWritable === "function") {
+    return "device";
+  }
+  return null;
+}
 
 /** Whether this file's video can be copied as-is into `formatId` by the streaming path. */
 export function canStream(info, formatId) {
@@ -69,11 +81,44 @@ export async function pickSaveTarget(name, formatId) {
   }
 }
 
+const deviceDir = async () => (await navigator.storage.getDirectory()).getDirectoryHandle(DEVICE_DIR, { create: true });
+
+/**
+ * Creates a file in the site's private storage to convert `file` into, once
+ * the browser confirms there's room for it.
+ */
+export async function createDeviceTarget(file, name) {
+  const { quota = 0, usage = 0 } = (await navigator.storage.estimate?.().catch(() => null)) || {};
+  const needed = file.size * 1.05;
+  if (quota && quota - usage < needed) {
+    throw new Error(`Not enough free storage on this device. Converting this file needs about ${formatBytes(needed)} free.`);
+  }
+  return (await deviceDir()).getFileHandle(`${Date.now()}-${name}`, { create: true });
+}
+
+export async function removeDeviceFile(name) {
+  try {
+    await (await deviceDir()).removeEntry(name);
+  } catch {
+    // Already gone, or still open in another tab.
+  }
+}
+
+/** Deletes results left over from earlier visits. */
+export async function clearDeviceFiles() {
+  try {
+    await (await navigator.storage.getDirectory()).removeEntry(DEVICE_DIR, { recursive: true });
+  } catch {
+    // Nothing stored, or a conversion is running in another tab.
+  }
+}
+
 /**
  * Converts `file` into the file behind `handle`. Resolves to
- * { name, size, lossless, streamed: true } once the file is complete on disk.
+ * { name, size, lossless, streamed: true, file } once the file is complete on
+ * disk; `file` is the result, read back from disk (not held in memory).
  */
-export async function streamConvert(file, formatId, handle, { stereo = true, onProgress } = {}) {
+export async function streamConvert(file, formatId, handle, { stereo = true, name = handle.name, onProgress } = {}) {
   const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS });
   const audioTrack = await input.getPrimaryAudioTrack();
   const audioCodec = audioTrack?.codec;
@@ -124,12 +169,20 @@ export async function streamConvert(file, formatId, handle, { stereo = true, onP
     await conversion.execute(); // finalizes the output, which closes the file
     onProgress?.(1);
     const saved = await handle.getFile();
-    return { name: handle.name, size: saved.size, lossless: !downmix, streamed: true, kind: "video" };
+    return {
+      name,
+      size: saved.size,
+      lossless: !downmix,
+      streamed: true,
+      kind: "video",
+      file: new File([saved], name, { type: MIME[formatId] }),
+    };
   } catch (error) {
     // Leave no half-written file behind.
     await writable.abort().catch(() => {});
     await handle.remove?.().catch(() => {});
     if (error instanceof ConversionCanceledError) throw new Error("cancelled");
+    if (error?.name === "QuotaExceededError") throw new Error("Your device ran out of storage space while converting.");
     throw error;
   } finally {
     active = null;

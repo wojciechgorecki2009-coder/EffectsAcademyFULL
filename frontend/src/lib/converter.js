@@ -22,7 +22,7 @@ const CORE_BASE = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm";
 export const ENGINE_SIZE_MB = 10; // compressed transfer size; ~32 MB unpacked
 const GB = 1024 * 1024 * 1024;
 export const FREE_MAX_BYTES = 2 * GB;
-export const PREMIUM_MAX_BYTES = 10 * GB;
+export const PREMIUM_MAX_BYTES = 12 * GB;
 // Inputs are read straight from disk (WORKERFS), so they can be huge. The
 // result, however, is built inside the engine's 2 GiB WebAssembly memory, so
 // outputs must stay comfortably below that. Phones get a much lower ceiling:
