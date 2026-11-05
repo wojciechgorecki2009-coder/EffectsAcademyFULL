@@ -19,6 +19,7 @@ const state = {
   volume: 0.8,
   muted: false,
   looping: false,
+  rate: 1,
 };
 
 const listeners = new Set();
@@ -36,6 +37,10 @@ if (audio) {
   audio.preload = "metadata";
   audio.crossOrigin = "anonymous";
   audio.volume = state.volume;
+  // Slower playback lowers the pitch too, matching the 0.9x / 0.8x "slowed" downloads.
+  audio.preservesPitch = false;
+  audio.webkitPreservesPitch = false;
+  audio.mozPreservesPitch = false;
 
   audio.addEventListener("timeupdate", () => {
     patch({ progress: audio.currentTime || 0 });
@@ -78,6 +83,8 @@ export async function playGlobalAudio({ src, originalSrc, title, subtitle, thumb
   if (!audio || !src) return;
 
   const isNewTrack = audio.src !== src;
+  // A slowed preview only makes sense for audio that offers slowed downloads.
+  if (!allowSlowedDownloads && state.rate !== 1) setGlobalRate(1);
   patch({
     src,
     originalSrc: originalSrc || src,
@@ -100,6 +107,7 @@ export async function playGlobalAudio({ src, originalSrc, title, subtitle, thumb
   audio.volume = state.volume;
   audio.muted = state.muted;
   audio.loop = state.looping;
+  audio.playbackRate = state.rate;
   await audio.play();
 }
 
@@ -139,4 +147,15 @@ export function setGlobalLooping(value) {
   const looping = Boolean(value);
   if (audio) audio.loop = looping;
   patch({ looping });
+}
+
+/** Playback speed for previewing how a slowed download will sound (1, 0.9 or 0.8). */
+export function setGlobalRate(value) {
+  const rate = Number(value) || 1;
+  if (audio) {
+    // defaultPlaybackRate keeps the speed when the next track loads.
+    audio.defaultPlaybackRate = rate;
+    audio.playbackRate = rate;
+  }
+  patch({ rate });
 }

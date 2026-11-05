@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useAnimate, useReducedMotion } from "framer-motion";
-import { Download, Loader2, Music2, Pause, Play, Volume2, VolumeX, Repeat } from "lucide-react";
+import { Download, Gauge, Loader2, Music2, Pause, Play, Volume2, VolumeX, Repeat } from "lucide-react";
 import LiquidGlass from "@/components/LiquidGlass";
 import { EASE_OUT, SPRING } from "@/lib/motion";
 import { LITE } from "@/lib/device";
@@ -9,6 +9,7 @@ import { api } from "@/lib/api";
 import {
   seekGlobalAudio,
   setGlobalLooping,
+  setGlobalRate,
   setGlobalVolume,
   toggleGlobalAudio,
   toggleGlobalMute,
@@ -87,6 +88,9 @@ const ISLAND_VARIANTS = {
     transition: { ...ISLAND_SPRING, delay: 0.12 },
   },
 };
+
+// The preview speeds match the slowed downloads, so users can hear them first.
+const PREVIEW_RATES = [1, 0.9, 0.8];
 
 const SEED_VARIANTS = {
   hidden: { opacity: 1, scale: 0.9, filter: "blur(0px)", transition: { duration: 0.2 } },
@@ -192,6 +196,31 @@ export default function PersistentAudioBar() {
         </button>
       ))
     : null;
+
+  const slowedPreview = audio.rate !== 1;
+  const speedButton = audio.allowSlowedDownloads ? (
+    <button
+      type="button"
+      onClick={() => setGlobalRate(PREVIEW_RATES[(PREVIEW_RATES.indexOf(audio.rate) + 1) % PREVIEW_RATES.length])}
+      className={`${ctrl} min-w-[4.25rem] px-2.5 max-[400px]:min-w-[3.6rem] font-mono text-[12px] font-semibold tabular-nums ${slowedPreview ? "!bg-[rgb(var(--tint)/0.14)] !text-tint" : ""}`}
+      title={slowedPreview ? `Previewing at ${audio.rate}x: tap for ${audio.rate === 0.9 ? "0.8x" : "normal speed"}` : "Preview the slowed versions: 0.9x, then 0.8x"}
+      aria-label={`Playback speed ${audio.rate}x`}
+      data-testid="audio-speed"
+    >
+      <Gauge className="h-3.5 w-3.5" />
+      <AnimatePresence mode="popLayout" initial={false}>
+        <motion.span
+          key={audio.rate}
+          initial={reduce ? false : { opacity: 0, y: 6, filter: "blur(3px)" }}
+          animate={{ opacity: 1, y: 0, filter: "blur(0px)", transitionEnd: { filter: "none" } }}
+          exit={{ opacity: 0, y: -6, filter: "blur(3px)" }}
+          transition={{ duration: 0.25, ease: EASE_OUT }}
+        >
+          {audio.rate}x
+        </motion.span>
+      </AnimatePresence>
+    </button>
+  ) : null;
 
   const loopButton = (
     <button
@@ -309,6 +338,7 @@ export default function PersistentAudioBar() {
                   <Download className="h-4 w-4" />
                 </button>
                 {slowedButtons}
+                {speedButton}
                 {loopButton}
                 <span className="mx-1 h-5 w-px bg-[var(--line-strong)]" aria-hidden="true" />
                 {volume}
@@ -356,14 +386,16 @@ export default function PersistentAudioBar() {
               <span className="w-9 font-mono text-[11px] tabular-nums text-ink-3">{fmt(audio.duration)}</span>
             </div>
 
-            <div className="flex items-center justify-between gap-2 border-t border-[var(--line)] px-3 py-2 md:hidden">
+            {/* Narrow phones drop the "Download" label so the row fits; it wraps rather than overflows on the smallest. */}
+            <div className="flex flex-wrap items-center justify-between gap-x-2 border-t border-[var(--line)] px-3 py-2 md:hidden [&_button]:max-[400px]:px-2">
               <div className="flex items-center gap-0.5">
-                <button type="button" onClick={downloadCurrent} className={`${ctrl} px-3 text-[13px]`} aria-label="Download audio">
-                  <Download className="h-4 w-4" /> Download
+                <button type="button" onClick={downloadCurrent} className={`${ctrl} px-3 text-[13px] max-[400px]:w-9`} aria-label="Download audio">
+                  <Download className="h-4 w-4" /> <span className="max-[400px]:hidden">Download</span>
                 </button>
                 {slowedButtons}
               </div>
               <div className="flex items-center gap-0.5">
+                {speedButton}
                 {loopButton}
                 {volume}
               </div>
