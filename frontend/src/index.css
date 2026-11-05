@@ -997,3 +997,7 @@ body { overflow-x: clip; }
 :root[data-lite] :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea) {
   font-size: max(16px, 1em);
 }
+
+/* Converter progress island (bottom left): lifted above the audio player when one is open */
+:root { --converter-dock-bottom: 12px; --converter-dock-raised: 176px; }
+@media (min-width: 768px) { :root { --converter-dock-bottom: 20px; --converter-dock-raised: 132px; } }

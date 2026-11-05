@@ -48,6 +48,7 @@ import {
   streamConvert,
   streamingMode,
 } from "@/lib/streamConvert";
+import { STAGE_LABEL, useConverterField } from "@/lib/converterSession";
 
 const VIDEO_EXTENSIONS = ["mp4", "mov", "m4v", "webm", "mkv", "avi", "wmv", "flv", "mpg", "mpeg", "3gp", "ts", "mts", "m2ts", "ogv", "gif"];
 const GIF_FPS = [10, 15, 24, 30];
@@ -59,21 +60,15 @@ const GIF_WIDTHS = [
   { value: 320, label: "320" },
 ];
 
-const STAGE_LABEL = {
-  engine: "Starting converter",
-  probe: "Reading your file",
-  copy: "Copying streams",
-  encode: "Converting",
-  stream: "Saving to your computer",
-  device: "Saving to your device",
-};
-
 const FEATURES = [
   { icon: Cpu, label: "Runs on your device" },
   { icon: ShieldCheck, label: "Nothing is uploaded" },
   { icon: Sparkles, label: "Lossless when possible" },
   { icon: Check, label: "Free for everyone" },
 ];
+
+// Results left in the site's storage by an earlier visit are cleared once per page load.
+let clearedDeviceFiles = false;
 
 function isVideoFile(file) {
   return file.type.startsWith("video/") || VIDEO_EXTENSIONS.includes(extOf(file.name));
@@ -117,24 +112,25 @@ export default function ConverterPage() {
   const { hasPremium } = useAuth();
   const maxBytes = hasPremium ? PREMIUM_MAX_BYTES : FREE_MAX_BYTES;
   const inputRef = useRef(null);
-  const [file, setFile] = useState(null);
-  const [sourceUrl, setSourceUrl] = useState("");
-  const [meta, setMeta] = useState(null);
-  const [info, setInfo] = useState(null);
-  const [format, setFormat] = useState("mp4");
-  const [gifFps, setGifFps] = useState(24);
-  const [gifWidth, setGifWidth] = useState(720);
-  // Surround audio is mixed down to stereo unless the user picks "Keep".
-  const [stereo, setStereo] = useState(true);
+  // Shared with the rest of the site, so a conversion carries on while the user browses.
+  const [file, setFile] = useConverterField("file");
+  const [sourceUrl, setSourceUrl] = useConverterField("sourceUrl");
+  const [meta, setMeta] = useConverterField("meta");
+  const [info, setInfo] = useConverterField("info");
+  const [format, setFormat] = useConverterField("format");
+  const [gifFps, setGifFps] = useConverterField("gifFps");
+  const [gifWidth, setGifWidth] = useConverterField("gifWidth");
+  const [stereo, setStereo] = useConverterField("stereo");
+  const [engineState, setEngineState] = useConverterField("engineState");
+  const [engineProgress, setEngineProgress] = useConverterField("engineProgress");
+  const [status, setStatus] = useConverterField("status");
+  const [stage, setStage] = useConverterField("stage");
+  const [progress, setProgress] = useConverterField("progress");
+  const [startedAt, setStartedAt] = useConverterField("startedAt");
+  const [result, setResult] = useConverterField("result");
+  const [error, setError] = useConverterField("error");
   const [dragging, setDragging] = useState(false);
-  const [engineState, setEngineState] = useState("idle"); // idle | loading | ready | error
-  const [engineProgress, setEngineProgress] = useState(0);
-  const [status, setStatus] = useState("idle"); // idle | converting | done | error
-  const [stage, setStage] = useState("");
-  const [progress, setProgress] = useState(0);
   const [elapsed, setElapsed] = useState(0);
-  const [result, setResult] = useState(null);
-  const [error, setError] = useState("");
 
   const selectedFormat = FORMATS.find((f) => f.id === format);
   const options = useMemo(() => ({ fps: gifFps, width: gifWidth, stereo }), [gifFps, gifWidth, stereo]);
@@ -161,22 +157,20 @@ export default function ConverterPage() {
   }, [basePlan, streaming, saveMode, file, info, stereo]);
   const surround = (info?.audio?.channels || 0) > 2 && format !== "gif";
 
-  // Free object URLs when they are replaced or the page closes.
-  useEffect(() => () => sourceUrl && URL.revokeObjectURL(sourceUrl), [sourceUrl]);
-  useEffect(() => () => result?.url && URL.revokeObjectURL(result.url), [result]);
-  // Results kept in the site's storage are deleted once replaced or the page closes,
-  // along with any left over from an earlier visit.
-  useEffect(() => () => result?.deviceFile && removeDeviceFile(result.deviceFile), [result]);
+  // Object URLs and stored results are freed by the session store once replaced.
   useEffect(() => {
-    if (saveMode === "device") clearDeviceFiles();
+    if (saveMode !== "device" || clearedDeviceFiles) return;
+    clearedDeviceFiles = true;
+    clearDeviceFiles();
   }, [saveMode]);
 
   useEffect(() => {
     if (status !== "converting") return undefined;
-    const started = Date.now();
-    const timer = window.setInterval(() => setElapsed(Math.floor((Date.now() - started) / 1000)), 500);
+    const tick = () => setElapsed(Math.floor((Date.now() - startedAt) / 1000));
+    tick();
+    const timer = window.setInterval(tick, 500);
     return () => window.clearInterval(timer);
-  }, [status]);
+  }, [status, startedAt]);
 
   const prepareEngine = useCallback(async () => {
     setEngineState((state) => (state === "ready" ? state : "loading"));
@@ -190,7 +184,7 @@ export default function ConverterPage() {
       setEngineState("error");
       return false;
     }
-  }, []);
+  }, [setEngineState, setEngineProgress]);
 
   const pickFile = async (next) => {
     if (!next) return;
@@ -244,7 +238,7 @@ export default function ConverterPage() {
     }
     setStatus("converting");
     setProgress(0);
-    setElapsed(0);
+    setStartedAt(Date.now());
     setError("");
     setResult(null);
     try {
@@ -280,7 +274,7 @@ export default function ConverterPage() {
     setStatus("converting");
     setStage(toDevice ? "device" : "stream");
     setProgress(0);
-    setElapsed(0);
+    setStartedAt(Date.now());
     setError("");
     setResult(null);
     try {

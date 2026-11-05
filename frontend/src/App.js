@@ -12,6 +12,7 @@ import { API } from "@/lib/api";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import PersistentAudioBar from "@/components/PersistentAudioBar";
+import ConverterDock from "@/components/ConverterDock";
 import PremiumTermsGate from "@/components/PremiumTermsGate";
 import ExtensionLaunchAnnouncement from "@/components/ExtensionLaunchAnnouncement";
 import Home from "@/pages/Home";
@@ -161,6 +162,7 @@ function AppFrame() {
         <RefreshableRoutes />
         {!isSetupMiniSite ? <Footer /> : null}
         {!isSetupMiniSite ? <PersistentAudioBar /> : null}
+        {!isSetupMiniSite ? <ConverterDock /> : null}
         <ExtensionLaunchAnnouncement />
         <PremiumTermsGate />
         <Toaster
