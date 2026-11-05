@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
-import { ChevronLeft, ChevronRight, SearchX } from "lucide-react";
+import { ChevronLeft, ChevronRight, RefreshCcw, SearchX } from "lucide-react";
 import AssetCard from "@/components/AssetCard";
 import { EASE_OUT, KineticText, Reveal } from "@/lib/motion";
 
@@ -185,6 +185,51 @@ export function BranchCard({ label, count, icon, from, to, accent, onClick, test
         </span>
       </span>
     </motion.button>
+  );
+}
+
+/** Wide tile under the Torrents "Shows or Movies?" choice pointing to the video converter. */
+export function ConverterPromoCard({ testId = "torrent-converter-card", index = 2 }) {
+  const reduce = useReducedMotion();
+  return (
+    <motion.div
+      className="md:col-span-2"
+      initial={reduce ? false : { opacity: 0, y: 24, filter: "blur(8px)" }}
+      whileInView={{ opacity: 1, y: 0, filter: "blur(0px)", transitionEnd: { filter: "none" } }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.85, ease: EASE_OUT, delay: index * 0.08 }}
+      whileHover={reduce ? undefined : { y: -4 }}
+      whileTap={{ scale: 0.99 }}
+    >
+      <Link
+        to="/convert"
+        className="group relative flex w-full flex-col gap-5 overflow-hidden rounded-[28px] p-7 text-left shadow-[var(--shadow-card)] transition-shadow duration-500 hover:shadow-[var(--shadow-card-hover)] md:flex-row md:items-center md:gap-6"
+        style={{ background: "linear-gradient(140deg, #07322F 0%, #020B0A 100%)", color: "#fff" }}
+        data-testid={testId}
+      >
+        <span
+          className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full opacity-35 blur-3xl transition-transform duration-[1200ms] ease-out-expo group-hover:scale-125"
+          style={{ background: "#2DD4BF" }}
+        />
+        <span className="pointer-events-none absolute inset-0 rounded-[28px] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.08),inset_0_1px_0_rgb(255_255_255/0.12)]" />
+        <span
+          className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl backdrop-blur-md [&_svg]:h-6 [&_svg]:w-6"
+          style={{ background: "rgb(255 255 255 / 0.12)", boxShadow: "inset 0 0 0 0.5px rgb(255 255 255 / 0.2)" }}
+        >
+          <RefreshCcw />
+        </span>
+        <span className="relative min-w-0 flex-1">
+          <span className="block font-display text-[1.6rem] font-semibold leading-none tracking-[-0.03em]">Converter</span>
+          <span className="mt-2.5 block max-w-2xl text-[14px] leading-relaxed" style={{ color: "rgb(255 255 255 / 0.7)" }}>
+            Downloaded a show or movie? Convert it to MP4, MOV or MKV right here, without having to open Premiere. Surround
+            audio is mixed down to stereo, and it all runs on your device, so nothing is uploaded.
+          </span>
+        </span>
+        <span className="relative inline-flex shrink-0 items-center gap-0.5 text-sm font-medium" style={{ color: "rgb(255 255 255 / 0.8)" }}>
+          Open converter <ChevronRight className="h-4 w-4 transition-transform duration-500 ease-spring group-hover:translate-x-1" />
+        </span>
+      </Link>
+    </motion.div>
   );
 }
 

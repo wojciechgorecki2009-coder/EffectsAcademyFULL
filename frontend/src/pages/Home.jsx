@@ -18,6 +18,7 @@ import {
   AssetSkeletonGrid,
   BackButton,
   BranchCard,
+  ConverterPromoCard,
   EmptyState,
   SectionHeader,
   SubHeading,
@@ -504,6 +505,7 @@ function FilteredView({
             testId="home-torrent-branch-movies"
             index={1}
           />
+          <ConverterPromoCard testId="home-torrent-converter-card" />
         </div>
       </>
     );

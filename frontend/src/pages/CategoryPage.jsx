@@ -16,6 +16,7 @@ import {
   AssetSkeletonGrid,
   BackButton,
   BranchCard,
+  ConverterPromoCard,
   EmptyState,
   PickerSkeleton,
   SectionHeader,
@@ -313,6 +314,7 @@ export default function CategoryPage() {
                       testId="torrent-branch-movies"
                       index={1}
                     />
+                    <ConverterPromoCard />
                   </div>
                 )}
               </>
