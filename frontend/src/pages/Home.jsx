@@ -13,6 +13,7 @@ import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
 import CategoryPicker from "@/components/CategoryPicker";
 import Hero from "@/components/Hero";
 import LiquidGlass from "@/components/LiquidGlass";
+import BetaBadge from "@/components/BetaBadge";
 import {
   AssetGrid,
   AssetSkeletonGrid,
@@ -25,7 +26,7 @@ import {
   ViewAllLink,
 } from "@/components/Library";
 import { EASE_OUT, SPRING } from "@/lib/motion";
-import { ChevronRight, Music2, Tv, Film, RefreshCcw, Wand2 } from "lucide-react";
+import { Box, ChevronRight, Music2, Tv, Film, RefreshCcw, Wand2 } from "lucide-react";
 
 const FILTER_TABS = ["All", ...CATEGORIES];
 // Keeps the extension pinned first in "Recently added" while the v1.1 update announcement runs.
@@ -405,6 +406,17 @@ function FilterTabs({ orientation, filter, setFilter, countLabel }) {
           >
             <Wand2 className="h-3.5 w-3.5 text-[#bf5af2]" />
             Remove BG
+          </Link>
+        </motion.div>
+        <motion.div layoutId="filter-3d-models" layout="position" transition={RAIL_SPRING} className={vertical ? "w-full" : "shrink-0"}>
+          <Link
+            to="/3d-models"
+            className={`${itemClass} inline-flex items-center gap-1.5 text-ink-2 hover:text-ink`}
+            data-testid="filter-tab-3d-models"
+          >
+            <Box className="h-3.5 w-3.5 text-[#ff9f0a]" />
+            3D Models
+            <BetaBadge />
           </Link>
         </motion.div>
         {vertical && (

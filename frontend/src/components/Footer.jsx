@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Reveal } from "@/lib/motion";
+import BetaBadge from "@/components/BetaBadge";
 
 const SUPPORT_EMAIL = "EffectsAcademy2026@hotmail.com";
 
@@ -48,6 +49,7 @@ export default function Footer() {
             <li><Link to="/category/videos" className={linkClass}>Videos</Link></li>
             <li><Link to="/convert" className={linkClass}>Video Converter</Link></li>
             <li><Link to="/remove-background" className={linkClass}>Background Remover</Link></li>
+            <li className="flex items-center gap-1.5"><Link to="/3d-models" className={linkClass}>3D Model Downloader</Link><BetaBadge /></li>
           </Column>
           <Column title="Community">
             <li><Link to="/category/sound-fx" className={linkClass}>Sound FX</Link></li>

@@ -5,6 +5,7 @@ import { Lock, Upload, LogOut, UserCircle, Crown, Settings2, Check, BarChart3, B
 import DiscordIcon from "@/components/DiscordIcon";
 import TwitchIcon from "@/components/TwitchIcon";
 import LiquidGlass from "@/components/LiquidGlass";
+import BetaBadge from "@/components/BetaBadge";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -41,6 +42,7 @@ const PRIMARY_TABS = [
   { to: "/category/videos", label: "Videos" },
   { to: "/convert", label: "Converter" },
   { to: "/remove-background", label: "Remove BG" },
+  { to: "/3d-models", label: "3D Models", beta: true },
 ];
 
 const MORE_TABS = [
@@ -321,7 +323,10 @@ export default function Nav() {
                           transition={SPRING}
                         />
                       )}
-                      <span className="relative">{t.label}</span>
+                      <span className="relative inline-flex items-center gap-1.5">
+                        {t.label}
+                        {t.beta && <BetaBadge />}
+                      </span>
                     </NavLink>
                   );
                 })}
@@ -462,7 +467,10 @@ export default function Nav() {
                           }`
                         }
                       >
-                        {t.label}
+                        <span className="inline-flex items-center gap-2">
+                          {t.label}
+                          {t.beta && <BetaBadge />}
+                        </span>
                         <ChevronRight className="h-4 w-4 text-ink-3" />
                       </NavLink>
                     </motion.div>
