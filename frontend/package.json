@@ -71,7 +71,8 @@
   "scripts": {
     "start": "craco start",
     "build": "craco build",
-    "test": "craco test"
+    "test": "craco test",
+    "build:extension-converter": "node scripts/build-extension-converter.js"
   },
   "browserslist": {
     "production": [

@@ -8,6 +8,9 @@ import { strToU8, zipSync } from "fflate";
  * material's colour, roughness, opacity and texture maps, and the textures
  * themselves, copied byte for byte from the GLB where possible.
  * OBJ is a still mesh: animation, rigs and morph targets aren't carried over.
+ *
+ * The After Effects extension uses glbToObjFiles too, through a standalone
+ * build of this file (see frontend/scripts/build-extension-converter.js).
  */
 
 const round = (value) => {
@@ -39,10 +42,11 @@ async function encodePng(image) {
 }
 
 /**
- * Converts GLB bytes to a zipped OBJ + MTL + textures. Resolves to
- * { blob, meshes, vertices, triangles, textures, hadAnimation }.
+ * Converts GLB bytes to OBJ + MTL + textures. Resolves to
+ * { files: { "name.obj": Uint8Array, "name.mtl": …, "textures/…": … }, objName,
+ *   meshes, vertices, triangles, textures, hadAnimation }.
  */
-export async function glbToObjZip(glb, baseName = "model", onProgress) {
+export async function glbToObjFiles(glb, baseName = "model", onProgress) {
   const [THREE, { GLTFLoader }, { MeshoptDecoder }] = await Promise.all([
     import("three"),
     import("three/examples/jsm/loaders/GLTFLoader.js"),
@@ -100,7 +104,7 @@ export async function glbToObjZip(glb, baseName = "model", onProgress) {
     }
     const stemName = safeName(String(label || "").replace(/\.(png|jpe?g|webp|avif|ktx2)$/i, ""), fallbackName);
     const path = `textures/${nameTexture(stemName)}.${ext}`;
-    files[path] = [bytes, { level: 0 }]; // already compressed
+    files[path] = bytes;
     texturePaths.set(key, path);
     decoded.add(texture);
     return path;
@@ -231,17 +235,25 @@ export async function glbToObjZip(glb, baseName = "model", onProgress) {
 
   files[objName] = strToU8(chunks.join("\n"));
   files[mtlName] = strToU8(mtl.join("\n"));
-  const zipped = zipSync(files, { level: 6 });
 
   // Free the decoded textures.
   decoded.forEach((texture) => texture.image?.close?.());
 
   return {
-    blob: new Blob([zipped], { type: "application/zip" }),
+    files,
+    objName,
     meshes: meshes.length,
     vertices,
     triangles,
     textures: texturePaths.size,
     hadAnimation: gltf.animations.length > 0,
   };
+}
+
+/** The same conversion, zipped for download: { blob, meshes, vertices, triangles, textures, hadAnimation }. */
+export async function glbToObjZip(glb, baseName = "model", onProgress) {
+  const { files, objName, ...stats } = await glbToObjFiles(glb, baseName, onProgress);
+  // Textures are already compressed, so they're stored as-is.
+  const entries = Object.fromEntries(Object.entries(files).map(([path, bytes]) => [path, path.startsWith("textures/") ? [bytes, { level: 0 }] : bytes]));
+  return { blob: new Blob([zipSync(entries, { level: 6 })], { type: "application/zip" }), ...stats };
 }

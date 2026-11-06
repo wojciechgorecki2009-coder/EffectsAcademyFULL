@@ -132,6 +132,47 @@ function EA_importAsset(filePath, category, playbackRate) {
   }
 }
 
+// The Advanced 3D renderer's internal name; 3D model layers only render with it.
+var EA_ADVANCED_3D = "ADBE Calder";
+
+function EA_importModel(filePath) {
+  app.beginUndoGroup("Effects Academy 3D Model");
+  try {
+    var file = new File(filePath);
+    if (!file.exists) return EA_json(false, "The downloaded model could not be found.");
+
+    var footage;
+    try {
+      footage = app.project.importFile(new ImportOptions(file));
+    } catch (importErr) {
+      if (parseFloat(app.version) < 24) return EA_json(false, "3D models need After Effects 2024 or newer.");
+      return EA_json(false, "After Effects couldn't import this model: " + (importErr && importErr.message ? importErr.message : String(importErr)));
+    }
+
+    var comp = EA_activeComp();
+    if (!comp) return EA_json(true, "Imported into the project panel. Open a comp to add it.");
+
+    var switched = false;
+    try {
+      var renderers = comp.renderers || [];
+      for (var i = 0; i < renderers.length; i += 1) {
+        if (renderers[i] === EA_ADVANCED_3D && comp.renderer !== EA_ADVANCED_3D) {
+          comp.renderer = EA_ADVANCED_3D;
+          switched = true;
+        }
+      }
+    } catch (rendererErr) {}
+
+    var layer = comp.layers.add(footage);
+    layer.startTime = comp.time;
+    return EA_json(true, "Imported and added to the active comp" + (switched ? ", which now uses the Advanced 3D renderer." : "."));
+  } catch (err) {
+    return EA_json(false, err && err.message ? err.message : String(err));
+  } finally {
+    app.endUndoGroup();
+  }
+}
+
 function EA_collectImportableFiles(folder, files) {
   var children = folder.getFiles();
   for (var i = 0; i < children.length; i += 1) {

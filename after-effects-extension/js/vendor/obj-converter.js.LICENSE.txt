@@ -1,0 +1,10 @@
+/*!
+ * Effects Academy GLB to OBJ converter, built from frontend/src/lib/objExport.js (do not edit by hand).
+ * Includes three.js (MIT) and fflate (MIT); their licenses are in ./LICENSES.
+ */
+
+/**
+ * @license
+ * Copyright 2010-2026 Three.js Authors
+ * SPDX-License-Identifier: MIT
+ */

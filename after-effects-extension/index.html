@@ -170,6 +170,91 @@
         </div>
       </section>
 
+      <section id="modelsPanel" class="models-panel panel-view hidden" aria-label="3D models">
+        <div class="settings-panel-header">
+          <span class="eyebrow">3D models <span class="beta-pill">Beta</span></span>
+          <h2>Sketchfab, in your comp.</h2>
+          <p>Paste a Sketchfab link and import the model straight into your active comp as OBJ or GLB, textures included.</p>
+        </div>
+
+        <div id="modelsPremiumGate" class="caption-premium-gate hidden" role="status">
+          <div class="caption-premium-lock" aria-hidden="true">
+            <svg class="ui-icon" viewBox="0 0 24 24"><path d="M7 10V8a5 5 0 0 1 10 0v2M6 10h12v10H6zM12 14v2" /></svg>
+          </div>
+          <div>
+            <strong>Premium authentication required</strong>
+            <p>Connect an active Premium account in Connection settings to use 3D models.</p>
+          </div>
+        </div>
+
+        <div id="modelsWorkflow" class="caption-workflow">
+          <form id="modelLinkForm" class="model-link glass">
+            <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1" /></svg>
+            <input id="modelLinkInput" type="text" placeholder="Paste a Sketchfab model link" autocomplete="off" spellcheck="false" aria-label="Sketchfab model link" />
+            <button id="modelFindBtn" class="primary" type="submit">Find</button>
+          </form>
+          <p id="modelLookupError" class="model-error hidden" role="alert"></p>
+
+          <div id="modelCard" class="model-card hidden">
+            <div class="model-thumb">
+              <img id="modelThumb" alt="" />
+              <span id="modelLockChip" class="model-lock-chip hidden">Not downloadable</span>
+            </div>
+            <div class="model-info">
+              <h3 id="modelName"></h3>
+              <p id="modelAuthor"></p>
+            </div>
+            <div class="model-stats">
+              <div><span>Vertices</span><strong id="modelVertices">—</strong></div>
+              <div><span>Faces</span><strong id="modelFaces">—</strong></div>
+              <div><span>Animations</span><strong id="modelAnimations">—</strong></div>
+            </div>
+          </div>
+
+          <form id="sketchfabConnect" class="caption-card sketchfab-connect">
+            <h3>Connect Sketchfab</h3>
+            <p>Sketchfab only allows downloads from a signed-in account (a free one works). Copy the API token from your Sketchfab password settings and paste it here.</p>
+            <button id="sketchfabTokenLinkBtn" class="model-text-button" type="button">Open my Sketchfab API token <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5h5v5M19 5l-8 8M18 13v5a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" /></svg></button>
+            <div class="model-token-row">
+              <input id="sketchfabTokenInput" type="password" placeholder="Paste your API token" autocomplete="off" spellcheck="false" aria-label="Sketchfab API token" />
+              <button id="sketchfabConnectBtn" class="primary" type="submit">Connect</button>
+            </div>
+            <p id="sketchfabConnectError" class="model-error hidden" role="alert"></p>
+            <p class="model-fine-print">Your token is saved only in this panel and is sent only to Sketchfab, never to Effects Academy.</p>
+          </form>
+
+          <div id="modelImportCard" class="caption-card hidden">
+            <div class="model-import-head">
+              <h3>Import</h3>
+              <span class="model-account"><span id="sketchfabAccountName"></span><button id="sketchfabDisconnectBtn" class="model-text-button" type="button">Disconnect</button></span>
+            </div>
+            <div id="modelFormats" class="model-formats" role="radiogroup" aria-label="Format">
+              <button type="button" role="radio" data-format="obj" class="model-format">
+                <strong>OBJ</strong><span>Best for After Effects. Converted on your computer, with textures</span><em data-size="obj"></em>
+              </button>
+              <button type="button" role="radio" data-format="glb" class="model-format">
+                <strong>GLB</strong><span>One file with textures, as Sketchfab provides it</span><em data-size="glb"></em>
+              </button>
+            </div>
+            <div id="modelProgressTrack" class="caption-progress-track hidden" aria-hidden="true"><span id="modelProgressBar"></span></div>
+            <p id="modelStatusText" class="caption-status-text">Find a model to import it.</p>
+            <button id="modelImportBtn" class="primary caption-create-button" type="button" disabled>Import to comp</button>
+            <p class="model-fine-print">3D models need After Effects 2024 or newer. The comp switches to the Advanced 3D renderer if it needs to.</p>
+          </div>
+
+          <div id="modelCredit" class="caption-card model-credit hidden">
+            <div class="model-import-head">
+              <h3 id="modelLicense"></h3>
+              <button id="modelCopyCreditBtn" class="model-text-button" type="button">Copy credit</button>
+            </div>
+            <p id="modelLicenseNote"></p>
+            <p id="modelAttribution" class="model-attribution"></p>
+          </div>
+
+          <p class="model-fine-print model-footnote">Models are provided by Sketchfab and belong to their creators. Only models their creators made downloadable can be imported.</p>
+        </div>
+      </section>
+
       <section id="assetGrid" class="asset-grid" aria-live="polite"></section>
 
       <section id="emptyState" class="empty hidden">
@@ -245,5 +330,6 @@
     </main>
 
     <script src="./js/app.js"></script>
+    <script src="./js/models.js"></script>
   </body>
 </html>

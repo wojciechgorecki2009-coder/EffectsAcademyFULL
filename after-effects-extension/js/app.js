@@ -4,7 +4,7 @@
   var DEFAULT_API_BASE = "https://effects-academy-api.onrender.com";
   var TARGET_SAMPLE_RATE = 16000;
   var MAX_TRANSCRIBE_MB = 80;
-  var CATEGORIES = ["All", "Audios", "Presets", "Project Files", "Premium", "Captions", "Settings"];
+  var CATEGORIES = ["All", "Audios", "Presets", "Project Files", "Premium", "3D Models", "Captions", "Settings"];
   var ASSET_CATEGORIES = ["All", "Audios", "Presets", "Project Files", "Premium"];
   var AUDIO_CATEGORIES = { "Audios": true };
   var STORAGE_KEYS = {
@@ -58,6 +58,7 @@
     categoryTabs: document.getElementById("categoryTabs"),
     settingsPanel: document.getElementById("settingsPanel"),
     captionsPanel: document.getElementById("captionsPanel"),
+    modelsPanel: document.getElementById("modelsPanel"),
     captionPremiumGate: document.getElementById("captionPremiumGate"),
     captionWorkflow: document.getElementById("captionWorkflow"),
     assetGrid: document.getElementById("assetGrid"),
@@ -1018,6 +1019,7 @@
     if (locked && els.captionStatusText) {
       els.captionStatusText.textContent = "Connect an active Premium account to use automatic captions.";
     }
+    if (window.EAModels) window.EAModels.setLocked(locked);
   }
 
   function setPremiumAccess(allowed) {
@@ -1199,35 +1201,30 @@
     });
   }
 
+  // Tabs that show a panel instead of the asset grid: [body class, panel, count pill].
+  var PANEL_VIEWS = {
+    "Captions": ["view-captions", "captionsPanel", "TXT"],
+    "3D Models": ["view-models", "modelsPanel", "3D"],
+    "Settings": ["view-settings", "settingsPanel", "UI"]
+  };
+
   function renderAssets() {
-    if (state.category === "Captions") {
-      document.body.classList.add("view-captions");
-      document.body.classList.remove("view-settings");
-      els.assetCount.textContent = "TXT";
+    var view = PANEL_VIEWS[state.category];
+    Object.keys(PANEL_VIEWS).forEach(function (name) {
+      var entry = PANEL_VIEWS[name];
+      document.body.classList.toggle(entry[0], name === state.category);
+      if (els[entry[1]]) els[entry[1]].classList.toggle("hidden", name !== state.category);
+    });
+    if (view) {
+      els.assetCount.textContent = view[2];
       els.emptyState.classList.add("hidden");
       els.assetGrid.classList.add("hidden");
-      els.settingsPanel.classList.add("hidden");
-      els.captionsPanel.classList.remove("hidden");
-      updatePremiumAccessUI();
+      if (state.category !== "Settings") updatePremiumAccessUI();
+      if (state.category === "3D Models" && window.EAModels) window.EAModels.show();
       return;
     }
 
-    if (state.category === "Settings") {
-      document.body.classList.add("view-settings");
-      document.body.classList.remove("view-captions");
-      els.assetCount.textContent = "UI";
-      els.emptyState.classList.add("hidden");
-      els.assetGrid.classList.add("hidden");
-      els.settingsPanel.classList.remove("hidden");
-      els.captionsPanel.classList.add("hidden");
-      return;
-    }
-
-    document.body.classList.remove("view-settings");
-    document.body.classList.remove("view-captions");
     els.assetGrid.classList.remove("hidden");
-    els.settingsPanel.classList.add("hidden");
-    els.captionsPanel.classList.add("hidden");
     var assets = visibleAssets();
     els.assetCount.textContent = String(assets.length);
     els.emptyState.classList.toggle("hidden", assets.length > 0);
@@ -1507,7 +1504,7 @@
     }
   }
 
-  function downloadBinary(url, targetPath) {
+  function downloadBinary(url, targetPath, onProgress) {
     var fs = window.require && window.require("fs");
     var http = window.require && window.require("http");
     var https = window.require && window.require("https");
@@ -1521,13 +1518,21 @@
       }
       client.get(url, options, function (response) {
         if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
-          downloadBinary(response.headers.location, targetPath).then(resolve).catch(reject);
+          downloadBinary(response.headers.location, targetPath, onProgress).then(resolve).catch(reject);
           return;
         }
         if (response.statusCode !== 200 && response.statusCode !== 206) {
           reject(new Error("Download failed: " + response.statusCode));
           response.resume();
           return;
+        }
+        var total = Number(response.headers["content-length"]) || 0;
+        var received = 0;
+        if (onProgress && total) {
+          response.on("data", function (chunk) {
+            received += chunk.length;
+            onProgress(received / total);
+          });
         }
         var file = fs.createWriteStream(targetPath);
         response.pipe(file);
@@ -1713,6 +1718,22 @@
       });
     });
   }
+
+  // Shared with js/models.js (the 3D Models tab).
+  window.EAPanel = {
+    evalScript: evalScript,
+    downloadBinary: downloadBinary,
+    extensionDownloadDir: extensionDownloadDir,
+    uniqueTargetPath: uniqueTargetPath,
+    setStatus: setStatus,
+    showError: showError,
+    clearErrorState: clearErrorState,
+    hasPremium: function () { return state.premiumAccess; },
+    openUrl: function (url) {
+      if (window.cep && window.cep.util && window.cep.util.openURLInDefaultBrowser) window.cep.util.openURLInDefaultBrowser(url);
+      else window.open(url, "_blank");
+    }
+  };
 
   function importAsset(asset, button, playbackRate) {
     if (!asset.file_url) {
