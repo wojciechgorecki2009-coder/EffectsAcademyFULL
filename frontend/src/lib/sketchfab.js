@@ -5,7 +5,8 @@
  * they connect it by pasting their personal API token (sketchfab.com/settings/password),
  * which stays in this browser and is only ever sent to api.sketchfab.com.
  * Only models whose creators made them downloadable can be fetched, and the API
- * offers them as glTF, GLB and USDZ (never the original FBX/OBJ uploads).
+ * offers them as glTF, GLB and USDZ (never the original FBX/OBJ uploads). OBJ,
+ * which After Effects prefers, is made from the GLB on the user's device.
  */
 
 const API = "https://api.sketchfab.com/v3";
@@ -13,7 +14,9 @@ const TOKEN_KEY = "ea_sketchfab_token";
 
 export const TOKEN_SETTINGS_URL = "https://sketchfab.com/settings/password";
 
+// `from`: made on the device from another format rather than provided by Sketchfab.
 export const FORMATS = [
+  { id: "obj", label: "OBJ", ext: "zip", from: "glb", detail: "Best for After Effects. .obj, .mtl and textures, zipped" },
   { id: "glb", label: "GLB", ext: "glb", detail: "One file with textures. Imports into After Effects, Blender and C4D" },
   { id: "gltf", label: "glTF", ext: "zip", detail: ".gltf, .bin and a textures folder, zipped" },
   { id: "usdz", label: "USDZ", ext: "usdz", detail: "For Apple AR, Reality Composer and iPhone" },
@@ -79,8 +82,11 @@ export async function fetchAccount(token) {
 /** Temporary links (valid for about 5 minutes) to each format Sketchfab offers for the model. */
 export async function requestDownload(uid, token) {
   const links = await get(`/models/${uid}/download`, token);
-  return Object.fromEntries(FORMATS.filter((format) => links[format.id]?.url).map((format) => [format.id, links[format.id]]));
+  return Object.fromEntries(FORMATS.filter((format) => !format.from && links[format.id]?.url).map((format) => [format.id, links[format.id]]));
 }
+
+/** Whether `format` can be downloaded given the links Sketchfab returned. */
+export const isOffered = (links, format) => Boolean(links?.[format.from || format.id]);
 
 /** Picks a thumbnail at least `width` wide (or the largest there is). */
 export function pickThumbnail(model, width = 1024) {
@@ -97,7 +103,39 @@ export function attributionText(model) {
 
 export function fileName(model, format) {
   const base = (model.name || "model").replace(/[<>:"/\\|?*]+/g, "").replace(/\s+/g, " ").trim() || "model";
-  return format.id === "gltf" ? `${base} (glTF).zip` : `${base}.${format.ext}`;
+  if (format.id === "gltf") return `${base} (glTF).zip`;
+  if (format.id === "obj") return `${base} (OBJ).zip`;
+  return `${base}.${format.ext}`;
+}
+
+/** Fetches a download link into memory, reporting progress from 0 to 1. */
+export async function fetchFile(url, onProgress) {
+  const response = await fetch(url);
+  if (!response.ok || !response.body) throw new Error("Sketchfab's file couldn't be downloaded. Try again.");
+  const total = Number(response.headers.get("content-length")) || 0;
+  const reader = response.body.getReader();
+  const chunks = [];
+  let received = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    received += value.byteLength;
+    if (total) onProgress?.(received / total);
+  }
+  return new Blob(chunks);
+}
+
+/** Hands a file (a Blob, or a URL to download directly) to the browser as `name`. */
+export function saveBlob(file, name) {
+  const link = document.createElement("a");
+  link.href = typeof file === "string" ? file : URL.createObjectURL(file);
+  link.download = name;
+  link.rel = "noopener";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  if (typeof file !== "string") setTimeout(() => URL.revokeObjectURL(link.href), 10000);
 }
 
 /**
@@ -105,34 +143,13 @@ export function fileName(model, format) {
  * progress bar; if the storage host refuses that, the browser downloads it directly.
  */
 export async function saveFile(url, name, onProgress) {
-  let blob = null;
   try {
-    const response = await fetch(url);
-    if (!response.ok || !response.body) throw new Error("fetch failed");
-    const total = Number(response.headers.get("content-length")) || 0;
-    const reader = response.body.getReader();
-    const chunks = [];
-    let received = 0;
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      chunks.push(value);
-      received += value.byteLength;
-      if (total) onProgress?.(received / total);
-    }
-    blob = new Blob(chunks);
+    saveBlob(await fetchFile(url, onProgress), name);
+    return true;
   } catch {
-    blob = null;
+    saveBlob(url, name);
+    return false;
   }
-  const link = document.createElement("a");
-  link.href = blob ? URL.createObjectURL(blob) : url;
-  link.download = name;
-  link.rel = "noopener";
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  if (blob) setTimeout(() => URL.revokeObjectURL(link.href), 10000);
-  return Boolean(blob);
 }
 
 export function formatBytes(bytes = 0) {

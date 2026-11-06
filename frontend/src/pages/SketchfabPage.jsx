@@ -37,6 +37,9 @@ import {
   pickThumbnail,
   readToken,
   requestDownload,
+  fetchFile,
+  isOffered,
+  saveBlob,
   saveFile,
   saveToken,
 } from "@/lib/sketchfab";
@@ -62,7 +65,7 @@ function Stat({ label, value }) {
   );
 }
 
-function ModelCard({ model, size }) {
+function ModelCard({ model, size, converted }) {
   const reduce = useReducedMotion();
   const thumbnail = pickThumbnail(model);
   const author = model.user?.displayName || model.user?.username;
@@ -123,7 +126,7 @@ function ModelCard({ model, size }) {
       </div>
       <div className="mt-4 grid grid-cols-2 gap-4 border-t border-[var(--line)] px-1 pt-4">
         <Stat label="License" value={model.license?.label || "—"} />
-        <Stat label="Download size" value={size ? formatBytes(size) : model.isDownloadable ? "Connect to see" : "—"} />
+        <Stat label="Download size" value={size ? formatBytes(size) : converted ? "Made on download" : model.isDownloadable ? "Connect to see" : "—"} />
       </div>
     </motion.div>
   );
@@ -244,7 +247,8 @@ export default function SketchfabPage() {
   const [account, setAccount] = useState(null);
   const [links, setLinks] = useState(null); // { glb: { url, size }, ... } and fetchedAt
   const [linksError, setLinksError] = useState("");
-  const [format, setFormat] = useState("glb");
+  // OBJ first: it's what After Effects imports most reliably.
+  const [format, setFormat] = useState("obj");
   const [saving, setSaving] = useState(null); // null | { progress }
   const [copied, setCopied] = useState(false);
 
@@ -265,7 +269,7 @@ export default function SketchfabPage() {
     try {
       const next = await requestDownload(uid, activeToken);
       setLinks({ ...next, fetchedAt: Date.now() });
-      if (!next[format]) setFormat(FORMATS.find((f) => next[f.id])?.id || "glb");
+      if (!isOffered(next, FORMATS.find((f) => f.id === format))) setFormat(FORMATS.find((f) => isOffered(next, f))?.id || "obj");
       return next;
     } catch (err) {
       if (err.code === "auth") disconnect(false);
@@ -314,13 +318,24 @@ export default function SketchfabPage() {
   const download = async () => {
     const chosen = FORMATS.find((f) => f.id === format);
     if (!model || !chosen || saving) return;
-    setSaving({ progress: 0 });
+    const source = chosen.from || chosen.id;
+    setSaving({ progress: 0, step: "download" });
     try {
       let current = links;
-      if (!current?.[format] || Date.now() - current.fetchedAt > LINK_LIFETIME_MS) current = await loadLinks(model.uid);
-      if (!current?.[format]) throw new Error(linksError || `${chosen.label} isn't available for this model.`);
-      const fetched = await saveFile(current[format].url, fileName(model, chosen), (progress) => setSaving({ progress }));
-      toast.success(fetched ? `${chosen.label} downloaded.` : `${chosen.label} download started.`);
+      if (!current?.[source] || Date.now() - current.fetchedAt > LINK_LIFETIME_MS) current = await loadLinks(model.uid);
+      if (!current?.[source]) throw new Error(linksError || `${chosen.label} isn't available for this model.`);
+      if (chosen.id === "obj") {
+        // Download the GLB (first 60%), then convert it here (the rest).
+        const glb = await fetchFile(current.glb.url, (progress) => setSaving({ progress: progress * 0.6, step: "download" }));
+        setSaving({ progress: 0.6, step: "convert" });
+        const { glbToObjZip } = await import("@/lib/objExport");
+        const result = await glbToObjZip(await glb.arrayBuffer(), model.name, (progress) => setSaving({ progress: 0.6 + progress * 0.4, step: "convert" }));
+        saveBlob(result.blob, fileName(model, chosen));
+        toast.success(result.hadAnimation ? "OBJ downloaded. OBJ files can't hold animation, so the model is in its resting pose." : "OBJ downloaded.");
+      } else {
+        const fetched = await saveFile(current[source].url, fileName(model, chosen), (progress) => setSaving({ progress, step: "download" }));
+        toast.success(fetched ? `${chosen.label} downloaded.` : `${chosen.label} download started.`);
+      }
     } catch (err) {
       toast.error(err.message || "The download failed. Try again.");
     } finally {
@@ -338,8 +353,9 @@ export default function SketchfabPage() {
     }
   };
 
-  const size = links?.[format]?.size;
-  const available = FORMATS.filter((f) => links?.[f.id]);
+  const selected = FORMATS.find((f) => f.id === format);
+  const size = selected?.from ? 0 : links?.[format]?.size;
+  const available = FORMATS.filter((f) => isOffered(links, f));
 
   return (
     <section className="mx-auto max-w-[1200px] px-5 pb-28 pt-32 md:px-8 md:pt-36" data-testid="sketchfab-page">
@@ -418,7 +434,7 @@ export default function SketchfabPage() {
         <Reveal className="surface min-h-[320px] overflow-hidden rounded-[28px]">
           <AnimatePresence mode="wait" initial={false}>
             {model ? (
-              <ModelCard key={model.uid} model={model} size={size} />
+              <ModelCard key={model.uid} model={model} size={size} converted={Boolean(selected?.from && isOffered(links, selected))} />
             ) : (
               <motion.div
                 key="empty"
@@ -480,7 +496,7 @@ export default function SketchfabPage() {
               </p>
               <div className="mt-4 space-y-2" role="radiogroup" aria-label="Format">
                 {FORMATS.map((f) => {
-                  const offered = Boolean(links?.[f.id]);
+                  const offered = isOffered(links, f);
                   const active = format === f.id && offered;
                   return (
                     <button
@@ -505,7 +521,7 @@ export default function SketchfabPage() {
                       <span className="relative w-12 font-mono text-[13px] font-bold">{f.label}</span>
                       <span className="relative min-w-0 flex-1 text-[12.5px] leading-snug">{f.detail}</span>
                       <span className="relative shrink-0 text-[12px] tabular-nums text-ink-3">
-                        {offered ? formatBytes(links[f.id].size) : model && links ? "Not offered" : ""}
+                        {offered ? (f.from ? "Converted" : formatBytes(links[f.id].size)) : model && links ? "Not offered" : ""}
                       </span>
                     </button>
                   );
@@ -529,7 +545,9 @@ export default function SketchfabPage() {
                 <span className="relative inline-flex items-center gap-2">
                   {saving ? <Loader2 className="animate-spin" /> : <Download />}
                   {saving
-                    ? saving.progress > 0
+                    ? saving.step === "convert"
+                      ? `Converting to OBJ ${Math.round(saving.progress * 100)}%`
+                      : saving.progress > 0
                       ? `Downloading ${Math.round(saving.progress * 100)}%`
                       : "Preparing download"
                     : `Download ${FORMATS.find((f) => f.id === format)?.label || ""}`}
@@ -562,7 +580,7 @@ export default function SketchfabPage() {
             <a href="https://sketchfab.com" target="_blank" rel="noreferrer" className="hover:text-ink hover:underline">
               Sketchfab
             </a>{" "}
-            and belong to their creators. Sketchfab offers GLB, glTF and USDZ; FBX and OBJ aren&apos;t available through it.
+            and belong to their creators. OBJ files are converted from the GLB on your device; FBX isn&apos;t available.
           </p>
         </Reveal>
       </div>
