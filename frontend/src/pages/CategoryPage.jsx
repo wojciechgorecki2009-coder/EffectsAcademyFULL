@@ -56,6 +56,7 @@ const DESCRIPTIONS = {
 const SORT_OPTIONS = [
   { value: "newest", label: "Newest" },
   { value: "downloads", label: "Most downloaded" },
+  { value: "downloads-asc", label: "Least downloaded" },
   { value: "az", label: "A-Z" },
 ];
 
@@ -67,7 +68,9 @@ const getStamp = (asset) => {
   return new Date(displayStamp || 0).getTime() || 0;
 };
 const sortAssets = (list, sortBy) => [...list].sort((a, b) => {
-  if (sortBy === "downloads") return (b.download_count || 0) - (a.download_count || 0);
+  // Same download count: newest first.
+  if (sortBy === "downloads") return (b.download_count || 0) - (a.download_count || 0) || getStamp(b) - getStamp(a);
+  if (sortBy === "downloads-asc") return (a.download_count || 0) - (b.download_count || 0) || getStamp(b) - getStamp(a);
   if (sortBy === "az") return (a.title || "").localeCompare(b.title || "");
   return getStamp(b) - getStamp(a);
 });
@@ -280,7 +283,7 @@ export default function CategoryPage() {
                 )}
               </>
             ) : (
-              <SubList sub={sub} onBack={() => setSub(null)} backLabel="creators" filtered={filteredAudios} loading={loading} reload={load} allAssets={allAssets} category={category} />
+              <SubList sub={sub} onBack={() => setSub(null)} backLabel="creators" filtered={filteredAudios} loading={loading} reload={load} allAssets={allAssets} category={category} sortBy={sortBy} setSortBy={setSortBy} />
             )}
           </>
         ) : category === "Torrents" ? (
@@ -352,6 +355,8 @@ export default function CategoryPage() {
                 reload={load}
                 allAssets={allAssets}
                 category={category}
+                sortBy={sortBy}
+                setSortBy={setSortBy}
               />
             )}
 
@@ -378,7 +383,7 @@ function SortControl({ sortBy, setSortBy }) {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="lg lg-hover inline-flex h-10 items-center gap-2 rounded-full pl-3.5 pr-3 text-[13.5px]"
+          className="lg lg-hover inline-flex h-10 shrink-0 items-center gap-2 rounded-full pl-3.5 pr-3 text-[13.5px]"
           data-testid="category-sort"
         >
           <ArrowUpDown className="h-3.5 w-3.5 text-ink-3" />
@@ -468,11 +473,16 @@ function AssetSearch({ value, onChange, genres, category }) {
   );
 }
 
-function SubList({ sub, onBack, backLabel, filtered, loading, reload, allAssets, category }) {
+function SubList({ sub, onBack, backLabel, filtered, loading, reload, allAssets, category, sortBy, setSortBy }) {
   return (
     <>
       <BackButton onClick={onBack} testId="back-to-picker">All {backLabel}</BackButton>
-      <SectionHeader eyebrow={category} eyebrowColor={CATEGORY_COLORS[category]?.text} title={sub} />
+      <SectionHeader
+        eyebrow={category}
+        eyebrowColor={CATEGORY_COLORS[category]?.text}
+        title={sub}
+        action={setSortBy ? <SortControl sortBy={sortBy} setSortBy={setSortBy} /> : null}
+      />
       <CategoryGrid assets={filtered} loading={loading} reload={reload} allAssets={allAssets} category={category} />
     </>
   );
