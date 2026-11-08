@@ -19,7 +19,10 @@
             <p>Your Premium vault, inside After Effects</p>
           </div>
         </div>
-        <button id="refreshBtn" class="icon-button" type="button" title="Refresh assets" aria-label="Refresh assets"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.34 5.66M20 4v7h-7" /></svg></button>
+        <div class="topbar-actions">
+          <button id="pasteImageBtn" class="icon-button paste-button" type="button" title="Import image from clipboard (Ctrl+V)" aria-label="Import image from clipboard"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6v3H9zM9 5.5H6.5A1.5 1.5 0 0 0 5 7v12.5A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5V7a1.5 1.5 0 0 0-1.5-1.5H15M8 17l2.5-3 2 2.2 1.5-1.7 2 2.5M14.5 11.5h.01" /></svg></button>
+          <button id="refreshBtn" class="icon-button" type="button" title="Refresh assets" aria-label="Refresh assets"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.34 5.66M20 4v7h-7" /></svg></button>
+        </div>
       </header>
 
       <section class="status-card" role="status">
@@ -49,6 +52,13 @@
         </div>
 
         <div class="settings-grid">
+          <label class="settings-wide">
+            Style
+            <select id="uiStyleInput">
+              <option value="apple">Liquid Glass</option>
+              <option value="minimal">Black &amp; white minimal</option>
+            </select>
+          </label>
           <label>
             Layout
             <select id="layoutModeInput">
@@ -64,7 +74,7 @@
               <option value="compact">Compact</option>
             </select>
           </label>
-          <label>
+          <label class="setting-accent">
             Accent
             <select id="accentInput">
               <option value="mono">Black &amp; white</option>
@@ -97,6 +107,13 @@
               <option value="default">Default</option>
               <option value="large">Large</option>
               <option value="xlarge">Extra large</option>
+            </select>
+          </label>
+          <label class="settings-wide">
+            Pasted images
+            <select id="clipboardFitInput">
+              <option value="fit">Shrink to fit the comp</option>
+              <option value="original">Keep original size</option>
             </select>
           </label>
           <label class="settings-wide">
@@ -168,6 +185,26 @@
             <p class="caption-note">Fade Out Slow is always applied automatically.</p>
           </div>
         </div>
+      </section>
+
+      <section id="expressionsPanel" class="expressions-panel panel-view hidden" aria-label="Text animations">
+        <div class="settings-panel-header">
+          <span class="eyebrow">Expressions</span>
+          <h2>One-click text animations.</h2>
+          <p>Select a text layer, then apply an animation. The keyframes start at the playhead and stay fully editable, so you can move and re-ease them to your liking.</p>
+        </div>
+
+        <div id="expressionsPremiumGate" class="caption-premium-gate hidden" role="status">
+          <div class="caption-premium-lock" aria-hidden="true">
+            <svg class="ui-icon" viewBox="0 0 24 24"><path d="M7 10V8a5 5 0 0 1 10 0v2M6 10h12v10H6zM12 14v2" /></svg>
+          </div>
+          <div>
+            <strong>Premium authentication required</strong>
+            <p>Connect an active Premium account in Connection settings to use text animations.</p>
+          </div>
+        </div>
+
+        <div id="expressionsGrid" class="asset-grid fx-grid"></div>
       </section>
 
       <section id="modelsPanel" class="models-panel panel-view hidden" aria-label="3D models">
@@ -330,6 +367,8 @@
     </main>
 
     <script src="./js/app.js"></script>
+    <script src="./js/expressions.js"></script>
     <script src="./js/models.js"></script>
+    <script src="./js/clipboard.js"></script>
   </body>
 </html>

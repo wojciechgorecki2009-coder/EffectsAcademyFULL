@@ -68,7 +68,7 @@ export default function CategoryPicker({
             >
               <button
                 onClick={() => onPick(label)}
-                className="relative block h-52 w-full overflow-hidden rounded-[24px] text-left shadow-[var(--shadow-card)] transition-[transform,box-shadow] duration-700 ease-spring hover:-translate-y-1 hover:shadow-[var(--shadow-card-hover)] active:scale-[0.98]"
+                className="ui-surface relative block h-52 w-full overflow-hidden rounded-[24px] text-left shadow-[var(--shadow-card)] transition-[transform,box-shadow] duration-700 ease-spring hover:-translate-y-1 hover:shadow-[var(--shadow-card-hover)] active:scale-[0.98]"
                 style={{
                   background: `linear-gradient(140deg, ${theme.from} 0%, ${theme.to} 100%)`,
                   color: "#fff",
@@ -90,13 +90,13 @@ export default function CategoryPicker({
                   />
                 )}
                 <span
-                  className="pointer-events-none absolute inset-0"
+                  className="ui-tint pointer-events-none absolute inset-0"
                   style={{
                     background: `linear-gradient(180deg, ${theme.from}33 0%, ${theme.to}cc 62%, ${theme.to} 100%)`,
                   }}
                 />
                 <span
-                  className="pointer-events-none absolute -right-12 -top-12 h-44 w-44 rounded-full opacity-40 blur-3xl transition-transform duration-[1400ms] ease-out-expo group-hover:scale-125"
+                  className="ui-tint pointer-events-none absolute -right-12 -top-12 h-44 w-44 rounded-full opacity-40 blur-3xl transition-transform duration-[1400ms] ease-out-expo group-hover:scale-125"
                   style={{ background: theme.accent }}
                 />
                 <span className="pointer-events-none absolute inset-0 rounded-[24px] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.08),inset_0_1px_0_rgb(255_255_255/0.14)]" />
@@ -107,7 +107,7 @@ export default function CategoryPicker({
 
                 <span className="absolute inset-x-5 bottom-5 flex items-end justify-between gap-3">
                   <span
-                    className="font-display text-[1.375rem] font-semibold leading-[1.1] tracking-[-0.025em]"
+                    className="ui-tint font-display text-[1.375rem] font-semibold leading-[1.1] tracking-[-0.025em]"
                     style={{ color: theme.text, textShadow: "0 2px 18px rgba(0,0,0,0.45)" }}
                   >
                     {label}

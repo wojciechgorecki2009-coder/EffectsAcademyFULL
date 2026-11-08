@@ -4,7 +4,7 @@
   var DEFAULT_API_BASE = "https://effects-academy-api.onrender.com";
   var TARGET_SAMPLE_RATE = 16000;
   var MAX_TRANSCRIBE_MB = 80;
-  var CATEGORIES = ["All", "Audios", "Presets", "Project Files", "Premium", "3D Models", "Captions", "Settings"];
+  var CATEGORIES = ["All", "Audios", "Presets", "Project Files", "Premium", "Expressions", "3D Models", "Captions", "Settings"];
   var ASSET_CATEGORIES = ["All", "Audios", "Presets", "Project Files", "Premium"];
   var AUDIO_CATEGORIES = { "Audios": true };
   var STORAGE_KEYS = {
@@ -21,14 +21,16 @@
     uiScale: "ea_extension_ui_scale",
     captionFont: "ea_caption_font",
     captionFadeIn: "ea_caption_fade_in",
-    captionIncreaseTracking: "ea_caption_increase_tracking"
+    captionIncreaseTracking: "ea_caption_increase_tracking",
+    clipboardFit: "ea_extension_clipboard_fit"
   };
 
   var state = {
     apiBase: localStorage.getItem(STORAGE_KEYS.apiBase) || DEFAULT_API_BASE,
     authToken: localStorage.getItem(STORAGE_KEYS.authToken) || "",
     deviceId: localStorage.getItem(STORAGE_KEYS.deviceId) || "",
-    uiStyle: "apple", // single visual style, matching the website
+    // "apple": Liquid Glass, matching the website. "minimal": flat black and white, no colour.
+    uiStyle: localStorage.getItem(STORAGE_KEYS.uiStyle) === "minimal" ? "minimal" : "apple",
     layoutMode: localStorage.getItem(STORAGE_KEYS.layoutMode) || "auto",
     density: localStorage.getItem(STORAGE_KEYS.density) || "comfortable",
     accent: localStorage.getItem(STORAGE_KEYS.accent) || "mono",
@@ -36,6 +38,7 @@
     font: localStorage.getItem(STORAGE_KEYS.font) || "modern",
     cardSize: localStorage.getItem(STORAGE_KEYS.cardSize) || "medium",
     uiScale: localStorage.getItem(STORAGE_KEYS.uiScale) || "default",
+    clipboardFit: localStorage.getItem(STORAGE_KEYS.clipboardFit) === "original" ? "original" : "fit",
     premiumAccess: false,
     assets: [],
     category: "All",
@@ -59,6 +62,7 @@
     settingsPanel: document.getElementById("settingsPanel"),
     captionsPanel: document.getElementById("captionsPanel"),
     modelsPanel: document.getElementById("modelsPanel"),
+    expressionsPanel: document.getElementById("expressionsPanel"),
     captionPremiumGate: document.getElementById("captionPremiumGate"),
     captionWorkflow: document.getElementById("captionWorkflow"),
     assetGrid: document.getElementById("assetGrid"),
@@ -1020,6 +1024,7 @@
       els.captionStatusText.textContent = "Connect an active Premium account to use automatic captions.";
     }
     if (window.EAModels) window.EAModels.setLocked(locked);
+    if (window.EAExpressions) window.EAExpressions.setLocked(locked);
   }
 
   function setPremiumAccess(allowed) {
@@ -1204,12 +1209,18 @@
   // Tabs that show a panel instead of the asset grid: [body class, panel, count pill].
   var PANEL_VIEWS = {
     "Captions": ["view-captions", "captionsPanel", "TXT"],
+    "Expressions": ["view-expressions", "expressionsPanel", "FX"],
     "3D Models": ["view-models", "modelsPanel", "3D"],
     "Settings": ["view-settings", "settingsPanel", "UI"]
   };
 
   function renderAssets() {
     var view = PANEL_VIEWS[state.category];
+    // Preview videos only play while their tab is open.
+    if (window.EAExpressions) {
+      if (state.category === "Expressions") window.EAExpressions.show();
+      else window.EAExpressions.hide();
+    }
     Object.keys(PANEL_VIEWS).forEach(function (name) {
       var entry = PANEL_VIEWS[name];
       document.body.classList.toggle(entry[0], name === state.category);
@@ -1645,6 +1656,12 @@
     });
   }
 
+  // A PowerShell single-quoted string literal. Paths go inside the -Command
+  // text this way: PowerShell doesn't pass extra arguments through as $args.
+  function psLiteral(value) {
+    return "'" + String(value).replace(/'/g, "''") + "'";
+  }
+
   function extractArchiveTo(archivePath, extractDir) {
     var path = window.require("path");
     var ext = extensionFromPath(archivePath);
@@ -1654,9 +1671,7 @@
         "-ExecutionPolicy",
         "Bypass",
         "-Command",
-        "Expand-Archive -LiteralPath $args[0] -DestinationPath $args[1] -Force",
-        archivePath,
-        extractDir
+        "Expand-Archive -LiteralPath " + psLiteral(archivePath) + " -DestinationPath " + psLiteral(extractDir) + " -Force"
       ]).then(function () { return extractDir; });
     }
 
@@ -1728,7 +1743,10 @@
     setStatus: setStatus,
     showError: showError,
     clearErrorState: clearErrorState,
+    runProcess: runProcess,
+    psLiteral: psLiteral,
     hasPremium: function () { return state.premiumAccess; },
+    clipboardFit: function () { return state.clipboardFit; },
     openUrl: function (url) {
       if (window.cep && window.cep.util && window.cep.util.openURLInDefaultBrowser) window.cep.util.openURLInDefaultBrowser(url);
       else window.open(url, "_blank");
@@ -1895,6 +1913,7 @@
     bindPreference(els.fontInput, "font", STORAGE_KEYS.font);
     bindPreference(els.cardSizeInput, "cardSize", STORAGE_KEYS.cardSize);
     bindPreference(els.uiScaleInput, "uiScale", STORAGE_KEYS.uiScale);
+    bindPreference(document.getElementById("clipboardFitInput"), "clipboardFit", STORAGE_KEYS.clipboardFit);
     if (els.captionFontInput) {
       els.captionFontInput.value = state.captionSettings.font;
       els.captionFontInput.addEventListener("focus", openCaptionFontMenu);
@@ -1969,6 +1988,7 @@
       els.fontInput,
       els.cardSizeInput,
       els.uiScaleInput,
+      document.getElementById("clipboardFitInput"),
       els.captionFadeInInput
     ].forEach(enhanceSelect);
   }

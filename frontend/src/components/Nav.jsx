@@ -27,6 +27,7 @@ const THEME_OPTIONS = [
   { value: "dark", label: "Dark", note: "Default" },
   { value: "blue", label: "Light" },
   { value: "gray", label: "Gray" },
+  { value: "mono", label: "Black & White", short: "B&W" },
 ];
 
 const FONT_OPTIONS = [
@@ -504,7 +505,7 @@ export default function Nav() {
                     <p className="flex items-center gap-1.5 text-xs font-medium text-ink-3">
                       <Settings2 className="h-3.5 w-3.5" /> Appearance
                     </p>
-                    <Segmented options={THEME_OPTIONS} value={theme} onSelect={setTheme} layoutId="m-theme" />
+                    <Segmented options={THEME_OPTIONS.map((o) => ({ ...o, label: o.short || o.label }))} value={theme} onSelect={setTheme} layoutId="m-theme" />
                     <Segmented options={FONT_OPTIONS.map((o) => ({ ...o, label: o.value === "system" ? "SF" : o.label.split(" ")[0] }))} value={font} onSelect={setFont} layoutId="m-font" />
                   </div>
                 </div>

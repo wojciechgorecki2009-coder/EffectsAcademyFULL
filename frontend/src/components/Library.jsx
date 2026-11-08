@@ -152,7 +152,7 @@ export function BranchCard({ label, count, icon, from, to, accent, onClick, test
     <motion.button
       type="button"
       onClick={onClick}
-      className="group relative flex h-52 w-full flex-col justify-between overflow-hidden rounded-[28px] p-7 text-left shadow-[var(--shadow-card)] transition-shadow duration-500 hover:shadow-[var(--shadow-card-hover)]"
+      className="ui-surface group relative flex h-52 w-full flex-col justify-between overflow-hidden rounded-[28px] p-7 text-left shadow-[var(--shadow-card)] transition-shadow duration-500 hover:shadow-[var(--shadow-card-hover)]"
       style={{ background: `linear-gradient(140deg, ${from} 0%, ${to} 100%)`, color: "#fff" }}
       initial={reduce ? false : { opacity: 0, y: 24, filter: "blur(8px)" }}
       whileInView={{ opacity: 1, y: 0, filter: "blur(0px)", transitionEnd: { filter: "none" } }}
@@ -163,7 +163,7 @@ export function BranchCard({ label, count, icon, from, to, accent, onClick, test
       data-testid={testId}
     >
       <span
-        className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full opacity-40 blur-3xl transition-transform duration-[1200ms] ease-out-expo group-hover:scale-125"
+        className="ui-tint pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full opacity-40 blur-3xl transition-transform duration-[1200ms] ease-out-expo group-hover:scale-125"
         style={{ background: accent }}
       />
       <span className="pointer-events-none absolute inset-0 rounded-[28px] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.08),inset_0_1px_0_rgb(255_255_255/0.12)]" />
@@ -203,12 +203,12 @@ export function ConverterPromoCard({ testId = "torrent-converter-card", index = 
     >
       <Link
         to="/convert"
-        className="group relative flex w-full flex-col gap-5 overflow-hidden rounded-[28px] p-7 text-left shadow-[var(--shadow-card)] transition-shadow duration-500 hover:shadow-[var(--shadow-card-hover)] md:flex-row md:items-center md:gap-6"
+        className="ui-surface group relative flex w-full flex-col gap-5 overflow-hidden rounded-[28px] p-7 text-left shadow-[var(--shadow-card)] transition-shadow duration-500 hover:shadow-[var(--shadow-card-hover)] md:flex-row md:items-center md:gap-6"
         style={{ background: "linear-gradient(140deg, #07322F 0%, #020B0A 100%)", color: "#fff" }}
         data-testid={testId}
       >
         <span
-          className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full opacity-35 blur-3xl transition-transform duration-[1200ms] ease-out-expo group-hover:scale-125"
+          className="ui-tint pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full opacity-35 blur-3xl transition-transform duration-[1200ms] ease-out-expo group-hover:scale-125"
           style={{ background: "#2DD4BF" }}
         />
         <span className="pointer-events-none absolute inset-0 rounded-[28px] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.08),inset_0_1px_0_rgb(255_255_255/0.12)]" />

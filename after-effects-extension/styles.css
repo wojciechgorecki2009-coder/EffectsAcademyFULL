@@ -240,6 +240,14 @@ button::-moz-focus-inner { border: 0; }
 .icon-button:hover .ui-icon { transform: rotate(-90deg); }
 .icon-button .ui-icon { transition: transform 700ms var(--ease-spring); }
 .icon-button:active { transform: scale(0.88); }
+.topbar-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+/* Paste image: lifts instead of spinning like refresh, and pulses while it works */
+.paste-button:hover .ui-icon { transform: translateY(-1.5px) scale(1.06); }
+.paste-button.busy { pointer-events: none; animation: paste-pulse 1s var(--ease-in-out) infinite; }
+@keyframes paste-pulse {
+  0%, 100% { background: var(--fill); }
+  50% { background: var(--fill-2); color: rgb(var(--ink)); }
+}
 
 /* Status strip */
 .status-card {
@@ -898,6 +906,23 @@ body.density-compact .tab { padding: 6px 10px; }
 .caption-status-text { margin: 8px 0 0 !important; color: rgb(var(--ink-3)) !important; font-size: 11px !important; }
 .caption-create-button { width: 100%; height: 38px; margin-top: 12px; font-size: 13px; }
 
+/* Expressions (text animation presets) */
+body.view-expressions .search-field { display: none; }
+.fx-grid { flex: none; overflow: visible; margin: 0; padding: 0 0 4px; transition: opacity 300ms; }
+.fx-grid.premium-locked { opacity: 0.45; }
+.fx-thumb { background: #000; }
+.fx-thumb video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.fx-description {
+  margin: 3px 0 0;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  color: rgb(var(--ink-3));
+  font-size: 11px;
+  line-height: 1.4;
+}
+
 /* 3D models */
 body.view-models .search-field { display: none; }
 .beta-pill {
@@ -1361,3 +1386,110 @@ body.motion-calm .card:hover .thumb img { transform: none; }
 
 /* Note: the panel deliberately ignores the OS "reduce motion" switch, which
    Windows often enables globally; use Settings → Motion → Calm instead. */
+
+/* ==========================================================================
+   Style: Black & white minimal
+   No colour anywhere in the interface: flat black surfaces with hairline
+   borders, white for anything active. Content keeps its colour: asset
+   artwork, model previews and the logo are left as they are.
+   ========================================================================== */
+
+body.style-minimal {
+  --panel: 9 9 9;
+  --panel-2: 24 24 24;
+  --ink: 255 255 255;
+  --ink-2: 168 168 168;
+  --ink-3: 112 112 112;
+  --tint: 255 255 255;
+  --tint-ink: 0 0 0;
+  --line: rgba(255, 255, 255, 0.11);
+  --line-strong: rgba(255, 255, 255, 0.22);
+  --fill: rgba(255, 255, 255, 0.05);
+  --fill-2: rgba(255, 255, 255, 0.09);
+  --glass-tint-strong: #000;
+  --glass-shadow: none;
+  --shadow-card: none;
+  --shadow-card-hover: none;
+  --radius-card: 14px;
+  background: #000;
+}
+body.style-minimal .setting-accent,
+body.style-minimal .ambient { display: none; }
+
+/* Flat surfaces */
+body.style-minimal .glass,
+body.style-minimal .player {
+  background: #000;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+body.style-minimal .status-card,
+body.style-minimal .settings > details { background: #000; }
+body.style-minimal .logo,
+body.style-minimal .player-thumb { box-shadow: none; }
+body.style-minimal .search-field:focus-within { color: rgb(var(--ink)); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5); }
+
+/* Status light: white when live, hollow when something needs attention */
+body.style-minimal .status-dot { background: #fff; box-shadow: none; }
+body.style-minimal .status-dot::after { border-color: rgba(255, 255, 255, 0.5); }
+body.style-minimal .status-card.error { background: #000; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5); }
+body.style-minimal .status-card.error .status-dot { background: transparent; box-shadow: inset 0 0 0 1.5px #fff; }
+body.style-minimal .status-card.error .status-dot::after { border-color: rgba(255, 255, 255, 0.6); }
+
+/* Tabs: the active one is a solid white pill */
+body.style-minimal .tab-lens { background: #fff; box-shadow: none; }
+body.style-minimal .tab.active { color: #000; }
+
+/* Cards: hairline instead of shadow, a brighter hairline instead of a lift */
+body.style-minimal .card { background: #000; box-shadow: inset 0 0 0 1px var(--line); }
+body.style-minimal .card::after { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4); }
+body.style-minimal .card:hover { transform: none; }
+body.style-minimal .card.is-playing { box-shadow: inset 0 0 0 1.5px #fff; }
+body.style-minimal .thumb-empty { background: var(--fill); }
+body.style-minimal .thumb::after { display: none; }
+body.style-minimal .badge::before { background: rgb(var(--ink-3)); }
+body.style-minimal .media-chip,
+body.style-minimal .media-chip.premium { color: #fff; background: #000; box-shadow: inset 0 0 0 1px var(--line-strong); }
+body.style-minimal .thumb-play { background: #000; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5); }
+
+/* Buttons: outlined at rest, filled white when it matters */
+body.style-minimal .card .primary,
+body.style-minimal.accent-mono .card .primary { background: transparent; color: #fff; box-shadow: inset 0 0 0 1px var(--line-strong); }
+body.style-minimal .card .primary:hover:not(:disabled),
+body.style-minimal.accent-mono .card .primary:hover:not(:disabled) { background: #fff; color: #000; box-shadow: none; }
+body.style-minimal .secondary,
+body.style-minimal .player-action { background: transparent; box-shadow: inset 0 0 0 1px var(--line-strong); }
+body.style-minimal .secondary:hover:not(:disabled),
+body.style-minimal .player-action:hover:not(:disabled) { background: var(--fill-2); }
+/* The player's main action (Add to comp) stays solid white, not outlined */
+body.style-minimal .player-action.primary-action,
+body.style-minimal .player-action.primary-action:hover:not(:disabled) { background: #fff; color: #000; box-shadow: none; }
+body.style-minimal .primary:hover:not(:disabled),
+body.style-minimal .settings-button:hover:not(:disabled),
+body.style-minimal .player-action.primary-action:hover:not(:disabled) { box-shadow: none; opacity: 0.88; }
+body.style-minimal .round-button { box-shadow: none; }
+body.style-minimal .range::-webkit-slider-thumb { box-shadow: none; }
+
+/* Player */
+body.style-minimal .eq i { background: #fff; }
+body.style-minimal .player-seed-art { background: rgba(255, 255, 255, 0.3); }
+
+/* Notices, toggles and the 3D Models tab */
+body.style-minimal .caption-premium-gate { background: #000; box-shadow: inset 0 0 0 1px var(--line-strong); }
+body.style-minimal .caption-premium-lock { background: var(--fill-2); color: #fff; }
+body.style-minimal .caption-card,
+body.style-minimal .settings-grid,
+body.style-minimal .model-card { background: #000; box-shadow: inset 0 0 0 1px var(--line); }
+body.style-minimal .caption-tracking-toggle input:checked + .caption-switch { background: #fff; }
+body.style-minimal .caption-tracking-toggle input:checked + .caption-switch::after { background: #000; }
+body.style-minimal .caption-switch::after { box-shadow: none; }
+body.style-minimal .beta-pill { background: transparent; color: #fff; box-shadow: inset 0 0 0 1px var(--line-strong); }
+body.style-minimal .model-error,
+body.style-minimal .sketchfab-connect .model-error { color: #fff; }
+body.style-minimal .model-lock-chip { background: #000; box-shadow: inset 0 0 0 1px var(--line-strong); }
+body.style-minimal .model-format.active { background: transparent; box-shadow: inset 0 0 0 1.5px #fff; }
+body.style-minimal .apple-select-trigger,
+body.style-minimal .model-token-row input,
+body.style-minimal .caption-font-control input,
+body.style-minimal .connection-settings-content input { background: #000; }
+body.style-minimal .apple-select-menu,
+body.style-minimal .caption-font-menu { background: #000; box-shadow: inset 0 0 0 1px var(--line-strong); }

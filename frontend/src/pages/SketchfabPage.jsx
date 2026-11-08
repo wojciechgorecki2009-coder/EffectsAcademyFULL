@@ -196,10 +196,10 @@ function PremiumGate({ signedIn }) {
   const reduce = useReducedMotion();
   return (
     <Reveal className="surface relative mt-10 overflow-hidden rounded-[28px] px-6 py-16 text-center md:py-20" data-testid="sketchfab-premium-gate">
-      <span className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-[#ff9f0a] opacity-[0.16] blur-3xl" />
-      <span className="pointer-events-none absolute -bottom-28 -right-20 h-80 w-80 rounded-full bg-[#ffd60a] opacity-[0.1] blur-3xl" />
+      <span className="ui-tint pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-[#ff9f0a] opacity-[0.16] blur-3xl" />
+      <span className="ui-tint pointer-events-none absolute -bottom-28 -right-20 h-80 w-80 rounded-full bg-[#ffd60a] opacity-[0.1] blur-3xl" />
       <motion.span
-        className="relative mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-[26px] text-black shadow-[0_18px_40px_-14px_rgb(255_159_10/0.8)]"
+        className="ui-tint relative mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-[26px] text-black shadow-[0_18px_40px_-14px_rgb(255_159_10/0.8)]"
         style={{ background: "linear-gradient(140deg, #ffd60a 0%, #ff9f0a 100%)" }}
         animate={reduce ? undefined : { y: [0, -6, 0], rotateY: [0, 180, 360] }}
         transition={{ duration: 5, ease: "easeInOut", repeat: Infinity }}

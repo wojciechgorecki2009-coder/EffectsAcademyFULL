@@ -1,4 +1,4 @@
-/* global app, File, Folder, ImportOptions */
+/* global app, File, Folder, FolderItem, ImportOptions, TextLayer, KeyframeEase, KeyframeInterpolationType, PropertyValueType */
 
 function EA_json(ok, message) {
   return '{"ok":' + (ok ? 'true' : 'false') + ',"message":"' + String(message || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"}';
@@ -166,6 +166,160 @@ function EA_importModel(filePath) {
     var layer = comp.layers.add(footage);
     layer.startTime = comp.time;
     return EA_json(true, "Imported and added to the active comp" + (switched ? ", which now uses the Advanced 3D renderer." : "."));
+  } catch (err) {
+    return EA_json(false, err && err.message ? err.message : String(err));
+  } finally {
+    app.endUndoGroup();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Expressions tab: text animation presets (definitions live in js/expressions.js)
+// ---------------------------------------------------------------------------
+
+// skipHidden: settings After Effects hides for the current options (a Range Selector's
+// Smoothness unless its Shape is Square, say) don't apply, so they're skipped.
+function EA_setByMatchName(group, values, skipHidden) {
+  for (var matchName in values) {
+    if (!values.hasOwnProperty(matchName)) continue;
+    // Animator properties (Position, Opacity…) exist hidden until added, so they're added
+    // whenever After Effects allows it; fixed settings are simply looked up.
+    var prop = group.canAddProperty && group.canAddProperty(matchName) ? group.addProperty(matchName) : group.property(matchName);
+    if (!prop) continue;
+    try {
+      prop.setValue(values[matchName]);
+    } catch (err) {
+      if (!skipHidden || !/hidden/i.test(String(err && err.message ? err.message : err))) throw err;
+    }
+  }
+}
+
+// keys: [{ t: seconds after start, v: value }]; ease "easy" = After Effects' Easy Ease (33.33% influence).
+function EA_addKeys(prop, keys, startTime, ease) {
+  for (var i = 0; i < keys.length; i += 1) prop.setValueAtTime(startTime + keys[i].t, keys[i].v);
+  if (ease !== "easy") return;
+  var dims = prop.propertyValueType === PropertyValueType.OneD ? 1 : (prop.value && prop.value.length) || 1;
+  for (var k = 1; k <= prop.numKeys; k += 1) {
+    var easeIn = [];
+    var easeOut = [];
+    for (var d = 0; d < dims; d += 1) {
+      easeIn.push(new KeyframeEase(0, 33.333333));
+      easeOut.push(new KeyframeEase(0, 33.333333));
+    }
+    prop.setInterpolationTypeAtKey(k, KeyframeInterpolationType.BEZIER, KeyframeInterpolationType.BEZIER);
+    prop.setTemporalEaseAtKey(k, easeIn, easeOut);
+  }
+}
+
+// Adds a preset's text animators (and any effects/expressions) to every selected text layer.
+// Keyframes start at the playhead and stay ordinary, editable keyframes.
+function EA_applyTextPreset(preset) {
+  app.beginUndoGroup("Effects Academy: " + preset.name);
+  try {
+    var comp = EA_activeComp();
+    if (!comp) return EA_json(false, "Open a comp and select a text layer first.");
+    var layers = [];
+    for (var s = 0; s < comp.selectedLayers.length; s += 1) {
+      if (comp.selectedLayers[s] instanceof TextLayer) layers.push(comp.selectedLayers[s]);
+    }
+    if (layers.length < 1) return EA_json(false, "Select a text layer first, then apply " + preset.name + ".");
+
+    var startTime = comp.time;
+    for (var l = 0; l < layers.length; l += 1) {
+      var layer = layers[l];
+      var animators = layer.property("ADBE Text Properties").property("ADBE Text Animators");
+      var specs = preset.animators || [];
+      for (var a = 0; a < specs.length; a += 1) {
+        var spec = specs[a];
+        // Applying again replaces the earlier copy instead of stacking it.
+        for (var old = animators.numProperties; old >= 1; old -= 1) {
+          if (animators.property(old).name === spec.name) animators.property(old).remove();
+        }
+        var animator = animators.addProperty("ADBE Text Animator");
+        animator.name = spec.name;
+        EA_setByMatchName(animator.property("ADBE Text Animator Properties"), spec.properties || {});
+        var selector = animator.property("ADBE Text Selectors").addProperty("ADBE Text Selector");
+        var sel = spec.selector || {};
+        EA_setByMatchName(selector.property("ADBE Text Range Advanced"), sel.advanced || {}, true);
+        EA_setByMatchName(selector, sel.values || {});
+        var keyed = sel.keys || {};
+        for (var keyMatch in keyed) {
+          if (keyed.hasOwnProperty(keyMatch)) EA_addKeys(selector.property(keyMatch), keyed[keyMatch], startTime, sel.ease);
+        }
+      }
+      var effects = preset.effects || [];
+      for (var e = 0; e < effects.length; e += 1) {
+        var effect = layer.property("ADBE Effect Parade").addProperty(effects[e].matchName);
+        if (effects[e].name) effect.name = effects[e].name;
+        EA_setByMatchName(effect, effects[e].values || {});
+      }
+      var expressions = preset.expressions || [];
+      for (var x = 0; x < expressions.length; x += 1) {
+        var target = layer;
+        for (var p = 0; p < expressions[x].path.length && target; p += 1) target = target.property(expressions[x].path[p]);
+        if (target && target.canSetExpression) target.expression = expressions[x].expression;
+      }
+    }
+    var what = layers.length === 1 ? "\"" + layers[0].name + "\"" : layers.length + " text layers";
+    return EA_json(true, preset.name + " added to " + what + ", starting at the playhead. Press U to see the keyframes.");
+  } catch (err) {
+    return EA_json(false, err && err.message ? err.message : String(err));
+  } finally {
+    app.endUndoGroup();
+  }
+}
+
+// Folder of the saved project (where pasted images are kept), or "" if unsaved.
+function EA_projectFolder() {
+  try {
+    return app.project && app.project.file ? app.project.file.parent.fsName : "";
+  } catch (err) {
+    return "";
+  }
+}
+
+function EA_clipboardBin() {
+  var name = "Clipboard Images";
+  for (var i = 1; i <= app.project.numItems; i += 1) {
+    var item = app.project.item(i);
+    if (item instanceof FolderItem && item.name === name && item.parentFolder === app.project.rootFolder) return item;
+  }
+  return app.project.items.addFolder(name);
+}
+
+// Imports pasted images (paths separated by new lines) and adds them to the active comp.
+// fitMode "fit" shrinks anything bigger than the comp to fit inside it; smaller images keep their size.
+function EA_importImages(pathsText, fitMode) {
+  app.beginUndoGroup("Effects Academy Paste Image");
+  try {
+    var paths = String(pathsText || "").split("\n");
+    var comp = EA_activeComp();
+    var bin = null;
+    var added = 0;
+    var imported = 0;
+    for (var i = 0; i < paths.length; i += 1) {
+      if (!paths[i]) continue;
+      var file = new File(paths[i]);
+      if (!file.exists) continue;
+      var footage = app.project.importFile(new ImportOptions(file));
+      imported += 1;
+      try {
+        if (!bin) bin = EA_clipboardBin();
+        footage.parentFolder = bin;
+      } catch (binErr) {}
+      if (!comp) continue;
+      var layer = comp.layers.add(footage);
+      layer.startTime = comp.time;
+      if (fitMode !== "original" && footage.width && footage.height && (footage.width > comp.width || footage.height > comp.height)) {
+        var scale = Math.min(comp.width / footage.width, comp.height / footage.height) * 100;
+        layer.property("ADBE Transform Group").property("ADBE Scale").setValue([scale, scale, 100]);
+      }
+      added += 1;
+    }
+    if (imported < 1) return EA_json(false, "The pasted image could not be found on disk.");
+    var what = imported === 1 ? "Image" : imported + " images";
+    if (!comp) return EA_json(true, what + " imported into the project panel. Open a comp to add " + (imported === 1 ? "it." : "them."));
+    return EA_json(true, what + " added to " + comp.name + " at the playhead.");
   } catch (err) {
     return EA_json(false, err && err.message ? err.message : String(err));
   } finally {

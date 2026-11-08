@@ -297,7 +297,7 @@ export default function PremiumPage() {
           {/* Plan */}
           <Reveal className="relative">
             <div
-              className="pointer-events-none absolute -inset-6 -z-10 rounded-[48px] opacity-70 blur-3xl"
+              className="ui-tint pointer-events-none absolute -inset-6 -z-10 rounded-[48px] opacity-70 blur-3xl"
               style={{ background: "radial-gradient(60% 50% at 30% 20%, rgb(var(--tint) / 0.35), transparent 70%), radial-gradient(50% 50% at 80% 80%, rgb(191 90 242 / 0.28), transparent 70%)" }}
               aria-hidden="true"
             />
@@ -404,7 +404,7 @@ export default function PremiumPage() {
                           type="button"
                           onClick={connectTwitch}
                           disabled={busy}
-                          className="btn btn-sm"
+                          className="ui-solid btn btn-sm"
                           style={{ background: "#9146FF", color: "#fff" }}
                           data-testid="premium-twitch-connect"
                         >

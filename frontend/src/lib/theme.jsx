@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 const ThemeContext = createContext(null);
-const THEMES = new Set(["dark", "blue", "gray"]);
+const THEMES = new Set(["dark", "blue", "gray", "mono"]);
 // "system" = San Francisco on Apple devices, Inter elsewhere. Stored under a new
 // key because the old key saved "outfit" for every visitor whether they chose it or not.
 const FONTS = new Set(["system", "outfit", "space", "mono"]);
@@ -32,7 +32,7 @@ export function ThemeProvider({ children }) {
     if (meta) meta.content = theme === "blue" ? "#f5f5f7" : theme === "gray" ? "#1c1c1e" : "#000000";
   }, [theme]);
 
-  // "blue" is the light appearance; dark and gray are dark appearances.
+  // "blue" is the light appearance; dark, gray and mono (Black & White) are dark appearances.
   const scheme = theme === "blue" ? "light" : "dark";
 
   useEffect(() => {

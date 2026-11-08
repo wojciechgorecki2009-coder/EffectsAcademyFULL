@@ -234,6 +234,53 @@
     --input: 240 2% 28%;
     --ring: 197 100% 70%;
   }
+
+  /* Black & White: the Dark appearance with every UI colour taken out.
+     The tint (buttons, toggles, focus rings, checks) is white with black text.
+     Thumbnails, videos and the logo keep their colour; see "Black & White" below. */
+  :root[data-site-style="apple"][data-theme="mono"] {
+    --canvas: 0 0 0;
+    --panel: 20 20 20;
+    --panel-2: 28 28 28;
+    --ink: 245 245 245;
+    --ink-2: 163 163 163;
+    --ink-3: 112 112 112;
+    --tint: 245 245 245;
+    --tint-ink: 0 0 0;
+    --line: rgb(255 255 255 / 0.1);
+    --line-strong: rgb(255 255 255 / 0.2);
+    --fill: rgb(255 255 255 / 0.06);
+    --fill-2: rgb(255 255 255 / 0.1);
+
+    --shadow-card: 0 1px 1px rgb(0 0 0 / 0.4), 0 12px 32px -12px rgb(0 0 0 / 0.7);
+    --shadow-card-hover: 0 2px 4px rgb(0 0 0 / 0.4), 0 30px 64px -18px rgb(0 0 0 / 0.85);
+    --shadow-pop: 0 30px 90px -16px rgb(0 0 0 / 0.8);
+
+    --glass-tint: rgb(40 40 40 / 0.4);
+    --glass-tint-strong: rgb(28 28 28 / 0.82);
+    --glass-rim: rgb(255 255 255 / 0.34);
+    --glass-rim-soft: rgb(255 255 255 / 0.05);
+    --glass-sheen: rgb(255 255 255 / 0.14);
+    --glass-shadow: 0 12px 40px -10px rgb(0 0 0 / 0.7), 0 1px 2px rgb(0 0 0 / 0.5);
+
+    --background: 0 0% 0%;
+    --foreground: 0 0% 96%;
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 96%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 96%;
+    --primary: 0 0% 96%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 96%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 64%;
+    --accent: 0 0% 17%;
+    --accent-foreground: 0 0% 96%;
+    --border: 0 0% 18%;
+    --input: 0 0% 20%;
+    --ring: 0 0% 96%;
+  }
 }
 
 /* ==========================================================================
@@ -919,6 +966,112 @@ input[type="range"].audio-slider::-moz-range-thumb {
 :root[data-scheme] :is(.App, [role="dialog"]) .bg-neon:disabled {
   background-color: var(--fill-2) !important;
   color: rgb(var(--ink-3)) !important;
+}
+
+/* ==========================================================================
+   Black & White (theme value "mono")
+   The tokens already make the tint white. These rules take the remaining
+   hues out of the UI: coloured text, badges, borders, rings, glows and the
+   gradient tiles. Nothing here touches <img>, <video>, <canvas> or the logo,
+   so thumbnails, previews and artwork keep their colour.
+   Hooks for colour that comes from inline styles:
+     .ui-surface  coloured gradient tile → neutral graphite gradient
+     .ui-tint     decorative glow or overlay → grayscale
+     .ui-solid    solid brand button → white with black text
+   "B" below is :root[data-theme="mono"][data-scheme] body, which outranks
+   the scheme mappings above, including the solid-button label rule.
+   ========================================================================== */
+
+:root[data-theme="mono"] .ui-tint { filter: grayscale(1) !important; }
+:root[data-theme="mono"] .ui-surface {
+  background: linear-gradient(140deg, #2b2b2b 0%, #0a0a0a 100%) !important;
+}
+:root[data-theme="mono"] .eyebrow-c { color: rgb(var(--ink-2)); }
+/* The headline shimmer becomes a silver sheen */
+:root[data-theme="mono"] .text-shimmer {
+  background-image: linear-gradient(100deg, #f5f5f5 0%, #8a8a8a 30%, #ffffff 50%, #8a8a8a 70%, #f5f5f5 100%);
+}
+:root[data-theme="mono"] .dot { color: rgb(var(--ink-2)) !important; }
+:root[data-theme="mono"] :is(.notice-warn, .notice-ok) { background: var(--fill); border-color: var(--line-strong); }
+:root[data-theme="mono"] .btn-danger { background: var(--fill-2); color: rgb(var(--ink)); }
+:root[data-theme="mono"] .btn-danger:hover:not(:disabled) { background: rgb(255 255 255 / 0.16); }
+:root[data-theme="mono"] .aurora { --aurora-opacity: 0.3; filter: blur(70px); }
+:root[data-theme="mono"][data-lite] .aurora { filter: none; }
+:root[data-theme="mono"] .aurora span:nth-child(2) { background: radial-gradient(circle, rgb(255 255 255 / 0.4), transparent 62%); }
+:root[data-theme="mono"] .aurora span:nth-child(3) { background: radial-gradient(circle, rgb(255 255 255 / 0.22), transparent 62%); }
+:root[data-theme="mono"] .aurora span:nth-child(4) { background: radial-gradient(circle, rgb(255 255 255 / 0.3), transparent 62%); }
+
+/* Coloured text (Tailwind hues and arbitrary hex). Near-black hex text sits on white buttons, so it stays. */
+:root[data-theme="mono"][data-scheme] body :is(
+  [class*="text-red-"], [class*="text-orange-"], [class*="text-amber-"], [class*="text-yellow-"],
+  [class*="text-lime-"], [class*="text-green-"], [class*="text-emerald-"], [class*="text-teal-"],
+  [class*="text-cyan-"], [class*="text-sky-"], [class*="text-blue-"], [class*="text-indigo-"],
+  [class*="text-violet-"], [class*="text-purple-"], [class*="text-fuchsia-"], [class*="text-pink-"],
+  [class*="text-rose-"], [class*="text-[#"]:not([class*="text-[#0"]), .text-tint
+) {
+  color: rgb(var(--ink)) !important;
+}
+
+/* Tinted pills and panels (translucent colour) become a neutral fill */
+:root[data-theme="mono"][data-scheme] body :is(
+  [class*="bg-red-"][class*="/"], [class*="bg-orange-"][class*="/"], [class*="bg-amber-"][class*="/"],
+  [class*="bg-yellow-"][class*="/"], [class*="bg-green-"][class*="/"], [class*="bg-emerald-"][class*="/"],
+  [class*="bg-teal-"][class*="/"], [class*="bg-cyan-"][class*="/"], [class*="bg-sky-"][class*="/"],
+  [class*="bg-blue-"][class*="/"], [class*="bg-indigo-"][class*="/"], [class*="bg-violet-"][class*="/"],
+  [class*="bg-purple-"][class*="/"], [class*="bg-fuchsia-"][class*="/"], [class*="bg-pink-"][class*="/"],
+  [class*="bg-rose-"][class*="/"],
+  [class*="bg-[rgb(255_159_10"], [class*="bg-[rgb(255_179_64"], [class*="bg-[rgb(48_209_88"],
+  [class*="bg-[rgb(145_70_255"], [class*="bg-[#ffb340]/"]
+) {
+  background-color: var(--fill-2) !important;
+}
+
+/* Solid colour (buttons, badges, check boxes, dots) becomes white with black content */
+:root[data-theme="mono"][data-scheme] body :is(
+  [class*="bg-red-5"]:not([class*="/"]), [class*="bg-red-6"]:not([class*="/"]), [class*="bg-red-7"]:not([class*="/"]),
+  [class*="bg-purple-5"]:not([class*="/"]), [class*="bg-purple-6"]:not([class*="/"]),
+  [class*="bg-emerald-"]:not([class*="/"]), [class*="bg-amber-"]:not([class*="/"]), [class*="bg-sky-5"]:not([class*="/"]),
+  .bg-\[\#ffb340\], .bg-\[\#30d158\], .bg-\[\#ff9f0a\], .bg-\[\#ffd60a\], .bg-\[\#9146FF\], .bg-discord, .ui-solid
+) {
+  background-color: rgb(var(--ink)) !important;
+  background-image: none !important;
+  color: rgb(var(--canvas)) !important;
+}
+
+/* Coloured borders, rings and gradient stops */
+:root[data-theme="mono"][data-scheme] body :is(
+  [class*="border-red-"], [class*="border-orange-"], [class*="border-amber-"], [class*="border-yellow-"],
+  [class*="border-green-"], [class*="border-emerald-"], [class*="border-teal-"], [class*="border-cyan-"],
+  [class*="border-sky-"], [class*="border-blue-"], [class*="border-indigo-"], [class*="border-violet-"],
+  [class*="border-purple-"], [class*="border-fuchsia-"], [class*="border-pink-"], [class*="border-rose-"]
+) {
+  border-color: var(--line-strong) !important;
+}
+:root[data-theme="mono"][data-scheme] body :is(
+  [class*="ring-red-"], [class*="ring-amber-"], [class*="ring-emerald-"], [class*="ring-sky-"],
+  [class*="ring-blue-"], [class*="ring-purple-"], [class*="ring-violet-"]
+) {
+  --tw-ring-color: var(--line-strong) !important;
+}
+:root[data-theme="mono"][data-scheme] body :is(
+  [class*="from-red-"], [class*="from-amber-"], [class*="from-emerald-"], [class*="from-teal-"],
+  [class*="from-sky-"], [class*="from-blue-"], [class*="from-indigo-"], [class*="from-purple-"],
+  [class*="from-violet-"], [class*="from-fuchsia-"], [class*="from-pink-"]
+) {
+  --tw-gradient-from: rgb(255 255 255 / 0.08) var(--tw-gradient-from-position) !important;
+}
+:root[data-theme="mono"][data-scheme] body :is(
+  [class*="to-red-"], [class*="to-amber-"], [class*="to-yellow-"], [class*="to-emerald-"], [class*="to-teal-"],
+  [class*="to-sky-"], [class*="to-blue-"], [class*="to-indigo-"], [class*="to-purple-"],
+  [class*="to-violet-"], [class*="to-fuchsia-"], [class*="to-pink-"]
+) {
+  --tw-gradient-to: rgb(255 255 255 / 0.02) var(--tw-gradient-to-position) !important;
+}
+/* Coloured glows */
+:root[data-theme="mono"][data-scheme] body :is(
+  [class*="shadow-[0_0_18px_rgba(251"], [class*="shadow-[0_6px_18px_rgb(145_70_255"], [class*="shadow-[0_18px_40px_-14px_rgb(255_159_10"]
+) {
+  box-shadow: 0 14px 34px -14px rgb(0 0 0 / 0.8) !important;
 }
 
 /* ==========================================================================

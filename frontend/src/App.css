@@ -1071,3 +1071,8 @@
   .asset-card-play span { width: 42px; height: 42px; }
   .asset-card .media-chip { font-size: 10.5px; }
 }
+
+/* Black & White appearance: the orbiting edge glow is white only */
+:root[data-theme="mono"] .featured-extension-card::before {
+  background: conic-gradient(from var(--orbit), transparent 0deg, rgb(255 255 255 / 0.9) 40deg, rgb(255 255 255 / 0.35) 90deg, transparent 150deg, transparent 360deg);
+}

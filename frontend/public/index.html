@@ -37,7 +37,7 @@
           var ls = window.localStorage;
           var theme = ls.getItem("ea_theme");
           if (!ls.getItem("ea_theme_dark_default_v1") && (!theme || theme === "blue")) theme = "dark";
-          if (["dark", "blue", "gray"].indexOf(theme) < 0) theme = "dark";
+          if (["dark", "blue", "gray", "mono"].indexOf(theme) < 0) theme = "dark";
           var font = ls.getItem("ea_font_v3");
           if (["system", "outfit", "space", "mono"].indexOf(font) < 0) font = "system";
           var root = document.documentElement;

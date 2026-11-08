@@ -221,7 +221,7 @@ function PanelPreview({ reduce }) {
 
   return (
     <div
-      className="relative flex items-center justify-center overflow-hidden px-5 pb-3 pt-10 sm:p-7 md:min-h-[540px]"
+      className="ui-tint relative flex items-center justify-center overflow-hidden px-5 pb-3 pt-10 sm:p-7 md:min-h-[540px]"
       style={{
         background:
           "radial-gradient(90% 70% at 30% 20%, rgb(255 255 255 / 0.10), transparent 60%), radial-gradient(80% 60% at 80% 90%, rgb(153 153 255 / 0.14), transparent 65%), #050506",
@@ -286,7 +286,7 @@ function MockCard({ card, index, reduce, playing }) {
       exit={{ opacity: 0, scale: 0.85, transition: { duration: 0.2 } }}
       transition={{ ...SPRING_SOFT, delay: reduce ? 0 : 0.25 + index * 0.05 }}
     >
-      <div className="relative flex aspect-[16/10] items-center justify-center rounded-[8px]" style={{ background: `linear-gradient(150deg, ${card.tone}, #151517)` }}>
+      <div className="ui-tint relative flex aspect-[16/10] items-center justify-center rounded-[8px]" style={{ background: `linear-gradient(150deg, ${card.tone}, #151517)` }}>
         <Icon className="h-3.5 w-3.5 text-white/45" />
         {playing && (
           <span className="absolute bottom-1 right-1 flex h-2.5 items-end gap-[1.5px]">
