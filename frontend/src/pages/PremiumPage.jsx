@@ -6,6 +6,7 @@ import { BackButton, SectionHeader } from "@/components/Library";
 import { EASE_OUT, KineticText, Reveal, Stagger, StaggerItem } from "@/lib/motion";
 import { api } from "@/lib/api";
 import { hasPremiumAccess, useAuth } from "@/lib/auth";
+import { useUploadAccess } from "@/lib/uploadAccess";
 import TwitchIcon from "@/components/TwitchIcon";
 import AfterEffectsLogo from "@/components/AfterEffectsLogo";
 
@@ -76,6 +77,7 @@ function ComparisonValue({ value, premium = false }) {
 
 export default function PremiumPage() {
   const { user, hasPremium, config, refreshUser } = useAuth();
+  const { isUploader: isMod } = useUploadAccess();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [busy, setBusy] = useState(false);
@@ -357,7 +359,7 @@ export default function PremiumPage() {
                 {busy ? <Loader2 className="animate-spin" /> : null}
                 {busy ? "Opening Stripe..." : hasPremium ? "Manage subscription" : user ? "Subscribe with Stripe" : "Sign in with Google"}
               </button>
-              {!hasPremium && (
+              {(!hasPremium || isMod) && (
                 <Link to="/test-extension" className="btn btn-secondary btn-lg btn-block mt-3" data-testid="test-extension-button">
                   <AfterEffectsLogo className="" aria-hidden="true" />
                   Test Extension
