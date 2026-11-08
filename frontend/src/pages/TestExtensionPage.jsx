@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ChevronDown, Crown, Info } from "lucide-react";
+import { ChevronDown, Crown, Info, RectangleHorizontal, RectangleVertical } from "lucide-react";
 import { BackButton, PageIntro } from "@/components/Library";
 import AfterEffectsLogo from "@/components/AfterEffectsLogo";
 import { EASE_OUT, Reveal } from "@/lib/motion";
@@ -12,6 +12,53 @@ import { BASICS_FAQ, DEMO_TABS, TAB_FAQ, findFaqForAction } from "@/lib/extensio
 // The real extension panel in demo mode (see public/extension-demo/demo.js).
 const DEMO_SRC = `/extension-demo/index.html?api=${encodeURIComponent(FILE_BASE)}`;
 const FLASH_MS = 2600;
+const LAYOUT_KEY = "ea_extension_demo_layout";
+
+function savedLayout() {
+  try {
+    return localStorage.getItem(LAYOUT_KEY) === "horizontal" ? "horizontal" : "vertical";
+  } catch (err) {
+    return "vertical";
+  }
+}
+
+const LAYOUTS = [
+  { value: "vertical", label: "Vertical", Icon: RectangleVertical },
+  { value: "horizontal", label: "Horizontal", Icon: RectangleHorizontal },
+];
+
+// Vertical: docked at the side like a tall panel. Horizontal: docked along the bottom.
+function LayoutSwitch({ value, onChange }) {
+  return (
+    <div className="inline-flex rounded-full bg-[var(--fill)] p-1" role="radiogroup" aria-label="Panel layout">
+      {LAYOUTS.map(({ value: option, label, Icon }) => {
+        const active = value === option;
+        return (
+          <button
+            key={option}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => onChange(option)}
+            className={`relative flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13px] font-medium transition-colors duration-300 ${
+              active ? "text-tint-ink" : "text-ink-2 hover:text-ink"
+            }`}
+          >
+            {active && (
+              <motion.span
+                layoutId="demo-layout-pill"
+                className="absolute inset-0 rounded-full bg-tint"
+                transition={{ type: "spring", stiffness: 420, damping: 34 }}
+              />
+            )}
+            <Icon className="relative h-3.5 w-3.5" />
+            <span className="relative">{label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 function FaqItem({ item, open, flash, onToggle }) {
   const reduce = useReducedMotion();
@@ -71,6 +118,57 @@ export default function TestExtensionPage() {
   const [tab, setTab] = useState("All");
   const [openIds, setOpenIds] = useState(() => new Set([TAB_FAQ.All.items[0].id]));
   const [flashId, setFlashId] = useState("");
+  const [layout, setLayout] = useState(savedLayout);
+  // Phones always get the vertical layout: on a narrow screen both would be full width.
+  const [roomy, setRoomy] = useState(() => window.matchMedia("(min-width: 768px)").matches);
+  const horizontal = layout === "horizontal" && roomy;
+  const reduce = useReducedMotion();
+  const layoutRef = useRef(layout);
+  layoutRef.current = layout;
+
+  // The panel's real width and height are animated (not scaled), so its contents reflow
+  // as it resizes, like dragging a docked panel's edge in After Effects.
+  const rowRef = useRef(null);
+  const [rowWidth, setRowWidth] = useState(0);
+  const [viewportHeight, setViewportHeight] = useState(() => window.innerHeight);
+  const [wide, setWide] = useState(() => window.matchMedia("(min-width: 1024px)").matches);
+  const [resizing, setResizing] = useState(false);
+  const switched = useRef(false);
+
+  useLayoutEffect(() => {
+    const row = rowRef.current;
+    if (!row) return undefined;
+    setRowWidth(row.clientWidth);
+    const observer = new ResizeObserver(() => setRowWidth(row.clientWidth));
+    observer.observe(row);
+    const media = window.matchMedia("(min-width: 1024px)");
+    const tablet = window.matchMedia("(min-width: 768px)");
+    const onMedia = () => setWide(media.matches);
+    const onTablet = () => setRoomy(tablet.matches);
+    tablet.addEventListener("change", onTablet);
+    const onResize = () => setViewportHeight(window.innerHeight);
+    media.addEventListener("change", onMedia);
+    window.addEventListener("resize", onResize);
+    return () => {
+      observer.disconnect();
+      media.removeEventListener("change", onMedia);
+      tablet.removeEventListener("change", onTablet);
+      window.removeEventListener("resize", onResize);
+    };
+  }, []);
+
+  const panelWidth = horizontal ? rowWidth : Math.min(rowWidth, wide ? 420 : 440);
+  const panelHeight = horizontal ? Math.min(600, viewportHeight * 0.72) : Math.min(760, viewportHeight * 0.78);
+
+  const changeLayout = (next) => {
+    if (next === layout) return;
+    switched.current = true;
+    setResizing(!reduce);
+    setLayout(next);
+    try {
+      localStorage.setItem(LAYOUT_KEY, next);
+    } catch (err) {}
+  };
 
   const toggle = useCallback((id) => {
     setOpenIds((current) => {
@@ -90,8 +188,9 @@ export default function TestExtensionPage() {
     setFlashId(found.item.id);
     window.clearTimeout(flashTimer.current);
     flashTimer.current = window.setTimeout(() => setFlashId(""), FLASH_MS);
-    // Side by side, bring the answer into view; on phones the panel stays where it is.
-    if (window.matchMedia("(min-width: 1024px)").matches) {
+    // Side by side, bring the answer into view. When the FAQ is under the panel
+    // (phones, or the horizontal layout) the page stays where it is.
+    if (layoutRef.current === "vertical" && window.matchMedia("(min-width: 1024px)").matches) {
       window.requestAnimationFrame(() => {
         document.getElementById(`faq-${found.item.id}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
       });
@@ -162,10 +261,24 @@ export default function TestExtensionPage() {
           </div>
         </Reveal>
 
-        <div className="mt-10 grid items-start gap-8 lg:grid-cols-[420px_minmax(0,1fr)] lg:gap-10">
+        <div className="mt-10 hidden flex-wrap items-center justify-between gap-3 md:flex">
+          <p className="text-[13px] font-medium text-ink-3">Dock the panel the way you would in After Effects.</p>
+          <LayoutSwitch value={layout} onChange={changeLayout} />
+        </div>
+
+        <div
+          ref={rowRef}
+          className={`mt-10 flex flex-col md:mt-5 items-start gap-8 lg:gap-10 ${horizontal ? "" : "lg:flex-row"}`}
+        >
           {/* The panel, framed like a docked After Effects panel */}
-          <Reveal className="lg:sticky lg:top-24">
-            <div className="mx-auto w-full max-w-[440px] overflow-hidden rounded-[22px] bg-[#1d1d1d] shadow-[0_30px_80px_-30px_rgb(0_0_0/0.65),0_0_0_1px_rgb(255_255_255/0.08)]">
+          <Reveal className={horizontal ? "w-full" : "w-full lg:sticky lg:top-24 lg:w-[420px] lg:shrink-0"}>
+            <motion.div
+              className="relative z-10 mx-auto overflow-hidden rounded-[22px] bg-[#1d1d1d] shadow-[0_30px_80px_-30px_rgb(0_0_0/0.65),0_0_0_1px_rgb(255_255_255/0.08)]"
+              initial={false}
+              animate={rowWidth ? { width: panelWidth } : undefined}
+              transition={resizing ? { duration: 0.8, ease: EASE_OUT } : { duration: 0 }}
+              onAnimationComplete={() => setResizing(false)}
+            >
               <div className="flex items-center gap-2 border-b border-white/[0.06] bg-[#232323] px-4 py-2.5">
                 <span className="text-[12px] font-medium text-white/80">Effects Academy</span>
                 <span className="ml-auto flex items-center gap-1" aria-hidden="true">
@@ -174,20 +287,31 @@ export default function TestExtensionPage() {
                   <span className="h-[3px] w-[3px] rounded-full bg-white/40" />
                 </span>
               </div>
-              <iframe
+              <motion.iframe
                 ref={frameRef}
                 src={DEMO_SRC}
                 title="Effects Academy extension demo"
-                className="block h-[min(760px,78vh)] w-full border-0 bg-[#1d1d1d]"
+                className="block w-full border-0 bg-[#1d1d1d]"
+                style={{ height: panelHeight }}
+                initial={false}
+                animate={{ height: panelHeight }}
+                transition={resizing ? { duration: 0.8, ease: EASE_OUT } : { duration: 0 }}
                 allow="autoplay"
                 data-testid="extension-demo-frame"
               />
-            </div>
+            </motion.div>
           </Reveal>
 
-          {/* FAQ for the open tab, then the basics */}
-          <div className="min-w-0">
-            <Reveal>
+          {/* FAQ for the open tab, then the basics. It moves beside or under the panel,
+              fading back in once the panel has finished resizing. */}
+          <motion.div
+            key={layout}
+            className={`w-full min-w-0 ${horizontal ? "lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-10" : "lg:flex-1"}`}
+            initial={switched.current && !reduce ? { opacity: 0, y: 18, filter: "blur(6px)" } : false}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)", transitionEnd: { filter: "none" } }}
+            transition={{ duration: 0.6, ease: EASE_OUT, delay: 0.5 }}
+          >
+            <Reveal className={horizontal ? "lg:col-span-2" : ""}>
               <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Extension tabs">
                 {DEMO_TABS.map((name) => (
                   <button
@@ -223,7 +347,7 @@ export default function TestExtensionPage() {
               </motion.div>
             </AnimatePresence>
 
-            <div className="mt-12">
+            <div className={horizontal ? "mt-12 lg:mt-6" : "mt-12"}>
               <p className="eyebrow">{BASICS_FAQ.title}</p>
               <p className="mt-2 max-w-xl text-[15px] leading-relaxed text-ink-2">The parts of the panel you'll see on every tab.</p>
               <div className="mt-5">
@@ -231,7 +355,7 @@ export default function TestExtensionPage() {
               </div>
             </div>
 
-            <Reveal className="mt-12">
+            <Reveal className={horizontal ? "mt-12 lg:col-span-2" : "mt-12"}>
               <div className="surface flex flex-col items-start gap-4 rounded-[26px] p-6 sm:flex-row sm:items-center">
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[rgb(var(--tint)/0.12)] text-tint">
                   <Crown className="h-5 w-5" />
@@ -249,7 +373,7 @@ export default function TestExtensionPage() {
                 </Link>
               </div>
             </Reveal>
-          </div>
+          </motion.div>
         </div>
       </div>
     </section>
