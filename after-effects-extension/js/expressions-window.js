@@ -12,13 +12,16 @@
   var MAIN_EXTENSION_ID = "com.effectsacademy.panel";
   var DEFAULT_API_BASE = "https://effects-academy-api.onrender.com";
   var nodeRequire = window.require || (window.cep_node && window.cep_node.require);
+  // Set only on the website's Test Extension page (frontend/public/extension-demo/demo.js):
+  // the window opens unlocked and its buttons explain what they'd do in After Effects.
+  var DEMO = window.EA_DEMO || null;
 
   var statusTitle = document.getElementById("statusTitle");
   var statusText = document.getElementById("statusText");
   var gateText = document.getElementById("expressionsGateText");
 
-  var session = (window.EASession && window.EASession.read()) || {};
-  var premium = session.premium === true && !!session.authToken;
+  var session = (!DEMO && window.EASession && window.EASession.read()) || {};
+  var premium = DEMO ? true : session.premium === true && !!session.authToken;
   var checkedToken = null;
 
   function setStatus(title, text) {
@@ -46,7 +49,26 @@
     if (card) card.classList.remove("error", "shake");
   }
 
+  function demoNotice(id, title, text) {
+    clearErrorState();
+    setStatus(title, text);
+    if (DEMO) DEMO.action(id);
+  }
+
+  // The demo shares the look the visitor picked in the demo panel's Settings tab.
+  function demoPrefs() {
+    var read = function (key) { try { return localStorage.getItem(key) || ""; } catch (err) { return ""; } };
+    return {
+      uiStyle: read("ea_extension_ui_style"),
+      accent: read("ea_extension_accent"),
+      font: read("ea_extension_font"),
+      motion: read("ea_extension_motion"),
+      uiScale: read("ea_extension_ui_scale")
+    };
+  }
+
   function evalScript(script) {
+    if (DEMO) return Promise.resolve(DEMO.evalScript(script));
     return new Promise(function (resolve, reject) {
       if (!window.__adobe_cep__ || !window.__adobe_cep__.evalScript) {
         reject(new Error("After Effects bridge is unavailable."));
@@ -57,6 +79,10 @@
   }
 
   function openMainPanel() {
+    if (DEMO) {
+      demoNotice("open-main", "Demo: Effects Academy", "In After Effects, this opens the full Effects Academy panel next to this window.");
+      return;
+    }
     try {
       if (window.__adobe_cep__ && window.__adobe_cep__.requestOpenExtension) {
         window.__adobe_cep__.requestOpenExtension(MAIN_EXTENSION_ID, "");
@@ -134,13 +160,19 @@
     showError: showError,
     clearErrorState: clearErrorState,
     hasPremium: function () { return premium; },
-    openMainPanel: openMainPanel
+    openMainPanel: openMainPanel,
+    demo: DEMO ? demoNotice : null
   };
 
   window.EAExpressionsWindow = {
     start: function () {
-      refresh(session);
-      if (window.EASession) window.EASession.watch(refresh);
+      if (DEMO) {
+        applyLook(demoPrefs());
+        setPremium(true);
+      } else {
+        refresh(session);
+        if (window.EASession) window.EASession.watch(refresh);
+      }
       var buttons = [document.getElementById("openMainBtn"), document.getElementById("gateOpenMainBtn")];
       for (var i = 0; i < buttons.length; i += 1) {
         if (buttons[i]) buttons[i].addEventListener("click", openMainPanel);
@@ -148,5 +180,5 @@
     }
   };
 
-  applyLook(session.prefs);
+  applyLook(DEMO ? demoPrefs() : session.prefs);
 }());

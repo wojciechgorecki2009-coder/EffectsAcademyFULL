@@ -171,7 +171,7 @@ export const TAB_FAQ = {
       {
         id: "fx-window",
         q: "What's Open in its own window?",
-        a: "It opens Expressions as its own small panel that you can float or dock anywhere, so you don't need the full extension open. It's also in Window › Extensions › Effects Academy Expressions.",
+        a: "It opens Expressions as its own small panel that you can float or dock anywhere, so you don't need the full extension open. It's also in Window › Extensions › Effects Academy Expressions. Try it here: it pops out as its own window you can drag around.",
         actions: ["expressions-popout"],
       },
     ],

@@ -343,7 +343,7 @@
   if (popOut) {
     popOut.addEventListener("click", function () {
       if (panel.demo) {
-        panel.demo("expressions-popout", "Demo: Expressions window", "In After Effects, this opens Expressions as its own small panel you can float or dock, so you don't need the full extension open.");
+        panel.demo("expressions-popout", "Expressions opened in its own window", "Drag it by its title bar. In After Effects you can float or dock it anywhere, so you don't need the full extension open.");
         return;
       }
       try {

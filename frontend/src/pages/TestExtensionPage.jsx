@@ -4,6 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ChevronDown, Crown, Info, RectangleHorizontal, RectangleVertical } from "lucide-react";
 import { BackButton, PageIntro } from "@/components/Library";
 import AfterEffectsLogo from "@/components/AfterEffectsLogo";
+import DemoFloatingWindow, { placeFloatingWindow } from "@/components/DemoFloatingWindow";
 import { EASE_OUT, Reveal } from "@/lib/motion";
 import { FILE_BASE } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -11,6 +12,8 @@ import { BASICS_FAQ, DEMO_TABS, TAB_FAQ, findFaqForAction } from "@/lib/extensio
 
 // The real extension panel in demo mode (see public/extension-demo/demo.js).
 const DEMO_SRC = `/extension-demo/index.html?api=${encodeURIComponent(FILE_BASE)}`;
+// The Expressions tab as its own panel, as "Open in its own window" opens it in After Effects.
+const EXPRESSIONS_SRC = `/extension-demo/expressions.html?api=${encodeURIComponent(FILE_BASE)}`;
 const FLASH_MS = 2600;
 const LAYOUT_KEY = "ea_extension_demo_layout";
 
@@ -200,13 +203,55 @@ export default function TestExtensionPage() {
   const tabRef = useRef(tab);
   tabRef.current = tab;
 
+  // "Open in its own window": the standalone Expressions panel pops out as a floating window.
+  const popoutRef = useRef(null);
+  const [popout, setPopout] = useState(null); // { origin, place } while open
+  const [popoutPulse, setPopoutPulse] = useState(0);
+  const [draggingWindow, setDraggingWindow] = useState(false);
+  const [mainFlash, setMainFlash] = useState(0);
+  const popoutOpen = useRef(false);
+  popoutOpen.current = Boolean(popout);
+
+  const openPopout = useCallback(() => {
+    if (popoutOpen.current) {
+      setPopoutPulse((count) => count + 1);
+      return;
+    }
+    const frame = frameRef.current;
+    if (!frame) return;
+    const frameRect = frame.getBoundingClientRect();
+    let button = null;
+    try {
+      button = frame.contentDocument?.getElementById("expressionsPopOutBtn")?.getBoundingClientRect() || null;
+    } catch (err) {}
+    const origin = button && button.width
+      ? { x: frameRect.left + button.left + button.width / 2, y: frameRect.top + button.top + button.height / 2, right: frameRect.left + button.right }
+      : { x: frameRect.left + frameRect.width / 2, y: frameRect.top + 160, right: frameRect.left + frameRect.width / 2 };
+    setPopout({ origin, place: placeFloatingWindow(origin) });
+  }, []);
+
+  const closePopout = useCallback(() => setPopout(null), []);
+
+  // "Open Effects Academy" in the floating window points back at the main panel.
+  const flashMainPanel = useCallback(() => {
+    setMainFlash((count) => count + 1);
+    frameRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, []);
+
   useEffect(() => {
     const onMessage = (event) => {
       if (event.origin !== window.location.origin) return;
-      if (!frameRef.current || event.source !== frameRef.current.contentWindow) return;
+      const fromMain = Boolean(frameRef.current) && event.source === frameRef.current.contentWindow;
+      const fromWindow = Boolean(popoutRef.current) && event.source === popoutRef.current.contentWindow;
+      if (!fromMain && !fromWindow) return;
       const data = event.data;
       if (!data || data.source !== "ea-extension-demo") return;
-      if (data.type === "tab" && TAB_FAQ[data.tab]) {
+      if (data.type === "action" && data.id === "expressions-popout") openPopout();
+      if (data.type === "action" && data.id === "open-main") {
+        flashMainPanel();
+        return;
+      }
+      if (data.type === "tab" && fromMain && TAB_FAQ[data.tab]) {
         if (data.tab !== tabRef.current) {
           setTab(data.tab);
           const first = TAB_FAQ[data.tab].items[0];
@@ -221,7 +266,7 @@ export default function TestExtensionPage() {
       window.removeEventListener("message", onMessage);
       window.clearTimeout(flashTimer.current);
     };
-  }, [showAnswer]);
+  }, [showAnswer, openPopout, flashMainPanel]);
 
   // Picking a tab here also opens it in the panel.
   const pickTab = (name) => {
@@ -291,7 +336,7 @@ export default function TestExtensionPage() {
                 ref={frameRef}
                 src={DEMO_SRC}
                 title="Effects Academy extension demo"
-                className="block w-full border-0 bg-[#1d1d1d]"
+                className={`block w-full border-0 bg-[#1d1d1d] ${draggingWindow ? "pointer-events-none" : ""}`}
                 style={{ height: panelHeight }}
                 initial={false}
                 animate={{ height: panelHeight }}
@@ -299,6 +344,16 @@ export default function TestExtensionPage() {
                 allow="autoplay"
                 data-testid="extension-demo-frame"
               />
+              {mainFlash > 0 && (
+                <motion.span
+                  key={mainFlash}
+                  className="pointer-events-none absolute inset-0 rounded-[22px] shadow-[inset_0_0_0_2px_rgb(var(--tint)/0.9)]"
+                  initial={{ opacity: 1 }}
+                  animate={{ opacity: 0 }}
+                  transition={{ duration: 1.4, ease: EASE_OUT }}
+                  aria-hidden="true"
+                />
+              )}
             </motion.div>
           </Reveal>
 
@@ -376,6 +431,18 @@ export default function TestExtensionPage() {
           </motion.div>
         </div>
       </div>
+
+      <DemoFloatingWindow
+        open={Boolean(popout)}
+        title="Effects Academy Expressions"
+        src={EXPRESSIONS_SRC}
+        origin={popout?.origin}
+        place={popout?.place}
+        pulse={popoutPulse}
+        frameRef={popoutRef}
+        onClose={closePopout}
+        onDragging={setDraggingWindow}
+      />
     </section>
   );
 }
