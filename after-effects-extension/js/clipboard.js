@@ -119,6 +119,10 @@
       panel.showError("Premium authentication required", "Connect an active Premium account in Connection settings to paste images.");
       return;
     }
+    if (panel.demo) {
+      panel.demo("paste-image", "Demo: paste image", "In After Effects, this imports the image on your clipboard (a screenshot, an image copied from a browser or an image file) into your active comp. Ctrl+V works too.");
+      return;
+    }
     if (!window.require) {
       panel.showError("Paste unavailable", "This panel needs After Effects' file access to paste images.");
       return;

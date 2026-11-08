@@ -69,7 +69,9 @@
     "zod": "3.24.4"
   },
   "scripts": {
+    "prestart": "node scripts/sync-extension-demo.js",
     "start": "craco start",
+    "prebuild": "node scripts/sync-extension-demo.js",
     "build": "craco build",
     "test": "craco test",
     "build:extension-converter": "node scripts/build-extension-converter.js"

@@ -1,0 +1,13 @@
+/* Website demo of the extension panel (see demo.js). Small browser-only adjustments. */
+
+/* Artwork stays in the panel: no dragging thumbnails out of it. */
+img, video { -webkit-user-drag: none; user-select: none; }
+
+/* Browsers draw wide scrollbars that CEP doesn't; keep them as slim as in After Effects. */
+* { scrollbar-width: thin; scrollbar-color: rgb(255 255 255 / 0.18) transparent; }
+
+/* The demo explains each button in the status card, so let that text wrap instead of cutting it off. */
+.status-card p { white-space: normal; text-overflow: clip; line-height: 1.4; }
+
+/* Settings that only matter inside After Effects are shown but can't be changed. */
+#apiBaseInput:disabled, #authTokenInput:disabled { opacity: 0.55; cursor: not-allowed; }

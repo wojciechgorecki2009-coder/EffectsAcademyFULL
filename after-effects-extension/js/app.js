@@ -24,10 +24,14 @@
     captionIncreaseTracking: "ea_caption_increase_tracking",
     clipboardFit: "ea_extension_clipboard_fit"
   };
+  // Set only by the website's "Test Extension" page (frontend/public/extension-demo/demo.js).
+  // In the demo every button explains what it does instead of downloading anything or
+  // talking to After Effects. Inside After Effects this is always null.
+  var DEMO = window.EA_DEMO || null;
 
   var state = {
-    apiBase: localStorage.getItem(STORAGE_KEYS.apiBase) || DEFAULT_API_BASE,
-    authToken: localStorage.getItem(STORAGE_KEYS.authToken) || "",
+    apiBase: DEMO ? DEMO.apiBase : localStorage.getItem(STORAGE_KEYS.apiBase) || DEFAULT_API_BASE,
+    authToken: DEMO ? "" : localStorage.getItem(STORAGE_KEYS.authToken) || "",
     deviceId: localStorage.getItem(STORAGE_KEYS.deviceId) || "",
     // "apple": Liquid Glass, matching the website. "minimal": flat black and white, no colour.
     uiStyle: localStorage.getItem(STORAGE_KEYS.uiStyle) === "minimal" ? "minimal" : "apple",
@@ -302,6 +306,7 @@
     setBodyClass("cards-", state.cardSize);
     setBodyClass("scale-", state.uiScale);
     if (typeof moveTabLens === "function") requestAnimationFrame(function () { moveTabLens(false); });
+    shareSession();
   }
 
   function bindPreference(input, key, storageKey) {
@@ -1030,6 +1035,19 @@
   function setPremiumAccess(allowed) {
     state.premiumAccess = allowed === true;
     updatePremiumAccessUI();
+    shareSession();
+  }
+
+  // Lets the standalone Expressions window (expressions.html) use this connection and look.
+  function shareSession() {
+    if (!window.EASession) return;
+    window.EASession.write({
+      apiBase: state.apiBase,
+      authToken: state.authToken,
+      deviceId: state.authToken ? ensureDeviceId() : state.deviceId,
+      premium: state.premiumAccess === true,
+      prefs: { uiStyle: state.uiStyle, accent: state.accent, font: state.font, motion: state.motion, uiScale: state.uiScale }
+    });
   }
 
   function premiumAccessError(message) {
@@ -1055,7 +1073,32 @@
       });
   }
 
+  // Demo: walks through the real steps with a progress bar, without touching any file.
+  function demoCaptions() {
+    var steps = [
+      [8, "Reading selected layer\u2026"],
+      [22, "Extracting audio from the selected clip\u2026"],
+      [62, "Transcribing on your device\u2026"],
+      [90, "Adding caption layers to the timeline\u2026"]
+    ];
+    els.captionCreateBtn.disabled = true;
+    els.captionCreateBtn.textContent = "Transcribing\u2026";
+    demoNotice("captions-run", "Demo: auto captions", "In After Effects, this transcribes the selected clip on your computer and builds caption layers.");
+    steps.forEach(function (step, index) {
+      setTimeout(function () { setCaptionStatus(step[1], step[0]); }, index * 700);
+    });
+    setTimeout(function () {
+      setCaptionStatus("Demo finished. In After Effects, your captions would now be on the timeline.", 100);
+      els.captionCreateBtn.disabled = false;
+      els.captionCreateBtn.textContent = "Add Captions";
+    }, steps.length * 700 + 400);
+  }
+
   function createCaptions() {
+    if (DEMO) {
+      demoCaptions();
+      return;
+    }
     commitCaptionFontInput(true);
     if (els.captionCreateBtn) {
       els.captionCreateBtn.disabled = true;
@@ -1135,6 +1178,34 @@
     if (card) card.classList.remove("error", "shake");
   }
 
+  // Demo only: say what the button would do in After Effects, and tell the page which one it was.
+  function demoNotice(id, title, text) {
+    clearErrorState();
+    setStatus(title, text);
+    if (DEMO) DEMO.action(id);
+  }
+
+  function demoImportText(asset, playbackRate) {
+    var name = "\u201c" + (asset.title || "this asset") + "\u201d";
+    var ext = extensionFromPath(asset.original_filename || asset.file_url || "");
+    if (playbackRate && playbackRate !== 1) {
+      return ["import-slowed", "In After Effects, this downloads " + name + " and adds it to your comp at the playhead, slowed to " + playbackRate + "x."];
+    }
+    if (isArchiveAsset(asset)) {
+      return ["import-archive", "In After Effects, this downloads " + name + ", unpacks it (and any archives inside it) and imports the files into your project."];
+    }
+    if (isAudioAsset(asset)) {
+      return ["import-audio", "In After Effects, this downloads " + name + " and adds it to your active comp at the playhead."];
+    }
+    if (ext === "ffx") {
+      return ["import-preset", "In After Effects, this applies " + name + " to the layers you have selected."];
+    }
+    if (ext === "aep" || ext === "aepx") {
+      return ["import-project", "In After Effects, this imports the " + name + " project into the project you have open."];
+    }
+    return ["import", "In After Effects, this downloads " + name + " and imports it into your project" + (asset.category === "Project Files" ? "." : ", adding it to your active comp.")];
+  }
+
   var tabLens = null;
 
   function moveTabLens(animate) {
@@ -1174,6 +1245,7 @@
           state.category = category;
           renderTabs();
           renderAssets();
+          if (DEMO) DEMO.tab(category);
         };
         els.categoryTabs.appendChild(button);
       });
@@ -1463,6 +1535,7 @@
       return;
     }
     clearErrorState();
+    if (DEMO) DEMO.action("audio-preview");
     setStatus("Preparing preview", asset.title || "Audio");
     getDirectUrl(asset, false).then(function (url) {
       els.playerTitle.textContent = asset.title || "Audio preview";
@@ -1506,6 +1579,10 @@
   }
 
   function openExternal(asset) {
+    if (DEMO) {
+      demoNotice("open-link", "Demo: link not opened", "In After Effects, this opens the asset's page in your browser.");
+      return;
+    }
     var url = asset.external_url || asset.thumbnail_url || "";
     if (!url) return;
     if (window.cep && window.cep.util && window.cep.util.openURLInDefaultBrowser) {
@@ -1723,6 +1800,7 @@
   }
 
   function evalScript(script) {
+    if (DEMO) return Promise.resolve(DEMO.evalScript(script));
     return new Promise(function (resolve, reject) {
       if (!window.__adobe_cep__ || !window.__adobe_cep__.evalScript) {
         reject(new Error("After Effects bridge is unavailable."));
@@ -1747,6 +1825,7 @@
     psLiteral: psLiteral,
     hasPremium: function () { return state.premiumAccess; },
     clipboardFit: function () { return state.clipboardFit; },
+    demo: DEMO ? demoNotice : null,
     openUrl: function (url) {
       if (window.cep && window.cep.util && window.cep.util.openURLInDefaultBrowser) window.cep.util.openURLInDefaultBrowser(url);
       else window.open(url, "_blank");
@@ -1754,6 +1833,11 @@
   };
 
   function importAsset(asset, button, playbackRate) {
+    if (DEMO) {
+      var demo = demoImportText(asset, playbackRate || 1);
+      demoNotice(demo[0], "Demo: nothing was downloaded", demo[1]);
+      return;
+    }
     if (!asset.file_url) {
       showError("No import file", "This asset only has an external link, so the AE panel cannot import it directly.");
       return;
@@ -1826,6 +1910,10 @@
   }
 
   function redeemPairingCode() {
+    if (DEMO) {
+      demoNotice("pairing", "Demo: nothing to connect", "In the extension, you type the pairing code from the Premium page here to link your Premium account.");
+      return;
+    }
     var code = (els.pairingCodeInput.value || "").trim().toUpperCase();
     if (!code) {
       showError("Pairing code required", "Generate a code on the Premium page, then enter it here.");
@@ -1872,8 +1960,30 @@
     }
   }
 
+  function loadDemoAssets() {
+    setStatus("Live library", "Loading assets from Effects Academy\u2026");
+    if (!state.assets.length) renderSkeletons();
+    return requestJson(apiUrl("/assets"), { skipAuth: true })
+      .then(function (assets) {
+        setPremiumAccess(true);
+        cardCache = {};
+        state.assets = (assets || []).filter(function (asset) {
+          return ASSET_CATEGORIES.indexOf(asset.category) !== -1 && asset.file_url;
+        });
+        setStatus("Demo mode", "This is the real panel with the live library. Buttons show what they'd do; nothing is downloaded.");
+        renderAssets();
+      })
+      .catch(function () {
+        setPremiumAccess(true);
+        showError("Couldn't load the library", "The Effects Academy server didn't answer. Press refresh to try again.");
+        state.assets = [];
+        renderAssets();
+      });
+  }
+
   function loadAssets() {
     clearErrorState();
+    if (DEMO) return loadDemoAssets();
     if (!state.authToken) {
       setPremiumAccess(false);
       state.assets = [];
@@ -1905,6 +2015,10 @@
     applyPreferences();
     els.apiBaseInput.value = state.apiBase;
     els.authTokenInput.value = state.authToken;
+    if (DEMO) {
+      els.apiBaseInput.disabled = true;
+      els.authTokenInput.disabled = true;
+    }
     bindPreference(els.uiStyleInput, "uiStyle", STORAGE_KEYS.uiStyle);
     bindPreference(els.layoutModeInput, "layoutMode", STORAGE_KEYS.layoutMode);
     bindPreference(els.densityInput, "density", STORAGE_KEYS.density);
@@ -2054,6 +2168,7 @@
     updateRangeFill(els.playerProgress);
     updateRangeFill(els.playerVolume);
     loadAssets();
+    if (DEMO) DEMO.tab(state.category);
   }
 
   init();

@@ -2,6 +2,7 @@
 <ExtensionManifest Version="7.0" ExtensionBundleId="com.effectsacademy.panel" ExtensionBundleVersion="1.2.0" ExtensionBundleName="Effects Academy">
   <ExtensionList>
     <Extension Id="com.effectsacademy.panel" Version="1.2.0" />
+    <Extension Id="com.effectsacademy.expressions" Version="1.2.0" />
   </ExtensionList>
   <ExecutionEnvironment>
     <HostList>
@@ -41,6 +42,39 @@
             <MinSize>
               <Height>520</Height>
               <Width>340</Width>
+            </MinSize>
+          </Geometry>
+        </UI>
+      </DispatchInfo>
+    </Extension>
+    <!-- The Expressions tab as its own panel: Window › Extensions › Effects Academy Expressions,
+         or "Open in its own window" in the main panel. Float it or dock it anywhere. -->
+    <Extension Id="com.effectsacademy.expressions">
+      <DispatchInfo>
+        <Resources>
+          <MainPath>./expressions.html</MainPath>
+          <ScriptPath>./jsx/host.jsx</ScriptPath>
+          <CEFCommandLine>
+            <Parameter>--enable-nodejs</Parameter>
+            <Parameter>--mixed-context</Parameter>
+            <Parameter>--allow-file-access</Parameter>
+            <Parameter>--allow-file-access-from-files</Parameter>
+          </CEFCommandLine>
+        </Resources>
+        <Lifecycle>
+          <AutoVisible>true</AutoVisible>
+        </Lifecycle>
+        <UI>
+          <Type>Panel</Type>
+          <Menu>Effects Academy Expressions</Menu>
+          <Geometry>
+            <Size>
+              <Height>560</Height>
+              <Width>380</Width>
+            </Size>
+            <MinSize>
+              <Height>260</Height>
+              <Width>260</Width>
             </MinSize>
           </Geometry>
         </UI>

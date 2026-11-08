@@ -910,6 +910,12 @@ body.density-compact .tab { padding: 6px 10px; }
 body.view-expressions .search-field { display: none; }
 .fx-grid { flex: none; overflow: visible; margin: 0; padding: 0 0 4px; transition: opacity 300ms; }
 .fx-grid.premium-locked { opacity: 0.45; }
+.fx-popout { margin-top: 10px; height: 30px; gap: 6px; }
+.fx-popout .ui-icon { width: 13px; height: 13px; }
+.fx-gate-button { margin-top: 8px; height: 28px; }
+/* Standalone Expressions window (expressions.html) */
+body.standalone-expressions .expressions-panel { display: block; }
+body.standalone-expressions .brand-copy p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fx-thumb { background: #000; }
 .fx-thumb video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .fx-description {

@@ -67,11 +67,14 @@
     locked: true
   };
 
+  // In the website demo (panel.demo) no Sketchfab token is ever read, asked for or stored.
   function readToken() {
+    if (panel.demo) return "";
     try { return localStorage.getItem(TOKEN_KEY) || ""; } catch (e) { return ""; }
   }
 
   function saveToken(token) {
+    if (panel.demo) return;
     try {
       if (token) localStorage.setItem(TOKEN_KEY, token);
       else localStorage.removeItem(TOKEN_KEY);
@@ -197,6 +200,13 @@
 
   function loadLinks() {
     if (!state.model || !state.model.isDownloadable || !state.token) return Promise.resolve(null);
+    if (panel.demo) {
+      var archive = state.model.archives && state.model.archives.glb;
+      state.links = { glb: { size: archive && archive.size }, fetchedAt: Date.now() };
+      setProgress(null, "Ready to import.");
+      render();
+      return Promise.resolve(state.links);
+    }
     setProgress(null, "Asking Sketchfab for the files…");
     return sketchfab("/models/" + state.model.uid + "/download", state.token).then(function (links) {
       state.links = { glb: links.glb && links.glb.url ? links.glb : null, fetchedAt: Date.now() };
@@ -248,6 +258,16 @@
   }
 
   function connect() {
+    if (panel.demo) {
+      // Pretend to be connected so the import options can be shown; the field is never read.
+      els.tokenInput.value = "";
+      state.token = "demo";
+      state.account = { displayName: "Demo account" };
+      render();
+      panel.demo("sketchfab-connect", "Demo: Sketchfab connected", "In the extension you paste your own Sketchfab API token here. It's saved only in the panel and sent only to Sketchfab.");
+      loadLinks();
+      return;
+    }
     var token = els.tokenInput.value.trim();
     if (!token) return;
     els.connectBtn.disabled = true;
@@ -320,9 +340,32 @@
     return path.join(folder, result.objName);
   }
 
+  // Website demo: plays the progress steps without downloading the model.
+  function demoImport(model) {
+    var format = state.format.toUpperCase();
+    var steps = [[0.15, "Downloading from Sketchfab…"], [0.55, state.format === "obj" ? "Converting to OBJ with textures…" : "Saving the GLB…"], [0.9, "Importing into After Effects…"]];
+    state.busy = true;
+    els.importBtn.textContent = "Importing…";
+    render();
+    steps.forEach(function (step, index) {
+      setTimeout(function () { setProgress(step[0], step[1]); }, index * 650);
+    });
+    setTimeout(function () {
+      state.busy = false;
+      render();
+      setProgress(1, "Demo finished. In After Effects, the model would now be in your comp.");
+      panel.demo("model-import", "Demo: nothing was downloaded", "In After Effects, this downloads “" + (model.name || "the model") + "” as " + format + " and adds it to your active comp as a 3D layer.");
+      setTimeout(function () { if (!state.busy) show(els.progressTrack, false); }, 1600);
+    }, steps.length * 650 + 300);
+  }
+
   function importModel() {
     var model = state.model;
     if (!model || state.busy || state.locked) return;
+    if (panel.demo) {
+      demoImport(model);
+      return;
+    }
     if (!window.require) {
       panel.showError("Import unavailable", "This panel needs After Effects' file access to import models.");
       return;
@@ -432,7 +475,7 @@
     /** Called when the tab opens: confirm a saved token still works. */
     show: function () {
       render();
-      if (state.token && !state.account) {
+      if (state.token && !state.account && !panel.demo) {
         checkAccount(state.token).then(function (account) {
           state.account = account;
           render();

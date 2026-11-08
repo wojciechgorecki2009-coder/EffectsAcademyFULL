@@ -32,6 +32,7 @@ import "@/App.css";
 const ConverterPage = lazy(() => import("@/pages/ConverterPage"));
 const RemoveBackgroundPage = lazy(() => import("@/pages/RemoveBackgroundPage"));
 const SketchfabPage = lazy(() => import("@/pages/SketchfabPage"));
+const TestExtensionPage = lazy(() => import("@/pages/TestExtensionPage"));
 
 const ASSETS_CHANGED_EVENT = "effectsacademy:assets-changed";
 
@@ -135,6 +136,7 @@ function RefreshableRoutes() {
         <Route path="/support" element={<SupportPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/premium" element={<PremiumPage />} />
+        <Route path="/test-extension" element={<Suspense fallback={<div className="min-h-[70vh]" />}><TestExtensionPage /></Suspense>} />
         <Route path="/convert" element={<Suspense fallback={<div className="min-h-[70vh]" />}><ConverterPage /></Suspense>} />
         <Route path="/remove-background" element={<Suspense fallback={<div className="min-h-[70vh]" />}><RemoveBackgroundPage /></Suspense>} />
         <Route path="/3d-models" element={<Suspense fallback={<div className="min-h-[70vh]" />}><SketchfabPage /></Suspense>} />

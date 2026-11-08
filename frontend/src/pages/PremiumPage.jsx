@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { BadgePercent, Check, Crown, Download, KeyRound, Loader2, LockKeyhole, Minus, MousePointerClick, ShieldCheck, Sparkles } from "lucide-react";
 import { BackButton, SectionHeader } from "@/components/Library";
@@ -357,6 +357,12 @@ export default function PremiumPage() {
                 {busy ? <Loader2 className="animate-spin" /> : null}
                 {busy ? "Opening Stripe..." : hasPremium ? "Manage subscription" : user ? "Subscribe with Stripe" : "Sign in with Google"}
               </button>
+              {!hasPremium && (
+                <Link to="/test-extension" className="btn btn-secondary btn-lg btn-block mt-3" data-testid="test-extension-button">
+                  <AfterEffectsLogo className="" aria-hidden="true" />
+                  Test Extension
+                </Link>
+              )}
               {error && <p className="mt-3 text-center text-[13px] text-[#ff453a]" data-testid="checkout-error">{error}</p>}
               <p className="mt-4 flex items-center justify-center gap-1.5 text-[12px] text-ink-3">
                 <ShieldCheck className="h-3.5 w-3.5" /> Secure checkout hosted by Stripe

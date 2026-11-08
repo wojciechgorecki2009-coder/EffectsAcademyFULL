@@ -1,0 +1,63 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Effects Academy Expressions</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <!-- The Expressions tab on its own: a separate After Effects panel
+       (Window › Extensions › Effects Academy Expressions) that can float or dock
+       anywhere without opening the full Effects Academy panel. -->
+  <body class="standalone-expressions view-expressions">
+    <div class="ambient" aria-hidden="true"><span></span><span></span><span></span></div>
+
+    <main class="shell">
+      <header class="topbar glass">
+        <div class="brand">
+          <img class="logo" src="./assets/favicon.png" alt="Effects Academy" />
+          <div class="brand-copy">
+            <h1>Expressions</h1>
+            <p>One-click text animations</p>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <button id="openMainBtn" class="icon-button" type="button" title="Open the full Effects Academy panel" aria-label="Open the full Effects Academy panel"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5zM4 9h16M9 9v11" /></svg></button>
+        </div>
+      </header>
+
+      <section class="status-card" role="status">
+        <span class="status-dot" aria-hidden="true"></span>
+        <div class="status-copy">
+          <strong id="statusTitle">Expressions</strong>
+          <p id="statusText">Select a text layer, then apply an animation. Keyframes start at the playhead.</p>
+        </div>
+      </section>
+
+      <section id="expressionsPanel" class="expressions-panel panel-view" aria-label="Text animations">
+        <div id="expressionsPremiumGate" class="caption-premium-gate hidden" role="status">
+          <div class="caption-premium-lock" aria-hidden="true">
+            <svg class="ui-icon" viewBox="0 0 24 24"><path d="M7 10V8a5 5 0 0 1 10 0v2M6 10h12v10H6zM12 14v2" /></svg>
+          </div>
+          <div>
+            <strong>Premium authentication required</strong>
+            <p id="expressionsGateText">Connect your Premium account once in the Effects Academy panel (Connection settings). This window picks it up automatically.</p>
+            <button id="gateOpenMainBtn" class="secondary fx-gate-button" type="button">Open Effects Academy</button>
+          </div>
+        </div>
+
+        <div id="expressionsGrid" class="asset-grid fx-grid"></div>
+      </section>
+    </main>
+
+    <script src="./js/session-share.js"></script>
+    <script src="./js/expressions-window.js"></script>
+    <script src="./js/expressions.js"></script>
+    <script>
+      // expressions.js pauses the previews until its tab opens; here the tab is the whole window.
+      if (window.EAExpressions) window.EAExpressions.show();
+      if (window.EAExpressionsWindow) window.EAExpressionsWindow.start();
+    </script>
+  </body>
+</html>

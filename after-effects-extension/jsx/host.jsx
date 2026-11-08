@@ -194,20 +194,109 @@ function EA_setByMatchName(group, values, skipHidden) {
   }
 }
 
-// keys: [{ t: seconds after start, v: value }]; ease "easy" = After Effects' Easy Ease (33.33% influence).
-function EA_addKeys(prop, keys, startTime, ease) {
-  for (var i = 0; i < keys.length; i += 1) prop.setValueAtTime(startTime + keys[i].t, keys[i].v);
-  if (ease !== "easy") return;
-  var dims = prop.propertyValueType === PropertyValueType.OneD ? 1 : (prop.value && prop.value.length) || 1;
-  for (var k = 1; k <= prop.numKeys; k += 1) {
+// Number of temporal ease entries a property takes: 1 for single values and spatial
+// properties (Position), one per dimension otherwise (Scale).
+function EA_easeDims(prop) {
+  var type = prop.propertyValueType;
+  if (type === PropertyValueType.OneD || type === PropertyValueType.TwoD_SPATIAL || type === PropertyValueType.ThreeD_SPATIAL) return 1;
+  return (prop.value && prop.value.length) || 1;
+}
+
+// keys: [{ t: seconds after start, v: value, easeIn/easeOut: [speed, influence] }].
+// ease "easy" = After Effects' Easy Ease (33.33% influence) on every key; keys with their own
+// easeIn/easeOut use those instead. frame (optional) snaps key times to whole frames.
+function EA_addKeys(prop, keys, startTime, ease, frame) {
+  var times = [];
+  for (var i = 0; i < keys.length; i += 1) {
+    var time = startTime + keys[i].t;
+    if (frame) time = Math.round(time / frame) * frame;
+    times.push(time);
+    prop.setValueAtTime(time, keys[i].v);
+  }
+  var dims = EA_easeDims(prop);
+  for (var k = 0; k < keys.length; k += 1) {
+    var spec = keys[k];
+    if (ease !== "easy" && !spec.easeIn && !spec.easeOut) continue;
+    var index = prop.nearestKeyIndex(times[k]);
     var easeIn = [];
     var easeOut = [];
     for (var d = 0; d < dims; d += 1) {
-      easeIn.push(new KeyframeEase(0, 33.333333));
-      easeOut.push(new KeyframeEase(0, 33.333333));
+      var inSpec = spec.easeIn || [0, 33.333333];
+      var outSpec = spec.easeOut || [0, 33.333333];
+      easeIn.push(new KeyframeEase(inSpec[0], inSpec[1]));
+      easeOut.push(new KeyframeEase(outSpec[0], outSpec[1]));
     }
-    prop.setInterpolationTypeAtKey(k, KeyframeInterpolationType.BEZIER, KeyframeInterpolationType.BEZIER);
-    prop.setTemporalEaseAtKey(k, easeIn, easeOut);
+    prop.setInterpolationTypeAtKey(index, KeyframeInterpolationType.BEZIER, KeyframeInterpolationType.BEZIER);
+    prop.setTemporalEaseAtKey(index, easeIn, easeOut);
+  }
+}
+
+// A Range Selector property by match name, looking in its Advanced group too (Amount lives there).
+function EA_selectorProp(selector, matchName) {
+  var prop = selector.property(matchName);
+  if (prop) return prop;
+  var advanced = selector.property("ADBE Text Range Advanced");
+  return advanced ? advanced.property(matchName) : null;
+}
+
+// Value a layer property rests at: its last keyframe if it's animated, else its value.
+function EA_restingValue(prop) {
+  return prop.numKeys > 0 ? prop.keyValue(prop.numKeys) : prop.value;
+}
+
+// A preset key value made relative to where the layer already is:
+// "offset" adds to the resting value (Position), "percent" scales it (Scale), "absolute" is as written.
+function EA_relativeValue(mode, base, value) {
+  if (mode !== "offset" && mode !== "percent") return value;
+  if (typeof base === "number") return mode === "offset" ? base + value : base * value / 100;
+  var out = [];
+  for (var i = 0; i < base.length; i += 1) {
+    var v = value instanceof Array ? (value[i] === undefined ? (mode === "offset" ? 0 : 100) : value[i]) : value;
+    out.push(mode === "offset" ? base[i] + v : base[i] * v / 100);
+  }
+  return out;
+}
+
+// Keyframes (and an optional expression) on the layer's own Transform properties.
+// Re-applying replaces the earlier keys instead of stacking them. Position with separated
+// dimensions is animated through X/Y/Z Position.
+function EA_applyTransformSpec(layer, spec, startTime, frame) {
+  var transform = layer.property("ADBE Transform Group");
+  var prop = transform.property(spec.matchName);
+  var targets = [];
+  if (spec.matchName === "ADBE Position" && prop.dimensionsSeparated) {
+    var axes = ["ADBE Position_0", "ADBE Position_1", "ADBE Position_2"];
+    for (var a = 0; a < axes.length; a += 1) {
+      var axis = transform.property(axes[a]);
+      if (axis && (a < 2 || layer.threeDLayer)) targets.push({ prop: axis, dim: a });
+    }
+  } else {
+    targets.push({ prop: prop, dim: -1 });
+  }
+  for (var t = 0; t < targets.length; t += 1) {
+    var target = targets[t].prop;
+    var dim = targets[t].dim;
+    var base = EA_restingValue(target);
+    while (target.numKeys > 0) target.removeKey(target.numKeys);
+    var keys = [];
+    for (var k = 0; k < spec.keys.length; k += 1) {
+      var key = spec.keys[k];
+      var raw = dim < 0 ? key.v : (key.v instanceof Array ? key.v[dim] : key.v);
+      keys.push({ t: key.t, v: EA_relativeValue(spec.mode, base, raw), easeIn: key.easeIn, easeOut: key.easeOut });
+    }
+    // An axis that doesn't move gets no speed, so it can't drift.
+    if (dim >= 0) {
+      var moves = false;
+      for (var m = 1; m < keys.length; m += 1) if (keys[m].v !== keys[0].v) moves = true;
+      if (!moves) {
+        for (var z = 0; z < keys.length; z += 1) {
+          if (keys[z].easeIn) keys[z].easeIn = [0, keys[z].easeIn[1]];
+          if (keys[z].easeOut) keys[z].easeOut = [0, keys[z].easeOut[1]];
+        }
+      }
+    }
+    EA_addKeys(target, keys, startTime, spec.ease, frame);
+    if (spec.expression && target.canSetExpression) target.expression = spec.expression;
   }
 }
 
@@ -218,13 +307,17 @@ function EA_applyTextPreset(preset) {
   try {
     var comp = EA_activeComp();
     if (!comp) return EA_json(false, "Open a comp and select a text layer first.");
+    // Presets with text animators need text layers; ones that only animate the layer
+    // itself (Transform keyframes, effects, expressions) work on any layer.
+    var needsText = (preset.animators || []).length > 0;
     var layers = [];
     for (var s = 0; s < comp.selectedLayers.length; s += 1) {
-      if (comp.selectedLayers[s] instanceof TextLayer) layers.push(comp.selectedLayers[s]);
+      if (!needsText || comp.selectedLayers[s] instanceof TextLayer) layers.push(comp.selectedLayers[s]);
     }
     if (layers.length < 1) return EA_json(false, "Select a text layer first, then apply " + preset.name + ".");
 
     var startTime = comp.time;
+    var frame = comp.frameDuration;
     for (var l = 0; l < layers.length; l += 1) {
       var layer = layers[l];
       var animators = layer.property("ADBE Text Properties").property("ADBE Text Animators");
@@ -244,12 +337,37 @@ function EA_applyTextPreset(preset) {
         EA_setByMatchName(selector, sel.values || {});
         var keyed = sel.keys || {};
         for (var keyMatch in keyed) {
-          if (keyed.hasOwnProperty(keyMatch)) EA_addKeys(selector.property(keyMatch), keyed[keyMatch], startTime, sel.ease);
+          if (keyed.hasOwnProperty(keyMatch)) EA_addKeys(EA_selectorProp(selector, keyMatch), keyed[keyMatch], startTime, sel.ease, frame);
+        }
+        var selExpressions = sel.expressions || {};
+        for (var exMatch in selExpressions) {
+          if (!selExpressions.hasOwnProperty(exMatch)) continue;
+          var exProp = EA_selectorProp(selector, exMatch);
+          if (exProp && exProp.canSetExpression) exProp.expression = selExpressions[exMatch];
+        }
+        // Expression Selector: its Amount expression drives the animation. __EA_START__ becomes
+        // the playhead's time into the layer, so the animation starts where it was applied.
+        if (spec.expressionSelector) {
+          var exSpec = spec.expressionSelector;
+          var exSelector = animator.property("ADBE Text Selectors").addProperty("ADBE Text Expressible Selector");
+          if (exSpec.basedOn) {
+            try { exSelector.property("ADBE Text Range Type2").setValue(exSpec.basedOn); } catch (basedOnErr) {}
+          }
+          var startInLayer = Math.round((startTime - layer.startTime) / frame) * frame;
+          exSelector.property("ADBE Text Expressible Amount").expression =
+            exSpec.expression.split("__EA_START__").join(String(Math.round(startInLayer * 10000) / 10000));
         }
       }
+      // Effects first, so expressions that read their controls find them.
+      var parade = layer.property("ADBE Effect Parade");
       var effects = preset.effects || [];
       for (var e = 0; e < effects.length; e += 1) {
-        var effect = layer.property("ADBE Effect Parade").addProperty(effects[e].matchName);
+        if (effects[e].name) {
+          for (var oldFx = parade.numProperties; oldFx >= 1; oldFx -= 1) {
+            if (parade.property(oldFx).name === effects[e].name) parade.property(oldFx).remove();
+          }
+        }
+        var effect = parade.addProperty(effects[e].matchName);
         if (effects[e].name) effect.name = effects[e].name;
         EA_setByMatchName(effect, effects[e].values || {});
       }
@@ -259,9 +377,11 @@ function EA_applyTextPreset(preset) {
         for (var p = 0; p < expressions[x].path.length && target; p += 1) target = target.property(expressions[x].path[p]);
         if (target && target.canSetExpression) target.expression = expressions[x].expression;
       }
+      var transformSpecs = preset.transform || [];
+      for (var tr = 0; tr < transformSpecs.length; tr += 1) EA_applyTransformSpec(layer, transformSpecs[tr], startTime, frame);
     }
-    var what = layers.length === 1 ? "\"" + layers[0].name + "\"" : layers.length + " text layers";
-    return EA_json(true, preset.name + " added to " + what + ", starting at the playhead. Press U to see the keyframes.");
+    var what = layers.length === 1 ? "\"" + layers[0].name + "\"" : layers.length + (needsText ? " text layers" : " layers");
+    return EA_json(true, preset.name + " added to " + what + ", starting at the playhead. " + (preset.note || "Press U to see the keyframes."));
   } catch (err) {
     return EA_json(false, err && err.message ? err.message : String(err));
   } finally {

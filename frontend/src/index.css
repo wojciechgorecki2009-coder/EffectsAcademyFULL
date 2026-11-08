@@ -983,6 +983,10 @@ input[type="range"].audio-slider::-moz-range-thumb {
    ========================================================================== */
 
 :root[data-theme="mono"] .ui-tint { filter: grayscale(1) !important; }
+/* The grayscale filter above replaces Tailwind's blur, which turned soft glows
+   into hard circles. Round corner glows are dropped; other glows keep their blur. */
+:root[data-theme="mono"] .ui-tint.blur-3xl { filter: blur(64px) grayscale(1) !important; }
+:root[data-theme="mono"] .ui-tint.blur-3xl.rounded-full { display: none !important; }
 :root[data-theme="mono"] .ui-surface {
   background: linear-gradient(140deg, #2b2b2b 0%, #0a0a0a 100%) !important;
 }
