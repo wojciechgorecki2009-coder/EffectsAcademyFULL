@@ -1,9 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Edit3, ExternalLink, ImagePlus, PackageOpen, Save, Search, Settings2, ShoppingBag, Trash2, UploadCloud } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { ChevronRight, Edit3, ExternalLink, ImagePlus, PackageOpen, Save, Search, Settings2, ShoppingBag, Trash2, UploadCloud, X } from "lucide-react";
 import { toast } from "sonner";
 import { api, FILE_BASE } from "@/lib/api";
-import { useTheme } from "@/lib/theme";
-import { Button } from "@/components/ui/button";
+import { EASE_OUT, KineticText, SPRING, Stagger, StaggerItem } from "@/lib/motion";
+import LiquidGlass from "@/components/LiquidGlass";
+import { BackButton } from "@/components/Library";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -135,12 +138,13 @@ async function optimizeSetupImage(file, kind = "item") {
 
 function UploadButton({ label, onUpload, disabled }) {
   return (
-    <label className={`setup-upload-chip ${disabled ? "is-disabled" : ""}`}>
-      <UploadCloud size={15} />
+    <label className={`btn btn-secondary btn-sm cursor-pointer ${disabled ? "pointer-events-none opacity-50" : ""}`}>
+      <UploadCloud />
       <span>{label}</span>
       <input
         type="file"
         accept="image/*"
+        className="sr-only"
         disabled={disabled}
         onChange={(event) => {
           const file = event.target.files?.[0];
@@ -152,8 +156,32 @@ function UploadButton({ label, onUpload, disabled }) {
   );
 }
 
+function Field({ label, children, className = "" }) {
+  return (
+    <label className={`flex flex-col gap-1.5 text-[13px] font-medium text-ink-2 ${className}`}>
+      {label}
+      {children}
+    </label>
+  );
+}
+
+function EditorCard({ title, className = "", children }) {
+  return (
+    <div className={`surface flex flex-col gap-4 rounded-[26px] p-6 ${className}`}>
+      <h2 className="font-display text-[1.25rem] font-semibold tracking-[-0.02em] text-ink">{title}</h2>
+      {children}
+    </div>
+  );
+}
+
+function SetupEmpty({ children }) {
+  return <div className="surface mx-auto mt-6 max-w-xl rounded-[26px] p-10 text-center text-[15px] text-ink-2">{children}</div>;
+}
+
 export default function SetupPage() {
-  const { theme } = useTheme();
+  const reduce = useReducedMotion();
+  const contentRef = useRef(null);
+  const editorRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState("");
@@ -178,9 +206,6 @@ export default function SetupPage() {
   const items = data.items || [];
   const canEdit = Boolean(data.can_edit);
   const selectedCategory = categories.find((category) => category.id === selectedCategoryId);
-
-  const styleClass = "setup-style-apple";
-  const themeClass = `setup-theme-${theme || "blue"}`;
 
   const loadPage = async () => {
     setLoading(true);
@@ -208,6 +233,25 @@ export default function SetupPage() {
     loadPage();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Opening the editor (or editing a card) brings the editor into view.
+  useEffect(() => {
+    if (!editOpen) return undefined;
+    const timer = window.setTimeout(() => {
+      editorRef.current?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, [editOpen, editingCategoryId, editingItemId, reduce]);
+
+  // Opens a category ("" for the overview). If the list starts above the screen, it
+  // scrolls up to it so the new view's first row is what you see.
+  const openCategory = (id) => {
+    setSelectedCategoryId(id);
+    const top = contentRef.current?.getBoundingClientRect().top;
+    if (typeof top === "number" && top < 80) {
+      window.scrollTo({ top: window.scrollY + top - 96, behavior: reduce ? "auto" : "smooth" });
+    }
+  };
 
   useEffect(() => {
     if (!settings.background_url) return;
@@ -418,354 +462,449 @@ export default function SetupPage() {
     const missingLinkLabel = isSoftwareItem ? "Website link coming soon" : "Amazon link coming soon";
 
     return (
-      <article
-        className="setup-item-card"
-        key={item.id}
-        style={{
-          background: item.background || "var(--setup-item-bg)",
-          ...imageScaleStyle(item.image_scale),
-        }}
-      >
+      <StaggerItem as="article" key={item.id} className="group relative flex flex-col pt-14" data-testid="setup-item">
         {item.image_url ? (
-          <img src={mediaUrl(item.image_url)} alt="" loading="lazy" decoding="async" />
+          <img
+            className="setup-float-img setup-item-img"
+            src={mediaUrl(item.image_url)}
+            style={imageScaleStyle(item.image_scale)}
+            alt=""
+            loading="lazy"
+            decoding="async"
+          />
         ) : (
-          <div className="setup-image-placeholder">
-            <PackageOpen size={44} />
+          <div className="setup-float-img setup-item-img flex items-center justify-center text-ink-3">
+            <PackageOpen className="h-12 w-12" />
           </div>
         )}
-        <div className="setup-item-body">
-          {item.price_note ? <span className="setup-pill">{item.price_note}</span> : null}
-          <h3>{item.name}</h3>
-          {item.description ? <p>{item.description}</p> : null}
-          {item.price ? (
-            <div className="setup-product-price">
-              <span>{item.price}</span>
-              {usdEstimate ? <span className="setup-product-usd">{usdEstimate}</span> : null}
-            </div>
-          ) : null}
-          <div className="setup-item-actions">
-            {item.amazon_url ? (
-              <a href={item.amazon_url} target="_blank" rel="noreferrer">
-                {isSoftwareItem ? <ExternalLink size={17} /> : <ShoppingBag size={17} />}
-                {linkLabel}
-              </a>
-            ) : (
-              <span className="setup-muted-link">{missingLinkLabel}</span>
-            )}
-            {canEdit ? (
-              <div className="setup-mod-actions">
-                <button type="button" onClick={() => editItem(item)} aria-label={`Edit ${item.name}`}>
-                  <Edit3 size={16} />
-                </button>
-                <button type="button" onClick={() => deleteItem(item)} aria-label={`Delete ${item.name}`}>
-                  <Trash2 size={16} />
-                </button>
-              </div>
+        <div
+          className={`setup-card lg flex flex-1 flex-col rounded-[28px] px-5 pb-5 pt-[204px] ${item.background ? "ui-surface" : ""}`}
+          style={item.background ? { background: item.background } : undefined}
+        >
+          {item.price_note ? <span className="chip mb-2.5 w-fit bg-[rgb(var(--tint)/0.14)] text-tint">{item.price_note}</span> : null}
+          <h3 className="font-display text-[1.2rem] font-semibold leading-snug tracking-[-0.02em] text-ink">{item.name}</h3>
+          {item.description ? <p className="mt-1.5 text-[14px] leading-relaxed text-ink-2">{item.description}</p> : null}
+          <div className="mt-auto pt-5">
+            {item.price ? (
+              <p className="flex flex-wrap items-baseline gap-x-2">
+                <span className="font-display text-[1.6rem] font-bold tracking-[-0.03em] text-ink">{item.price}</span>
+                {usdEstimate ? <span className="text-[13px] text-ink-3">{usdEstimate}</span> : null}
+              </p>
             ) : null}
+            <div className="mt-3 flex items-center gap-2">
+              {item.amazon_url ? (
+                <a href={item.amazon_url} target="_blank" rel="noreferrer" className="btn btn-primary btn-sm">
+                  {isSoftwareItem ? <ExternalLink /> : <ShoppingBag />}
+                  {linkLabel}
+                </a>
+              ) : (
+                <span className="text-[13px] text-ink-3">{missingLinkLabel}</span>
+              )}
+              {canEdit ? (
+                <div className="ml-auto flex gap-1.5">
+                  <button type="button" className="btn btn-secondary btn-sm btn-icon" onClick={() => editItem(item)} aria-label={`Edit ${item.name}`}>
+                    <Edit3 />
+                  </button>
+                  <button type="button" className="btn btn-danger btn-sm btn-icon" onClick={() => deleteItem(item)} aria-label={`Delete ${item.name}`}>
+                    <Trash2 />
+                  </button>
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
-      </article>
+      </StaggerItem>
     );
   };
 
-  return (
-    <section
-      className={`setup-page ${styleClass} ${themeClass}`}
-      style={{
-        "--setup-bg-image": settings.background_url ? `url("${mediaUrl(settings.background_url)}")` : "none",
-        "--setup-accent": settings.accent_color || DEFAULT_SETTINGS.accent_color,
-        "--setup-base": settings.background_color || DEFAULT_SETTINGS.background_color,
-        "--setup-item-bg": settings.item_background || DEFAULT_SETTINGS.item_background,
-      }}
-    >
-      <main className="setup-shell">
+  const renderCategoryCard = (category, index) => {
+    const count = (itemsByCategory[category.id] || []).length;
+    return (
+      <StaggerItem key={category.id} className="group relative pt-20" data-testid="setup-category">
+        <button
+          type="button"
+          onClick={() => openCategory(category.id)}
+          className={`setup-card lg lg-hover relative block h-[232px] w-full rounded-[28px] text-left ${category.background ? "ui-surface" : ""}`}
+          style={category.background ? { background: category.background } : undefined}
+        >
+          {category.image_url ? (
+            <img
+              className="setup-float-img setup-category-img"
+              src={mediaUrl(category.image_url)}
+              style={imageScaleStyle(category.image_scale)}
+              alt=""
+              loading={index < 3 ? "eager" : "lazy"}
+              decoding="async"
+              fetchPriority={index < 3 ? "high" : "auto"}
+            />
+          ) : null}
+          <span className="absolute inset-x-5 bottom-5 z-[4] block">
+            <span className="chip bg-[rgb(var(--tint)/0.14)] tabular-nums text-tint">
+              {count} {count === 1 ? "item" : "items"}
+            </span>
+            <span className="mt-2 flex items-end justify-between gap-3">
+              <span className="min-w-0">
+                <span className="block font-display text-[1.5rem] font-semibold leading-tight tracking-[-0.03em] text-ink">{category.name}</span>
+                {category.description ? <span className="mt-0.5 block text-[14px] text-ink-2">{category.description}</span> : null}
+              </span>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--fill-2)] text-ink transition-transform duration-500 ease-spring group-hover:translate-x-0.5 group-hover:scale-110">
+                <ChevronRight className="h-4 w-4" />
+              </span>
+            </span>
+          </span>
+        </button>
         {canEdit ? (
-          <Button className="setup-edit-float" onClick={() => setEditOpen((open) => !open)}>
-            <Settings2 size={16} />
-            {editOpen ? "Close editor" : "Edit setup page"}
-          </Button>
+          <div className="absolute right-4 top-24 z-[5] flex gap-1.5 opacity-0 transition-opacity duration-300 focus-within:opacity-100 group-hover:opacity-100">
+            <button type="button" className="btn btn-secondary btn-sm btn-icon" onClick={() => editCategory(category)} aria-label={`Edit ${category.name}`}>
+              <Edit3 />
+            </button>
+            <button type="button" className="btn btn-danger btn-sm btn-icon" onClick={() => deleteCategory(category)} aria-label={`Delete ${category.name}`}>
+              <Trash2 />
+            </button>
+          </div>
         ) : null}
+      </StaggerItem>
+    );
+  };
 
-        <header className="setup-hero">
-          <p className="setup-kicker">MRBIT SETUP</p>
-          <h1>{settings.title}</h1>
-          <p>{settings.intro}</p>
+  // Switching between the categories and one category's products: the view lifts away and the
+  // next one rises in, de-blurring, like the rest of the site.
+  const viewMotion = reduce
+    ? {}
+    : {
+        initial: { opacity: 0, y: 20, filter: "blur(10px)" },
+        animate: { opacity: 1, y: 0, filter: "blur(0px)", transitionEnd: { filter: "none" } },
+        exit: { opacity: 0, y: -10, filter: "blur(6px)", transition: { duration: 0.24, ease: [0.4, 0, 1, 1] } },
+        transition: { duration: 0.7, ease: EASE_OUT },
+      };
+  const itemGrid = "grid grid-cols-1 gap-x-5 gap-y-10 sm:grid-cols-2 lg:grid-cols-3";
+
+  return (
+    <section className="relative isolate min-h-screen overflow-clip px-4 pb-32 pt-5 sm:px-6" data-testid="setup-page">
+      {/* The fade below also covers the aurora's lower edge (phones draw it without blur) */}
+      <div className="aurora -z-10 !opacity-40" aria-hidden="true" style={{ inset: "-30% -10% auto", height: "90vh" }}>
+        <span />
+        <span />
+        <span />
+      </div>
+      {/* MrBit's background photo, softened and faded into the page; black and white with the B&W theme */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[88vh] overflow-hidden" aria-hidden="true">
+        {settings.background_url ? (
+          <div className="ui-tint absolute inset-0">
+            <motion.img
+              src={mediaUrl(settings.background_url)}
+              alt=""
+              className="setup-backdrop h-full w-full object-cover"
+              initial={reduce ? false : { opacity: 0, scale: 1.18 }}
+              animate={{ opacity: 1, scale: 1.08 }}
+              transition={{ duration: 1.8, ease: EASE_OUT }}
+            />
+          </div>
+        ) : null}
+        <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgb(var(--canvas) / 0.3), rgb(var(--canvas) / 0.75) 60%, rgb(var(--canvas)) 96%)" }} />
+      </div>
+
+      <div className="mx-auto max-w-[1180px]">
+        <motion.div
+          className="flex items-center justify-between gap-3"
+          initial={reduce ? false : { opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: EASE_OUT }}
+        >
+          <Link to="/" className="lg lg-hover group inline-flex h-12 items-center gap-2.5 rounded-full pl-1.5 pr-4" data-testid="setup-home-link">
+            <img
+              src="/apple-touch-icon.png"
+              alt=""
+              className="h-9 w-9 rounded-full object-cover shadow-[0_2px_10px_rgb(0_0_0/0.25)] transition-transform duration-700 ease-spring group-hover:rotate-[-8deg] group-hover:scale-105"
+            />
+            <span className="font-display text-[15px] font-semibold tracking-[-0.02em] text-ink">Effects Academy</span>
+          </Link>
+          {canEdit ? (
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setEditOpen((open) => !open)} data-testid="setup-edit-toggle">
+              <Settings2 />
+              {editOpen ? "Close editor" : "Edit setup page"}
+            </button>
+          ) : null}
+        </motion.div>
+
+        <header className="mx-auto mt-14 max-w-3xl text-center md:mt-20">
+          <motion.p
+            className="eyebrow"
+            initial={reduce ? false : { opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: EASE_OUT }}
+          >
+            MrBit setup
+          </motion.p>
+          <h1 className="display-lg mt-3 text-ink">
+            <KineticText key={settings.title} text={settings.title} delay={0.1} />
+          </h1>
+          {settings.intro ? (
+            <motion.p
+              className="lede mx-auto mt-5 max-w-xl"
+              initial={reduce ? false : { opacity: 0, y: 14, filter: "blur(8px)" }}
+              animate={{ opacity: 1, y: 0, filter: "blur(0px)", transitionEnd: { filter: "none" } }}
+              transition={{ duration: 1, ease: EASE_OUT, delay: 0.4 }}
+            >
+              {settings.intro}
+            </motion.p>
+          ) : null}
         </header>
 
-        <label className="setup-search" aria-label="Search setup products">
-          <Search size={22} />
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search"
-          />
-        </label>
+        <motion.div
+          className="sticky top-4 z-30 mx-auto mt-10 max-w-2xl"
+          initial={reduce ? false : { opacity: 0, y: 16, filter: "blur(8px)" }}
+          animate={{ opacity: 1, y: 0, filter: "blur(0px)", transitionEnd: { filter: "none" } }}
+          transition={{ duration: 0.9, ease: EASE_OUT, delay: 0.55 }}
+        >
+          <LiquidGlass className="group flex h-12 items-center rounded-full pl-4 pr-1.5 focus-within:shadow-[var(--glass-shadow),0_0_0_4px_rgb(var(--tint)/0.16)]" edge={18} strength={34}>
+            <Search className="h-[18px] w-[18px] shrink-0 text-ink-2 transition-colors duration-300 group-focus-within:text-tint" />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search products"
+              aria-label="Search setup products"
+              className="bare h-full min-w-0 flex-1 bg-transparent px-3 text-[15px] text-ink outline-none placeholder:text-ink-3"
+              data-testid="setup-search"
+            />
+            <AnimatePresence>
+              {query ? (
+                <motion.button
+                  type="button"
+                  onClick={() => setQuery("")}
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--fill-2)] text-ink-2 hover:text-ink"
+                  initial={{ opacity: 0, scale: 0.6 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.6 }}
+                  transition={SPRING}
+                  aria-label="Clear search"
+                >
+                  <X className="h-4 w-4" />
+                </motion.button>
+              ) : null}
+            </AnimatePresence>
+          </LiquidGlass>
+        </motion.div>
 
-        {loading ? (
-          <div className="setup-empty">Loading the setup list...</div>
-        ) : selectedCategory ? (
-          <section className="setup-content">
-            <div className="setup-section-head">
-              <button type="button" onClick={() => setSelectedCategoryId("")}>
-                <ArrowLeft size={18} />
-                Categories
-              </button>
-              <div>
-                <h2>{selectedCategory.name}</h2>
-                {selectedCategory.description ? <p>{selectedCategory.description}</p> : null}
-              </div>
+        <div ref={contentRef} className="mt-12 md:mt-16">
+          {loading ? (
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3" aria-label="Loading the setup list">
+              {[0, 1, 2].map((key) => (
+                <div key={key} className="skeleton mt-20 h-[232px] rounded-[28px]" />
+              ))}
             </div>
+          ) : (
+            <AnimatePresence mode="wait" initial={false}>
+              {selectedCategory ? (
+                <motion.section key={selectedCategory.id} {...viewMotion}>
+                  <BackButton onClick={() => openCategory("")} testId="setup-back">Categories</BackButton>
+                  <p className="eyebrow tabular-nums">
+                    {(itemsByCategory[selectedCategory.id] || []).length} products
+                  </p>
+                  <h2 className="display-md mt-1.5 text-ink">{selectedCategory.name}</h2>
+                  {selectedCategory.description ? <p className="mt-2 text-[15px] text-ink-2">{selectedCategory.description}</p> : null}
 
-            {visibleItems.length ? (
-              <div className="setup-item-grid">
-                {visibleItems.map((item) => renderSetupItemCard(item))}
-              </div>
-            ) : (
-              <div className="setup-empty">No products match this search yet.</div>
-            )}
-          </section>
-        ) : (
-          <section className="setup-content">
-            {filteredCategories.length ? (
-              <div className="setup-category-grid">
-                {filteredCategories.map((category, index) => (
-                  <article
-                    className="setup-category-card"
-                    key={category.id}
-                    style={{
-                      background: category.background || "var(--setup-item-bg)",
-                      ...imageScaleStyle(category.image_scale),
-                    }}
-                    onClick={() => setSelectedCategoryId(category.id)}
-                  >
-                    {category.image_url ? (
-                      <img
-                        src={mediaUrl(category.image_url)}
-                        alt=""
-                        loading={index < 3 ? "eager" : "lazy"}
-                        decoding="async"
-                        fetchPriority={index < 3 ? "high" : "auto"}
-                      />
-                    ) : null}
-                    <div className="setup-category-body">
-                      <span>{(itemsByCategory[category.id] || []).length} items</span>
-                      <h2>{category.name}</h2>
-                      {category.description ? <p>{category.description}</p> : null}
+                  {visibleItems.length ? (
+                    <Stagger className={`mt-6 ${itemGrid}`}>{visibleItems.map((item) => renderSetupItemCard(item))}</Stagger>
+                  ) : (
+                    <SetupEmpty>No products match this search yet.</SetupEmpty>
+                  )}
+                </motion.section>
+              ) : (
+                <motion.section key="categories" {...viewMotion}>
+                  {filteredCategories.length ? (
+                    <Stagger className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
+                      {filteredCategories.map((category, index) => renderCategoryCard(category, index))}
+                    </Stagger>
+                  ) : !queryText ? (
+                    <SetupEmpty>
+                      {canEdit ? "No setup categories yet. Open the editor and add the first one." : "The setup list is being built."}
+                    </SetupEmpty>
+                  ) : null}
+                  {queryText && matchingItems.length ? (
+                    <div className="mt-14">
+                      <p className="eyebrow tabular-nums">
+                        {matchingItems.length} matching {matchingItems.length === 1 ? "product" : "products"}
+                      </p>
+                      <Stagger className={`mt-2 ${itemGrid}`}>{matchingItems.map((item) => renderSetupItemCard(item))}</Stagger>
                     </div>
-                    {canEdit ? (
-                      <div className="setup-mod-actions setup-category-mod" onClick={(event) => event.stopPropagation()}>
-                        <button type="button" onClick={() => editCategory(category)} aria-label={`Edit ${category.name}`}>
-                          <Edit3 size={16} />
-                        </button>
-                        <button type="button" onClick={() => deleteCategory(category)} aria-label={`Delete ${category.name}`}>
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    ) : null}
-                  </article>
-                ))}
-              </div>
-            ) : !queryText || !matchingItems.length ? (
-              <div className="setup-empty">
-                {canEdit
-                  ? "No setup categories yet. Open the editor and add the first one."
-                  : "The setup list is being built."}
-              </div>
-            ) : null}
-            {queryText && matchingItems.length ? (
-              <div className="setup-search-products">
-                <div className="setup-item-grid">
-                  {matchingItems.map((item) => renderSetupItemCard(item))}
-                </div>
-              </div>
-            ) : null}
-            {queryText && !filteredCategories.length && !matchingItems.length ? (
-              <div className="setup-empty">No categories or products match this search yet.</div>
-            ) : null}
-          </section>
-        )}
+                  ) : null}
+                  {queryText && !filteredCategories.length && !matchingItems.length ? (
+                    <SetupEmpty>No categories or products match this search yet.</SetupEmpty>
+                  ) : null}
+                </motion.section>
+              )}
+            </AnimatePresence>
+          )}
+        </div>
 
-        {canEdit && editOpen ? (
-          <section className="setup-editor">
-            <div className="setup-editor-card setup-editor-wide">
-              <h2>Page settings</h2>
-              <div className="setup-form-grid">
-                <label>
-                  Title
+        <AnimatePresence>
+          {canEdit && editOpen ? (
+            <motion.section
+              ref={editorRef}
+              className="mt-24 grid scroll-mt-24 grid-cols-1 gap-5 lg:grid-cols-2"
+              initial={reduce ? false : { opacity: 0, y: 24, filter: "blur(10px)" }}
+              animate={{ opacity: 1, y: 0, filter: "blur(0px)", transitionEnd: { filter: "none" } }}
+              exit={{ opacity: 0, y: 12, filter: "blur(6px)", transition: { duration: 0.25 } }}
+              transition={{ duration: 0.7, ease: EASE_OUT }}
+              data-testid="setup-editor"
+            >
+              <EditorCard title="Page settings" className="lg:col-span-2">
+                <Field label="Title">
                   <Input value={settingsForm.title} onChange={(event) => setSettingsForm((form) => ({ ...form, title: event.target.value }))} />
-                </label>
-                <label>
-                  Accent color
-                  <Input value={settingsForm.accent_color} onChange={(event) => setSettingsForm((form) => ({ ...form, accent_color: event.target.value }))} />
-                </label>
-                <label>
-                  Background color
-                  <Input value={settingsForm.background_color} onChange={(event) => setSettingsForm((form) => ({ ...form, background_color: event.target.value }))} />
-                </label>
-                <label>
-                  Item background
-                  <Input value={settingsForm.item_background} onChange={(event) => setSettingsForm((form) => ({ ...form, item_background: event.target.value }))} />
-                </label>
-              </div>
-              <label>
-                Intro text
-                <Textarea value={settingsForm.intro} onChange={(event) => setSettingsForm((form) => ({ ...form, intro: event.target.value }))} />
-              </label>
-              <label>
-                Background image URL
-                <Input value={settingsForm.background_url} onChange={(event) => setSettingsForm((form) => ({ ...form, background_url: event.target.value }))} />
-              </label>
-              <div className="setup-editor-actions">
-                <UploadButton
-                  label={uploading === "page-bg" ? "Uploading..." : "Upload background"}
-                  disabled={Boolean(uploading)}
-                  onUpload={(file) => uploadImage(file, (url) => setSettingsForm((form) => ({ ...form, background_url: url })), "page-bg", "background")}
-                />
-                <Button disabled={saving} onClick={saveSettings}>
-                  <Save size={16} />
-                  Save page
-                </Button>
-              </div>
-            </div>
+                </Field>
+                <Field label="Intro text">
+                  <Textarea value={settingsForm.intro} onChange={(event) => setSettingsForm((form) => ({ ...form, intro: event.target.value }))} />
+                </Field>
+                <Field label="Background image URL">
+                  <Input value={settingsForm.background_url} onChange={(event) => setSettingsForm((form) => ({ ...form, background_url: event.target.value }))} />
+                </Field>
+                <p className="text-[12.5px] text-ink-3">
+                  Colours follow the visitor's appearance on Effects Academy (including Black &amp; White), so the page always matches the rest of the site.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <UploadButton
+                    label={uploading === "page-bg" ? "Uploading..." : "Upload background"}
+                    disabled={Boolean(uploading)}
+                    onUpload={(file) => uploadImage(file, (url) => setSettingsForm((form) => ({ ...form, background_url: url })), "page-bg", "background")}
+                  />
+                  <button type="button" className="btn btn-primary btn-sm" disabled={saving} onClick={saveSettings}>
+                    <Save />
+                    Save page
+                  </button>
+                </div>
+              </EditorCard>
 
-            <div className="setup-editor-card">
-              <h2>{editingCategoryId ? "Edit category" : "Add category"}</h2>
-              <label>
-                Name
-                <Input value={categoryForm.name} onChange={(event) => setCategoryForm((form) => ({ ...form, name: event.target.value }))} />
-              </label>
-              <label>
-                Description
-                <Textarea value={categoryForm.description} onChange={(event) => setCategoryForm((form) => ({ ...form, description: event.target.value }))} />
-              </label>
-              <label>
-                Image URL
-                <Input value={categoryForm.image_url} onChange={(event) => setCategoryForm((form) => ({ ...form, image_url: event.target.value }))} />
-              </label>
-              <label>
-                Image scale
-                <Input
-                  type="number"
-                  min="0.35"
-                  max="2.5"
-                  step="0.05"
-                  value={categoryForm.image_scale}
-                  onChange={(event) => setCategoryForm((form) => ({ ...form, image_scale: event.target.value }))}
-                />
-              </label>
-              <label className="setup-checkbox-row">
-                <input
-                  type="checkbox"
-                  checked={Boolean(categoryForm.is_software)}
-                  onChange={(event) => setCategoryForm((form) => ({ ...form, is_software: event.target.checked }))}
-                />
-                <span>
-                  <strong>Software</strong>
-                  <small>Use website links instead of Amazon buttons for items in this category.</small>
-                </span>
-              </label>
-              <label>
-                Card background
-                <Input value={categoryForm.background} onChange={(event) => setCategoryForm((form) => ({ ...form, background: event.target.value }))} />
-              </label>
-              <label>
-                Sort order
-                <Input type="number" value={categoryForm.sort_order} onChange={(event) => setCategoryForm((form) => ({ ...form, sort_order: event.target.value }))} />
-              </label>
-              <div className="setup-editor-actions">
-                <UploadButton
-                  label={uploading === "category" ? "Uploading..." : "Upload category image"}
-                  disabled={Boolean(uploading)}
-                  onUpload={(file) => uploadImage(file, (url) => setCategoryForm((form) => ({ ...form, image_url: url })), "category", "category")}
-                />
-                <Button disabled={saving} onClick={saveCategory}>
-                  <ImagePlus size={16} />
-                  {editingCategoryId ? "Save category" : "Add category"}
-                </Button>
-                {editingCategoryId ? (
-                  <Button variant="ghost" onClick={() => { setEditingCategoryId(""); setCategoryForm(EMPTY_CATEGORY); }}>
-                    Cancel
-                  </Button>
-                ) : null}
-              </div>
-            </div>
+              <EditorCard title={editingCategoryId ? "Edit category" : "Add category"}>
+                <Field label="Name">
+                  <Input value={categoryForm.name} onChange={(event) => setCategoryForm((form) => ({ ...form, name: event.target.value }))} />
+                </Field>
+                <Field label="Description">
+                  <Textarea value={categoryForm.description} onChange={(event) => setCategoryForm((form) => ({ ...form, description: event.target.value }))} />
+                </Field>
+                <Field label="Image URL">
+                  <Input value={categoryForm.image_url} onChange={(event) => setCategoryForm((form) => ({ ...form, image_url: event.target.value }))} />
+                </Field>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Image scale">
+                    <Input
+                      type="number"
+                      min="0.35"
+                      max="2.5"
+                      step="0.05"
+                      value={categoryForm.image_scale}
+                      onChange={(event) => setCategoryForm((form) => ({ ...form, image_scale: event.target.value }))}
+                    />
+                  </Field>
+                  <Field label="Sort order">
+                    <Input type="number" value={categoryForm.sort_order} onChange={(event) => setCategoryForm((form) => ({ ...form, sort_order: event.target.value }))} />
+                  </Field>
+                </div>
+                <label className="flex cursor-pointer items-start gap-3 rounded-2xl bg-[var(--fill)] p-3.5">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 accent-[rgb(var(--tint))]"
+                    checked={Boolean(categoryForm.is_software)}
+                    onChange={(event) => setCategoryForm((form) => ({ ...form, is_software: event.target.checked }))}
+                  />
+                  <span>
+                    <strong className="block text-[14px] font-semibold text-ink">Software</strong>
+                    <small className="text-[12.5px] text-ink-3">Use website links instead of Amazon buttons for items in this category.</small>
+                  </span>
+                </label>
+                <Field label="Card background (optional)">
+                  <Input value={categoryForm.background} onChange={(event) => setCategoryForm((form) => ({ ...form, background: event.target.value }))} />
+                </Field>
+                <div className="flex flex-wrap gap-2">
+                  <UploadButton
+                    label={uploading === "category" ? "Uploading..." : "Upload category image"}
+                    disabled={Boolean(uploading)}
+                    onUpload={(file) => uploadImage(file, (url) => setCategoryForm((form) => ({ ...form, image_url: url })), "category", "category")}
+                  />
+                  <button type="button" className="btn btn-primary btn-sm" disabled={saving} onClick={saveCategory}>
+                    <ImagePlus />
+                    {editingCategoryId ? "Save category" : "Add category"}
+                  </button>
+                  {editingCategoryId ? (
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setEditingCategoryId(""); setCategoryForm(EMPTY_CATEGORY); }}>
+                      Cancel
+                    </button>
+                  ) : null}
+                </div>
+              </EditorCard>
 
-            <div className="setup-editor-card">
-              <h2>{editingItemId ? "Edit item" : "Add item"}</h2>
-              <label>
-                Category
-                <select value={itemForm.category_id} onChange={(event) => setItemForm((form) => ({ ...form, category_id: event.target.value }))}>
-                  <option value="">Choose category</option>
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.id}>{category.name}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Product name
-                <Input value={itemForm.name} onChange={(event) => setItemForm((form) => ({ ...form, name: event.target.value }))} />
-              </label>
-              <label>
-                Description
-                <Textarea value={itemForm.description} onChange={(event) => setItemForm((form) => ({ ...form, description: event.target.value }))} />
-              </label>
-              <label>
-                {itemFormIsSoftware ? "Website link" : "Amazon link"}
-                <Input value={itemForm.amazon_url} onChange={(event) => setItemForm((form) => ({ ...form, amazon_url: event.target.value }))} />
-              </label>
-              <div className="setup-form-grid">
-                <label>
-                  Price
-                  <Input value={itemForm.price} placeholder="$129.99" onChange={(event) => setItemForm((form) => ({ ...form, price: event.target.value }))} />
-                </label>
-                <label>
-                  Price note
-                  <Input value={itemForm.price_note} onChange={(event) => setItemForm((form) => ({ ...form, price_note: event.target.value }))} />
-                </label>
-                <label>
-                  Sort order
-                  <Input type="number" value={itemForm.sort_order} onChange={(event) => setItemForm((form) => ({ ...form, sort_order: event.target.value }))} />
-                </label>
-              </div>
-              <label>
-                Image URL
-                <Input value={itemForm.image_url} onChange={(event) => setItemForm((form) => ({ ...form, image_url: event.target.value }))} />
-              </label>
-              <label>
-                Image scale
-                <Input
-                  type="number"
-                  min="0.35"
-                  max="2.5"
-                  step="0.05"
-                  value={itemForm.image_scale}
-                  onChange={(event) => setItemForm((form) => ({ ...form, image_scale: event.target.value }))}
-                />
-              </label>
-              <label>
-                Card background
-                <Input value={itemForm.background} onChange={(event) => setItemForm((form) => ({ ...form, background: event.target.value }))} />
-              </label>
-              <div className="setup-editor-actions">
-                <UploadButton
-                  label={uploading === "item" ? "Uploading..." : "Upload item image"}
-                  disabled={Boolean(uploading)}
-                  onUpload={(file) => uploadImage(file, (url) => setItemForm((form) => ({ ...form, image_url: url })), "item", "item")}
-                />
-                <Button disabled={saving} onClick={saveItem}>
-                  <PackageOpen size={16} />
-                  {editingItemId ? "Save item" : "Add item"}
-                </Button>
-                {editingItemId ? (
-                  <Button variant="ghost" onClick={() => { setEditingItemId(""); setItemForm({ ...EMPTY_ITEM, category_id: itemForm.category_id }); }}>
-                    Cancel
-                  </Button>
-                ) : null}
-              </div>
-            </div>
-          </section>
-        ) : null}
-      </main>
+              <EditorCard title={editingItemId ? "Edit item" : "Add item"}>
+                <Field label="Category">
+                  <select
+                    className="h-10 rounded-xl border border-[var(--line)] bg-[var(--fill)] px-3 text-[14px] text-ink outline-none focus:shadow-[0_0_0_3px_rgb(var(--tint)/0.25)]"
+                    value={itemForm.category_id}
+                    onChange={(event) => setItemForm((form) => ({ ...form, category_id: event.target.value }))}
+                  >
+                    <option value="">Choose category</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>{category.name}</option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Product name">
+                  <Input value={itemForm.name} onChange={(event) => setItemForm((form) => ({ ...form, name: event.target.value }))} />
+                </Field>
+                <Field label="Description">
+                  <Textarea value={itemForm.description} onChange={(event) => setItemForm((form) => ({ ...form, description: event.target.value }))} />
+                </Field>
+                <Field label={itemFormIsSoftware ? "Website link" : "Amazon link"}>
+                  <Input value={itemForm.amazon_url} onChange={(event) => setItemForm((form) => ({ ...form, amazon_url: event.target.value }))} />
+                </Field>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <Field label="Price">
+                    <Input value={itemForm.price} placeholder="$129.99" onChange={(event) => setItemForm((form) => ({ ...form, price: event.target.value }))} />
+                  </Field>
+                  <Field label="Price note">
+                    <Input value={itemForm.price_note} onChange={(event) => setItemForm((form) => ({ ...form, price_note: event.target.value }))} />
+                  </Field>
+                  <Field label="Sort order">
+                    <Input type="number" value={itemForm.sort_order} onChange={(event) => setItemForm((form) => ({ ...form, sort_order: event.target.value }))} />
+                  </Field>
+                </div>
+                <Field label="Image URL">
+                  <Input value={itemForm.image_url} onChange={(event) => setItemForm((form) => ({ ...form, image_url: event.target.value }))} />
+                </Field>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Image scale">
+                    <Input
+                      type="number"
+                      min="0.35"
+                      max="2.5"
+                      step="0.05"
+                      value={itemForm.image_scale}
+                      onChange={(event) => setItemForm((form) => ({ ...form, image_scale: event.target.value }))}
+                    />
+                  </Field>
+                  <Field label="Card background (optional)">
+                    <Input value={itemForm.background} onChange={(event) => setItemForm((form) => ({ ...form, background: event.target.value }))} />
+                  </Field>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <UploadButton
+                    label={uploading === "item" ? "Uploading..." : "Upload item image"}
+                    disabled={Boolean(uploading)}
+                    onUpload={(file) => uploadImage(file, (url) => setItemForm((form) => ({ ...form, image_url: url })), "item", "item")}
+                  />
+                  <button type="button" className="btn btn-primary btn-sm" disabled={saving} onClick={saveItem}>
+                    <PackageOpen />
+                    {editingItemId ? "Save item" : "Add item"}
+                  </button>
+                  {editingItemId ? (
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setEditingItemId(""); setItemForm({ ...EMPTY_ITEM, category_id: itemForm.category_id }); }}>
+                      Cancel
+                    </button>
+                  ) : null}
+                </div>
+              </EditorCard>
+            </motion.section>
+          ) : null}
+        </AnimatePresence>
+      </div>
     </section>
   );
 }

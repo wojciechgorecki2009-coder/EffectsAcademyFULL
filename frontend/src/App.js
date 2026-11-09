@@ -160,7 +160,7 @@ function AppFrame() {
 
   return (
     <GlassSheenRoot>
-      <div className={`App min-h-screen ${isSetupMiniSite ? "setup-mini-site-shell" : ""}`}>
+      <div className="App min-h-screen">
         <ScrollToTopOnRouteChange />
         <AnalyticsTracker />
         {!isSetupMiniSite ? <Nav /> : null}
