@@ -4,7 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ChevronRight, Edit3, ExternalLink, ImagePlus, PackageOpen, Save, Search, Settings2, ShoppingBag, Trash2, UploadCloud, X } from "lucide-react";
 import { toast } from "sonner";
 import { api, FILE_BASE } from "@/lib/api";
-import { EASE_OUT, KineticText, SPRING, Stagger, StaggerItem } from "@/lib/motion";
+import { EASE_OUT, FadeText, KineticText, SPRING, Stagger, StaggerItem } from "@/lib/motion";
 import LiquidGlass from "@/components/LiquidGlass";
 import { BackButton } from "@/components/Library";
 import { Input } from "@/components/ui/input";
@@ -628,26 +628,16 @@ export default function SetupPage() {
         </motion.div>
 
         <header className="mx-auto mt-14 max-w-3xl text-center md:mt-20">
-          <motion.p
-            className="eyebrow"
-            initial={reduce ? false : { opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: EASE_OUT }}
-          >
+          <FadeText className="eyebrow" y={10} blur={0} duration={0.8}>
             MrBit setup
-          </motion.p>
+          </FadeText>
           <h1 className="display-lg mt-3 text-ink">
             <KineticText key={settings.title} text={settings.title} delay={0.1} />
           </h1>
           {settings.intro ? (
-            <motion.p
-              className="lede mx-auto mt-5 max-w-xl"
-              initial={reduce ? false : { opacity: 0, y: 14, filter: "blur(8px)" }}
-              animate={{ opacity: 1, y: 0, filter: "blur(0px)", transitionEnd: { filter: "none" } }}
-              transition={{ duration: 1, ease: EASE_OUT, delay: 0.4 }}
-            >
+            <FadeText key={settings.intro} className="lede mx-auto mt-5 max-w-xl" y={14} blur={8} duration={1} delay={0.4}>
               {settings.intro}
-            </motion.p>
+            </FadeText>
           ) : null}
         </header>
 

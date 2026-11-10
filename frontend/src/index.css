@@ -1158,3 +1158,34 @@ body { overflow-x: clip; }
 /* Converter progress island (bottom left): lifted above the audio player when one is open */
 :root { --converter-dock-bottom: 12px; --converter-dock-raised: 176px; }
 @media (min-width: 768px) { :root { --converter-dock-bottom: 20px; --converter-dock-raised: 132px; } }
+
+/* ==========================================================================
+   Typewriter text (JetBrains Mono font): see lib/typewriter.js
+   Characters not typed yet are painted transparent, so the text keeps its
+   final layout while it types. The caret follows the typing in the tint colour.
+   ========================================================================== */
+::highlight(ea-untyped) {
+  color: transparent;
+  text-shadow: none;
+  text-decoration-color: transparent;
+}
+
+.ea-type-caret {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 2147483000;
+  pointer-events: none;
+  border-radius: 1px;
+  background: rgb(var(--tint));
+  box-shadow: 0 0 10px rgb(var(--tint) / 0.5);
+  will-change: transform;
+}
+/* At the end it blinks twice, then fades away */
+.ea-type-caret.is-done { animation: ea-caret-out 1.1s linear forwards; }
+@keyframes ea-caret-out {
+  0%, 22% { opacity: 1; }
+  23%, 45% { opacity: 0; }
+  46%, 68% { opacity: 1; }
+  69%, 100% { opacity: 0; }
+}

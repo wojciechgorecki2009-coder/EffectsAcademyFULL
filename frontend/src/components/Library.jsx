@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import { ChevronLeft, ChevronRight, RefreshCcw, SearchX } from "lucide-react";
 import AssetCard from "@/components/AssetCard";
-import { EASE_OUT, KineticText, Reveal } from "@/lib/motion";
+import { EASE_OUT, FadeText, KineticText, Reveal } from "@/lib/motion";
 
 // Two compact columns on phones, growing to four on wide screens.
 export const GRID_CLASS = "asset-grid grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4";
@@ -13,17 +13,22 @@ const GRID_BATCH = 24;
 /** Apple-style section heading: small colored eyebrow, big headline, optional "View all ›". */
 export function SectionHeader({ eyebrow, eyebrowColor, title, action, className = "" }) {
   return (
-    <Reveal className={`mb-6 flex items-end justify-between gap-4 ${className}`} y={18} blur={8}>
-      <div className="min-w-0">
+    // The heading and the action reveal separately, so the heading can be typed with the mono font.
+    <div className={`mb-6 flex items-end justify-between gap-4 ${className}`}>
+      <Reveal className="min-w-0" y={18} blur={8}>
         {eyebrow ? (
           <p className={`eyebrow mb-1.5 ${eyebrowColor ? "eyebrow-c" : ""}`} style={eyebrowColor ? { "--c": eyebrowColor } : undefined}>
             {eyebrow}
           </p>
         ) : null}
         <h2 className="display-md text-ink">{title}</h2>
-      </div>
-      {action}
-    </Reveal>
+      </Reveal>
+      {action ? (
+        <Reveal y={18} blur={8}>
+          {action}
+        </Reveal>
+      ) : null}
+    </div>
   );
 }
 
@@ -270,28 +275,18 @@ export function PageIntro({ eyebrow, icon, title, children, center = false, clas
   return (
     <header className={`${center ? "mx-auto text-center" : ""} max-w-3xl ${className}`}>
       {eyebrow ? (
-        <motion.p
-          className={`eyebrow mb-3 inline-flex items-center gap-1.5 [&_svg]:h-4 [&_svg]:w-4`}
-          initial={reduce ? false : { opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: EASE_OUT }}
-        >
+        <FadeText className="eyebrow mb-3 inline-flex items-center gap-1.5 [&_svg]:h-4 [&_svg]:w-4" y={10} blur={0} duration={0.8}>
           {icon}
           {eyebrow}
-        </motion.p>
+        </FadeText>
       ) : null}
       <h1 className="display-lg text-ink">
         <KineticText text={title} delay={0.05} stagger={0.07} />
       </h1>
       {children ? (
-        <motion.div
-          className={`lede mt-5 ${center ? "mx-auto" : ""} max-w-2xl`}
-          initial={reduce ? false : { opacity: 0, y: 14, filter: "blur(8px)" }}
-          animate={{ opacity: 1, y: 0, filter: "blur(0px)", transitionEnd: { filter: "none" } }}
-          transition={{ duration: 1, ease: EASE_OUT, delay: 0.3 }}
-        >
+        <FadeText as="div" className={`lede mt-5 ${center ? "mx-auto" : ""} max-w-2xl`} y={14} blur={8} duration={1} delay={0.3}>
           {children}
-        </motion.div>
+        </FadeText>
       ) : null}
     </header>
   );

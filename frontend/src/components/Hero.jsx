@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { motion, useReducedMotion, useScroll, useSpring, useTransform } from "framer-motion";
 import { Search, Sparkles, X } from "lucide-react";
 import LiquidGlass from "@/components/LiquidGlass";
-import { CountUp, EASE_OUT, KineticText } from "@/lib/motion";
+import { CountUp, EASE_OUT, FadeText, KineticText } from "@/lib/motion";
 import { LITE } from "@/lib/device";
 
 const HERO_BACKGROUND = "/media/hero-background-poster.jpg";
@@ -85,7 +85,10 @@ export default function Hero({ query, setQuery, totalAssets }) {
             data-testid="hero-badge"
           >
             <Sparkles className="h-3.5 w-3.5 text-tint" />
-            Free assets for video editors
+            {/* The pill itself fades in; its label is typed with the mono font */}
+            <FadeText as="span" y={0} blur={0} duration={0.01} delay={0.05}>
+              Free assets for video editors
+            </FadeText>
           </LiquidGlass>
         </motion.div>
 
@@ -93,10 +96,10 @@ export default function Hero({ query, setQuery, totalAssets }) {
           <KineticText text="Level up your edits." delay={0.15} stagger={0.085} highlight={{ "edits.": "text-shimmer" }} />
         </h1>
 
-        <motion.p className="lede mt-7 max-w-[38rem]" data-testid="hero-description" {...fade(0.55)}>
+        <FadeText className="lede mt-7 max-w-[38rem]" data-testid="hero-description" y={18} blur={10} duration={1.1} delay={0.55}>
           Effects Academy is an editor&apos;s backpack full of useful presets, project files and audios curated into one
           website designed to spend less time on Discord servers looking for assets and more time editing.
-        </motion.p>
+        </FadeText>
 
         <motion.div className="mt-11 w-full max-w-[40rem]" {...fade(0.7)}>
           <LiquidGlass className="group flex h-[3.75rem] items-center rounded-full pl-5 pr-2 transition-shadow duration-500 focus-within:shadow-[var(--glass-shadow),0_0_0_4px_rgb(var(--tint)/0.18)]" edge={24} strength={46}>
@@ -129,9 +132,9 @@ export default function Hero({ query, setQuery, totalAssets }) {
         </motion.div>
 
         {totalAssets > 0 && (
-          <motion.p className="mt-6 text-[13px] font-medium text-ink-3" {...fade(0.85)}>
+          <FadeText className="mt-6 text-[13px] font-medium text-ink-3" y={18} blur={10} duration={1.1} delay={0.85}>
             <CountUp value={totalAssets} className="tabular-nums text-ink-2" /> assets and counting
-          </motion.p>
+          </FadeText>
         )}
       </motion.div>
     </section>

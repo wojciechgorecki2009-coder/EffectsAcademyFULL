@@ -22,7 +22,7 @@ import {
   SectionHeader,
   SubHeading,
 } from "@/components/Library";
-import { EASE_OUT, KineticText, SPRING } from "@/lib/motion";
+import { EASE_OUT, FadeText, KineticText, SPRING } from "@/lib/motion";
 import { ArrowUpDown, ChevronDown, ChevronRight, Check, Music2, Tv, Film, Search, X } from "lucide-react";
 import {
   DropdownMenu,
@@ -212,26 +212,22 @@ export default function CategoryPage() {
 
       <div className="mb-10 flex flex-wrap items-end justify-between gap-6">
         <div className="max-w-2xl">
-          <motion.p
+          <FadeText
             className="eyebrow eyebrow-c mb-2 inline-flex items-center gap-2"
             style={{ "--c": c.text }}
-            initial={reduce ? false : { opacity: 0, x: -12 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8, ease: EASE_OUT }}
+            x={-12}
+            y={0}
+            blur={0}
+            duration={0.8}
           >
             <span className="dot" /> {category}
-          </motion.p>
+          </FadeText>
           <h1 className="display-lg text-ink">
             <KineticText text={category} stagger={0.07} />
           </h1>
-          <motion.p
-            className="lede mt-4"
-            initial={reduce ? false : { opacity: 0, y: 12, filter: "blur(6px)" }}
-            animate={{ opacity: 1, y: 0, filter: "blur(0px)", transitionEnd: { filter: "none" } }}
-            transition={{ duration: 0.9, ease: EASE_OUT, delay: 0.25 }}
-          >
+          <FadeText className="lede mt-4" y={12} blur={6} duration={0.9} delay={0.25}>
             {DESCRIPTIONS[category]}
-          </motion.p>
+          </FadeText>
         </div>
         <motion.div
           className="flex items-center gap-4"

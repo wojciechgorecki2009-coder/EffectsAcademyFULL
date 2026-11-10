@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { BadgePercent, Check, Crown, Download, KeyRound, Loader2, LockKeyhole, Minus, MousePointerClick, ShieldCheck, Sparkles } from "lucide-react";
 import { BackButton, SectionHeader } from "@/components/Library";
-import { EASE_OUT, KineticText, Reveal, Stagger, StaggerItem } from "@/lib/motion";
+import { EASE_OUT, FadeText, KineticText, Reveal, Stagger, StaggerItem } from "@/lib/motion";
 import { api } from "@/lib/api";
 import { hasPremiumAccess, useAuth } from "@/lib/auth";
 import { useUploadAccess } from "@/lib/uploadAccess";
@@ -274,25 +274,15 @@ export default function PremiumPage() {
         </div>
 
         <header className="mx-auto mt-6 max-w-3xl text-center">
-          <motion.p
-            className="eyebrow inline-flex items-center gap-1.5 !text-[#ff9f0a]"
-            initial={reduce ? false : { opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: EASE_OUT }}
-          >
+          <FadeText className="eyebrow inline-flex items-center gap-1.5 !text-[#ff9f0a]" y={10} blur={0} duration={0.8}>
             <Crown className="h-4 w-4" /> Effects Academy Premium
-          </motion.p>
+          </FadeText>
           <h1 className="display-lg mt-3 text-ink">
             <KineticText text="Unlock the whole vault." delay={0.1} highlight={{ "vault.": "text-shimmer" }} />
           </h1>
-          <motion.p
-            className="lede mx-auto mt-5 max-w-2xl"
-            initial={reduce ? false : { opacity: 0, y: 14, filter: "blur(8px)" }}
-            animate={{ opacity: 1, y: 0, filter: "blur(0px)", transitionEnd: { filter: "none" } }}
-            transition={{ duration: 1, ease: EASE_OUT, delay: 0.45 }}
-          >
+          <FadeText className="lede mx-auto mt-5 max-w-2xl" y={14} blur={8} duration={1} delay={0.45}>
             Premium on Effects Academy unlocks our more sophisticated project files, a bigger allowance for our tools across the site, and now our built-in After Effects extension.
-          </motion.p>
+          </FadeText>
         </header>
 
         <div className="mt-14 grid items-start gap-5 lg:grid-cols-[1.05fr_0.95fr]">
