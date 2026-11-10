@@ -20,7 +20,7 @@ export const SPRING_SNAPPY = { type: "spring", stiffness: 520, damping: 36 };
 // Swing Up presets in the After Effects extension: a big first overshoot (about a
 // quarter of the travel) and a smaller second one. The word mask leaves room for it
 // (see KineticText), so raising the bounce means raising that room too.
-export const SPRING_BOUNCE = { type: "spring", stiffness: 280, damping: 13, mass: 1 };
+export const SPRING_BOUNCE = { type: "spring", stiffness: 150, damping: 9.5, mass: 1 };
 
 export const riseVariants = {
   hidden: { opacity: 0, y: 24, filter: "blur(10px)" },
