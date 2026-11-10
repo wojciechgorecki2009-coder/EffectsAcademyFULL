@@ -16,10 +16,11 @@ export const EASE_OUT = [0.16, 1, 0.3, 1];
 export const SPRING = { type: "spring", stiffness: 380, damping: 32, mass: 0.9 };
 export const SPRING_SOFT = { type: "spring", stiffness: 160, damping: 24, mass: 1 };
 export const SPRING_SNAPPY = { type: "spring", stiffness: 520, damping: 36 };
-// Headline words rise past their resting line and settle back, like the Pop Up and
-// Swing Up presets in the After Effects extension. It overshoots by about a tenth of
-// the travel, which the word mask leaves room for (see KineticText).
-export const SPRING_BOUNCE = { type: "spring", stiffness: 240, damping: 18, mass: 1 };
+// Headline words shoot past their resting line and bounce back, like the Pop Up and
+// Swing Up presets in the After Effects extension: a big first overshoot (about a
+// quarter of the travel) and a smaller second one. The word mask leaves room for it
+// (see KineticText), so raising the bounce means raising that room too.
+export const SPRING_BOUNCE = { type: "spring", stiffness: 280, damping: 13, mass: 1 };
 
 export const riseVariants = {
   hidden: { opacity: 0, y: 24, filter: "blur(10px)" },
@@ -169,16 +170,19 @@ export function KineticText({ text, className = "", wordClassName = "", delay = 
         const wordDelay = delay + index * stagger;
         return (
           <Fragment key={`${word}-${index}`}>
-            <span aria-hidden="true" className="inline-block overflow-x-visible overflow-y-clip align-bottom pt-[0.36em] -mt-[0.36em] pb-[0.24em] -mb-[0.24em]">
+            {/* The empty headroom ignores the pointer, so it can't cover a link above the
+                headline; the word itself stays selectable. */}
+            <span aria-hidden="true" className="pointer-events-none inline-block overflow-x-visible overflow-y-clip align-bottom pt-[0.8em] -mt-[0.8em] pb-[0.24em] -mb-[0.24em]">
               <motion.span
-                className={`-mx-[0.1em] inline-block px-[0.1em] pb-[0.1em] -mb-[0.1em] ${highlight[word] || ""} ${wordClassName}`}
+                className={`pointer-events-auto -mx-[0.1em] inline-block px-[0.1em] pb-[0.1em] -mb-[0.1em] ${highlight[word] || ""} ${wordClassName}`}
                 initial={reduce ? false : { y: "125%", opacity: 0, filter: "blur(8px)" }}
                 animate={{ y: "0%", opacity: 1, filter: "blur(0px)", transitionEnd: { filter: "none" } }}
-                // Only the rise bounces; the fade and de-blur stay smooth.
+                // Only the rise bounces. The fade and de-blur finish early so the word is
+                // already crisp while it bounces.
                 transition={{
                   default: { ...SPRING_BOUNCE, delay: wordDelay },
-                  opacity: { duration: 0.55, ease: EASE_OUT, delay: wordDelay },
-                  filter: { duration: 0.75, ease: EASE_OUT, delay: wordDelay },
+                  opacity: { duration: 0.34, ease: EASE_OUT, delay: wordDelay },
+                  filter: { duration: 0.42, ease: EASE_OUT, delay: wordDelay },
                 }}
               >
                 {word}
