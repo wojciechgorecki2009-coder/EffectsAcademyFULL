@@ -154,18 +154,22 @@ export function KineticText({ text, className = "", wordClassName = "", delay = 
   return (
     <span className={className}>
       <span className="sr-only">{text}</span>
+      {/* The space goes between the word boxes, not inside them: a space at the end of an
+          inline-block is dropped by some browsers, which ran the words together. */}
       {words.map((word, index) => (
-        <span key={`${word}-${index}`} aria-hidden="true" className="inline-block overflow-hidden align-bottom pb-[0.08em] -mb-[0.08em]">
-          <motion.span
-            className={`inline-block ${highlight[word] || ""} ${wordClassName}`}
-            initial={reduce ? false : { y: "105%", opacity: 0, filter: "blur(8px)" }}
-            animate={{ y: "0%", opacity: 1, filter: "blur(0px)", transitionEnd: { filter: "none" } }}
-            transition={{ duration: 1.05, ease: EASE_OUT, delay: delay + index * stagger }}
-          >
-            {word}
-          </motion.span>
+        <Fragment key={`${word}-${index}`}>
+          <span aria-hidden="true" className="inline-block overflow-hidden align-bottom pb-[0.08em] -mb-[0.08em]">
+            <motion.span
+              className={`inline-block ${highlight[word] || ""} ${wordClassName}`}
+              initial={reduce ? false : { y: "105%", opacity: 0, filter: "blur(8px)" }}
+              animate={{ y: "0%", opacity: 1, filter: "blur(0px)", transitionEnd: { filter: "none" } }}
+              transition={{ duration: 1.05, ease: EASE_OUT, delay: delay + index * stagger }}
+            >
+              {word}
+            </motion.span>
+          </span>
           {index < words.length - 1 ? " " : null}
-        </span>
+        </Fragment>
       ))}
     </span>
   );
