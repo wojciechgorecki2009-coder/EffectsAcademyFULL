@@ -1189,3 +1189,33 @@ body { overflow-x: clip; }
   46%, 68% { opacity: 1; }
   69%, 100% { opacity: 0; }
 }
+
+/* ==========================================================================
+   Creator credit links (components/CreatorLink.jsx)
+   A creator's name links to their TikTok/YouTube wherever it appears.
+   ========================================================================== */
+.creator-link {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: rgb(var(--ink) / 0.3);
+  text-underline-offset: 2px;
+  transition: color var(--dur-3) var(--ease-out), text-decoration-color var(--dur-3) var(--ease-out);
+}
+.creator-link:hover { color: rgb(var(--tint)); text-decoration-color: rgb(var(--tint)); }
+
+.creator-credit-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 2rem;
+  padding: 0 0.85rem 0 0.7rem;
+  border-radius: 999px;
+  background: rgb(var(--tint) / 0.12);
+  color: rgb(var(--tint));
+  font-size: 0.8125rem;
+  font-weight: 600;
+  transition: background-color var(--dur-3) var(--ease-out), transform var(--dur-3) var(--ease-spring);
+}
+.creator-credit-chip:hover { background: rgb(var(--tint) / 0.2); transform: translateY(-1px); }
+.creator-credit-chip:active { transform: scale(0.97); }

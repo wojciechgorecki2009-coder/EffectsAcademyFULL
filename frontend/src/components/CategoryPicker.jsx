@@ -4,6 +4,8 @@ import { ChevronRight, Pencil, Trash2 } from "lucide-react";
 import { buildFileUrl, getTheme } from "@/lib/api";
 import { useUploadAccess } from "@/lib/uploadAccess";
 import EditCategoryModal from "@/components/EditCategoryModal";
+import { PlatformIcon } from "@/components/CreatorLink";
+import { creditPlatform, useCreatorCredits } from "@/lib/creatorCredits";
 import { EASE_OUT } from "@/lib/motion";
 
 const DEFAULT_BLUR_PX = 0; // sharper by default per latest spec
@@ -34,6 +36,7 @@ export default function CategoryPicker({
   testIdPrefix,
 }) {
   const { canDelete } = useUploadAccess();
+  const { credits } = useCreatorCredits();
   const [editing, setEditing] = useState(null);
   const reduce = useReducedMotion();
 
@@ -55,6 +58,8 @@ export default function CategoryPicker({
             text: ov.text_color || baseTheme.text,
           };
           const count = getCount(label);
+          const creditUrl = kind === "creator" ? credits[label.trim().toLowerCase()] || "" : "";
+          const platform = creditUrl ? creditPlatform(creditUrl) : null;
           const img = ov.image_url || images[label];
           const blur = typeof ov.blur_px === "number" ? ov.blur_px : DEFAULT_BLUR_PX;
           return (
@@ -121,8 +126,23 @@ export default function CategoryPicker({
                 </span>
               </button>
 
+              {creditUrl && (
+                <a
+                  href={creditUrl}
+                  target="_blank"
+                  rel="noopener noreferrer nofollow"
+                  onClick={(e) => e.stopPropagation()}
+                  className="media-chip chip absolute right-3.5 top-3.5 z-[2] gap-1.5 transition-transform duration-300 ease-spring hover:scale-105"
+                  title={`${label} on ${platform.label}`}
+                  aria-label={`${label} on ${platform.label}`}
+                  data-testid={`${testIdPrefix}-credit-${label.toLowerCase().replace(/\s+/g, "-")}`}
+                >
+                  <PlatformIcon id={platform.id} className="h-3 w-3" />
+                  {platform.label}
+                </a>
+              )}
               {canDelete && (
-                <div className="absolute right-3 top-3 flex gap-1.5 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                <div className={`absolute right-3 flex gap-1.5 opacity-0 transition-opacity duration-300 group-hover:opacity-100 ${creditUrl ? "top-12" : "top-3"}`}>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();

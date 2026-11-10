@@ -11,7 +11,7 @@ export const GRID_CLASS = "asset-grid grid grid-cols-2 gap-3 sm:gap-5 lg:grid-co
 const GRID_BATCH = 24;
 
 /** Apple-style section heading: small colored eyebrow, big headline, optional "View all ›". */
-export function SectionHeader({ eyebrow, eyebrowColor, title, action, className = "" }) {
+export function SectionHeader({ eyebrow, eyebrowColor, title, action, below, className = "" }) {
   return (
     // The heading and the action reveal separately, so the heading can be typed with the mono font.
     <div className={`mb-6 flex items-end justify-between gap-4 ${className}`}>
@@ -22,6 +22,7 @@ export function SectionHeader({ eyebrow, eyebrowColor, title, action, className 
           </p>
         ) : null}
         <h2 className="display-md text-ink">{title}</h2>
+        {below ? <div className="mt-3">{below}</div> : null}
       </Reveal>
       {action ? (
         <Reveal y={18} blur={8}>

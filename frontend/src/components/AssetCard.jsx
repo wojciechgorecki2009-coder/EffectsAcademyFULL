@@ -6,6 +6,7 @@ import { useUploadAccess } from "@/lib/uploadAccess";
 import { useAuth } from "@/lib/auth";
 import { playGlobalAudio, toggleGlobalAudio, useGlobalAudio } from "@/lib/globalAudio";
 import UploadModal from "@/components/UploadModal";
+import { CreatorName } from "@/components/CreatorLink";
 import {
   Dialog,
   DialogContent,
@@ -344,6 +345,7 @@ export default function AssetCard({ asset, featured = false, onChanged, allAsset
         originalSrc: fileSrc,
         title: asset.title || "Audio preview",
         subtitle: asset.creator_tag ? `Audio by ${asset.creator_tag}` : "Playing from EffectsAcademy",
+        creator: asset.creator_tag || "",
         thumbnail: thumbnailSrc,
         downloadUrl,
         downloadFilename,
@@ -392,8 +394,14 @@ export default function AssetCard({ asset, featured = false, onChanged, allAsset
     : (isVideo || hasAudioPlayback)
       ? (isActiveAudio && globalAudio.playing ? Pause : Play)
       : Download;
+  // The creator's name links to their page when a credit link is set (Stats page).
   const metaParts = [
-    asset.creator_tag ? `${isAudio ? "Audio by" : "By"} ${asset.creator_tag}` : "",
+    asset.creator_tag ? (
+      <span key="creator">
+        {isAudio ? "Audio by " : "By "}
+        <CreatorName name={asset.creator_tag} />
+      </span>
+    ) : "",
     displayGenre,
     asset.ae_version ? `AE ${asset.ae_version}` : "",
   ].filter(Boolean);
@@ -520,7 +528,14 @@ export default function AssetCard({ asset, featured = false, onChanged, allAsset
           )}
 
           {metaParts.length > 0 && (
-            <p className="mt-0.5 line-clamp-1 text-[11.5px] text-ink-3 sm:text-[12.5px]">{metaParts.join(" · ")}</p>
+            <p className="mt-0.5 line-clamp-1 text-[11.5px] text-ink-3 sm:text-[12.5px]">
+              {metaParts.map((part, index) => (
+                <span key={typeof part === "string" ? part : part.key}>
+                  {index > 0 ? " · " : ""}
+                  {part}
+                </span>
+              ))}
+            </p>
           )}
 
           {asset.description && (
@@ -655,7 +670,9 @@ export default function AssetCard({ asset, featured = false, onChanged, allAsset
                         </div>
                         <div className="p-3">
                           <p className="line-clamp-1 text-[13px] font-semibold text-ink">{related.title}</p>
-                          <p className="line-clamp-1 text-[11.5px] text-ink-3">{related.creator_tag || related.category}</p>
+                          <p className="line-clamp-1 text-[11.5px] text-ink-3">
+                            {related.creator_tag ? <CreatorName name={related.creator_tag} /> : related.category}
+                          </p>
                         </div>
                       </div>
                     );

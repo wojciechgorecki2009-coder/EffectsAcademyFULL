@@ -10,6 +10,7 @@ import {
 } from "@/lib/api";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import CategoryPicker from "@/components/CategoryPicker";
+import { CreatorCreditChip } from "@/components/CreatorLink";
 import LiquidGlass from "@/components/LiquidGlass";
 import {
   AssetGrid,
@@ -477,6 +478,7 @@ function SubList({ sub, onBack, backLabel, filtered, loading, reload, allAssets,
         eyebrow={category}
         eyebrowColor={CATEGORY_COLORS[category]?.text}
         title={sub}
+        below={category === "Audios" ? <CreatorCreditChip name={sub} /> : null}
         action={setSortBy ? <SortControl sortBy={sortBy} setSortBy={setSortBy} /> : null}
       />
       <CategoryGrid assets={filtered} loading={loading} reload={reload} allAssets={allAssets} category={category} />

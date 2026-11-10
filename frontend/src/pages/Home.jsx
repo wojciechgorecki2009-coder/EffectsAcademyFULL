@@ -25,6 +25,7 @@ import {
   SubHeading,
   ViewAllLink,
 } from "@/components/Library";
+import { CreatorCreditChip } from "@/components/CreatorLink";
 import { EASE_OUT, SPRING } from "@/lib/motion";
 import { Box, ChevronRight, Music2, Tv, Film, RefreshCcw, Wand2 } from "lucide-react";
 
@@ -569,7 +570,12 @@ function FilteredView({
           <BackButton onClick={() => setSub(null)} testId="back-to-picker">
             All {filter === "Audios" ? "creators" : "shows"}
           </BackButton>
-          <SectionHeader eyebrow={filter} eyebrowColor={CATEGORY_COLORS[filter]?.text} title={sub} />
+          <SectionHeader
+            eyebrow={filter}
+            eyebrowColor={CATEGORY_COLORS[filter]?.text}
+            title={sub}
+            below={filter === "Audios" ? <CreatorCreditChip name={sub} /> : null}
+          />
         </>
       )}
       {filtered.length === 0 ? (

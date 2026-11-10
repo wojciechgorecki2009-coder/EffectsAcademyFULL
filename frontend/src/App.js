@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Routes, Route, useLocation } from "react-route
 import { Toaster } from "sonner";
 import { UploadAccessProvider } from "@/lib/uploadAccess";
 import { AuthProvider } from "@/lib/auth";
+import { CreatorCreditsProvider } from "@/lib/creatorCredits";
 import { motion, useReducedMotion } from "framer-motion";
 import { ThemeProvider, useTheme } from "@/lib/theme";
 import { EASE_OUT } from "@/lib/motion";
@@ -199,9 +200,11 @@ export default function App() {
     <ThemeProvider>
       <AuthProvider>
         <UploadAccessProvider>
+        <CreatorCreditsProvider>
         <BrowserRouter>
         <AppFrame />
         </BrowserRouter>
+        </CreatorCreditsProvider>
         </UploadAccessProvider>
       </AuthProvider>
     </ThemeProvider>

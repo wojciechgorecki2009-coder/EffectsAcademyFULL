@@ -25,7 +25,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field, EmailStr
 from typing import List, Optional
 from datetime import datetime, timezone
-from urllib.parse import quote, urlencode
+from urllib.parse import quote, urlencode, urlsplit
 from PIL import Image, ImageOps, UnidentifiedImageError
 import jwt
 import stripe
@@ -1268,6 +1268,8 @@ class CategoryOverride(BaseModel):
     text_color: Optional[str] = ""
     blur_px: Optional[float] = None  # null = use default; 0 = sharp; >0 = blurred
     deleted: bool = False
+    # Creators only: where their name links to across the site (TikTok, YouTube, ...)
+    credit_url: Optional[str] = ""
     updated_at: str = Field(default_factory=now_iso)
 
 
@@ -1280,6 +1282,26 @@ class CategoryOverrideUpsert(BaseModel):
     text_color: Optional[str] = None
     blur_px: Optional[float] = None
     deleted: Optional[bool] = None
+    credit_url: Optional[str] = None
+
+
+class CreatorCreditUpdate(BaseModel):
+    credit_url: str = ""
+
+
+def normalize_credit_url(value: Optional[str]) -> str:
+    """A creator's credit link: http(s) only, 'https://' added when it's missing. Empty clears it."""
+    text = (value or "").strip()
+    if not text:
+        return ""
+    if len(text) > 500:
+        raise HTTPException(status_code=400, detail="Credit link must be 500 characters or less")
+    if not re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*://", text):
+        text = "https://" + text
+    parts = urlsplit(text)
+    if parts.scheme not in ("http", "https") or not parts.netloc or "." not in parts.netloc:
+        raise HTTPException(status_code=400, detail="Enter a full link, like https://www.tiktok.com/@name")
+    return text
 
 
 class PasswordCheck(BaseModel):
@@ -3105,6 +3127,8 @@ async def upsert_category_override(
             v = getattr(payload, k)
             if v is not None:
                 updates[k] = v
+        if payload.credit_url is not None:
+            updates["credit_url"] = normalize_credit_url(payload.credit_url)
         await db.category_overrides.update_one(
             {"kind": kind, "name": target_name}, {"$set": updates}
         )
@@ -3122,9 +3146,69 @@ async def upsert_category_override(
         text_color=payload.text_color or "",
         blur_px=payload.blur_px,
         deleted=bool(payload.deleted) if payload.deleted is not None else False,
+        credit_url=normalize_credit_url(payload.credit_url),
     )
     await db.category_overrides.insert_one(record.model_dump())
     return record
+
+
+# Creator credits ---------------------------------------------------------
+# Every creator named on an asset, with the link their name points to. Moderators set
+# the links on the Stats page; a creator appears here as soon as an upload names them.
+async def creator_credit_rows() -> List[dict]:
+    counts: dict = {}
+    audio_counts: dict = {}
+    cursor = db.assets.find({"creator_tag": {"$nin": ["", None]}}, {"_id": 0, "creator_tag": 1, "category": 1})
+    async for doc in cursor:
+        name = (doc.get("creator_tag") or "").strip()
+        if not name:
+            continue
+        counts[name] = counts.get(name, 0) + 1
+        if doc.get("category") == "Audios":
+            audio_counts[name] = audio_counts.get(name, 0) + 1
+    overrides = {}
+    async for doc in db.category_overrides.find({"kind": "creator"}, {"_id": 0}):
+        overrides[doc.get("name", "")] = doc
+    names = set(counts) | {name for name, doc in overrides.items() if doc.get("credit_url")}
+    rows = []
+    for name in sorted(names, key=lambda value: value.lower()):
+        override = overrides.get(name) or {}
+        rows.append({
+            "name": name,
+            "credit_url": override.get("credit_url") or "",
+            "asset_count": counts.get(name, 0),
+            "audio_count": audio_counts.get(name, 0),
+            "deleted": bool(override.get("deleted")),
+            "updated_at": override.get("updated_at") or "",
+        })
+    return rows
+
+
+@api_router.get("/creator-credits")
+async def list_creator_credits():
+    return await creator_credit_rows()
+
+
+@api_router.put("/creator-credits/{name}")
+async def update_creator_credit(name: str, payload: CreatorCreditUpdate, request: Request):
+    await require_uploader(request)
+    name = name.strip()
+    if not name or len(name) > 120:
+        raise HTTPException(status_code=400, detail="Creator name is required")
+    credit_url = normalize_credit_url(payload.credit_url)
+    existing = await db.category_overrides.find_one({"kind": "creator", "name": name}, {"_id": 0})
+    if existing:
+        await db.category_overrides.update_one(
+            {"kind": "creator", "name": name},
+            {"$set": {"credit_url": credit_url, "updated_at": now_iso()}},
+        )
+    else:
+        record = CategoryOverride(kind="creator", name=name, credit_url=credit_url)
+        await db.category_overrides.insert_one(record.model_dump())
+    for row in await creator_credit_rows():
+        if row["name"] == name:
+            return row
+    return {"name": name, "credit_url": credit_url, "asset_count": 0, "audio_count": 0, "deleted": False, "updated_at": now_iso()}
 
 
 @api_router.delete("/category-overrides/{kind}/{name}")

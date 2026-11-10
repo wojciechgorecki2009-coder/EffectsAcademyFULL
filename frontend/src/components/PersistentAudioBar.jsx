@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useAnimate, useReducedMotion } from "framer-motion";
 import { Download, Gauge, Loader2, Music2, Pause, Play, Volume2, VolumeX, Repeat } from "lucide-react";
 import LiquidGlass from "@/components/LiquidGlass";
+import { CreatorName } from "@/components/CreatorLink";
 import { EASE_OUT, SPRING } from "@/lib/motion";
 import { LITE } from "@/lib/device";
 import { toast } from "sonner";
@@ -327,7 +328,13 @@ export default function PersistentAudioBar() {
                       {audio.title || "Audio preview"}
                     </p>
                     <p className="truncate text-[12.5px] text-ink-3">
-                      {audio.loading ? "Loading audio..." : audio.subtitle || "Playing from EffectsAcademy"}
+                      {audio.loading ? (
+                        "Loading audio..."
+                      ) : audio.creator ? (
+                        <>Audio by <CreatorName name={audio.creator} /></>
+                      ) : (
+                        audio.subtitle || "Playing from EffectsAcademy"
+                      )}
                     </p>
                   </motion.div>
                 </AnimatePresence>

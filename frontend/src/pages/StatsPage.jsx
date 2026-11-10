@@ -11,9 +11,11 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Activity, ArrowLeft, BadgePercent, CalendarDays, Crown, Download, Eye, Power, Radio, ShieldCheck } from "lucide-react";
+import { Activity, ArrowLeft, BadgePercent, CalendarDays, Check, Crown, Download, ExternalLink, Eye, Link2, Loader2, Power, Radio, ShieldCheck } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { creditPlatform, useCreatorCredits } from "@/lib/creatorCredits";
+import { CreatorName, PlatformIcon } from "@/components/CreatorLink";
 
 const RANGES = [7, 28, 90, 365];
 const PROMOTION_DISCOUNTS = [1, 5, 10, 20, 25, 30, 50];
@@ -667,7 +669,7 @@ export default function StatsPage() {
                   <tr key={asset.id} className="border-b border-[var(--line)] hover:bg-[var(--fill)]">
                     <td className="px-5 md:px-6 py-4 font-semibold text-ink">{asset.title}</td>
                     <td className="px-5 md:px-6 py-4 text-ink-2">{asset.category || "—"}</td>
-                    <td className="px-5 md:px-6 py-4 text-ink-2">{asset.creator_tag || "—"}</td>
+                    <td className="px-5 md:px-6 py-4 text-ink-2">{asset.creator_tag ? <CreatorName name={asset.creator_tag} /> : "—"}</td>
                     <td className="px-5 md:px-6 py-4 text-right font-mono text-ink">{compactNumber(asset.download_count || 0)}</td>
                   </tr>
                 ))}
@@ -682,7 +684,152 @@ export default function StatsPage() {
             </table>
           </div>
         </div>
+
+        <CreditLinks />
       </div>
     </section>
+  );
+}
+
+/* One row per creator: their name, how many assets name them, and the link their name points to. */
+function CreditLinkRow({ row, onSaved }) {
+  const [value, setValue] = useState(row.credit_url || "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [savedAt, setSavedAt] = useState(0);
+
+  useEffect(() => {
+    setValue(row.credit_url || "");
+  }, [row.credit_url]);
+
+  const dirty = value.trim() !== (row.credit_url || "");
+  const platform = row.credit_url ? creditPlatform(row.credit_url) : null;
+
+  const save = async () => {
+    setSaving(true);
+    setError("");
+    try {
+      const { data } = await api.put(`/creator-credits/${encodeURIComponent(row.name)}`, { credit_url: value.trim() });
+      onSaved(data);
+      setSavedAt(Date.now());
+    } catch (err) {
+      setError(err?.response?.data?.detail || "Could not save this link.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <tr className="border-b border-[var(--line)] align-top hover:bg-[var(--fill)]" data-testid={`credit-row-${row.name.toLowerCase().replace(/\s+/g, "-")}`}>
+      <td className="px-5 md:px-6 py-4">
+        <p className="font-semibold text-ink">{row.name}</p>
+        <p className="mt-0.5 text-xs text-ink-3">
+          {row.asset_count} {row.asset_count === 1 ? "asset" : "assets"}
+          {row.audio_count && row.audio_count !== row.asset_count ? ` · ${row.audio_count} audio` : ""}
+          {row.deleted ? " · pack hidden" : ""}
+        </p>
+      </td>
+      <td className="px-5 md:px-6 py-4">
+        <form
+          className="flex flex-col gap-2 sm:flex-row sm:items-center"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (dirty && !saving) save();
+          }}
+        >
+          <div className="relative min-w-0 flex-1">
+            {platform && !dirty ? (
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-2">
+                <PlatformIcon id={platform.id} className="h-4 w-4" />
+              </span>
+            ) : (
+              <Link2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-3" />
+            )}
+            <input
+              value={value}
+              onChange={(event) => setValue(event.target.value)}
+              placeholder="https://www.tiktok.com/@name or a YouTube channel"
+              aria-label={`Credit link for ${row.name}`}
+              className="h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--fill)] pl-10 pr-3 text-[14px] text-ink outline-none placeholder:text-ink-3 focus:shadow-[0_0_0_3px_rgb(var(--tint)/0.25)]"
+              data-testid="credit-link-input"
+            />
+          </div>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <button type="submit" className="btn btn-primary btn-sm" disabled={!dirty || saving} data-testid="credit-link-save">
+              {saving ? <Loader2 className="animate-spin" /> : savedAt && !dirty ? <Check /> : null}
+              {saving ? "Saving..." : savedAt && !dirty ? "Saved" : value.trim() || !row.credit_url ? "Save" : "Remove"}
+            </button>
+            {row.credit_url && !dirty ? (
+              <a
+                href={row.credit_url}
+                target="_blank"
+                rel="noopener noreferrer nofollow"
+                className="btn btn-secondary btn-sm btn-icon"
+                title={`Open ${row.name} on ${platform?.label || "their site"}`}
+                aria-label={`Open ${row.name} on ${platform?.label || "their site"}`}
+              >
+                <ExternalLink />
+              </a>
+            ) : null}
+          </div>
+        </form>
+        {error ? <p className="mt-1.5 text-xs text-[#ff453a]">{error}</p> : null}
+      </td>
+    </tr>
+  );
+}
+
+function CreditLinks() {
+  const { rows, refresh } = useCreatorCredits();
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+  const visible = q ? rows.filter((row) => row.name.toLowerCase().includes(q)) : rows;
+  const linked = rows.filter((row) => row.credit_url).length;
+
+  return (
+    <div className="mt-6 rounded-[28px] border border-[var(--line)] bg-panel overflow-hidden" data-testid="credit-links">
+      <div className="px-5 md:px-6 py-5 border-b border-[var(--line)] flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="font-display text-xl font-bold">Credit links</h2>
+          <p className="mt-1 text-sm text-ink-2">
+            Every creator named on an upload is listed here. Add their TikTok or YouTube and their name becomes a link wherever it appears on the site.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <p className="text-xs text-ink-3 tabular-nums">{linked} of {rows.length} linked</p>
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Find a creator"
+            aria-label="Find a creator"
+            className="h-9 w-44 rounded-full border border-[var(--line)] bg-[var(--fill)] px-3.5 text-[13px] text-ink outline-none placeholder:text-ink-3 focus:shadow-[0_0_0_3px_rgb(var(--tint)/0.25)]"
+          />
+        </div>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="text-left text-xs uppercase tracking-[0.2em] text-ink-3">
+            <tr className="border-b border-[var(--line)]">
+              <th className="px-5 md:px-6 py-4 w-[34%]">Creator</th>
+              <th className="px-5 md:px-6 py-4">Link</th>
+            </tr>
+          </thead>
+          <tbody>
+            {visible.map((row) => (
+              <CreditLinkRow key={row.name} row={row} onSaved={() => refresh()} />
+            ))}
+            {visible.length === 0 && (
+              <tr>
+                <td colSpan="2" className="px-6 py-12 text-center text-ink-3">
+                  {rows.length === 0
+                    ? "No creators yet. A creator appears here as soon as an upload names them."
+                    : "No creator matches that search."}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
