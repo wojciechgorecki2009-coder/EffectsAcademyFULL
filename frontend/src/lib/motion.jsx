@@ -16,6 +16,10 @@ export const EASE_OUT = [0.16, 1, 0.3, 1];
 export const SPRING = { type: "spring", stiffness: 380, damping: 32, mass: 0.9 };
 export const SPRING_SOFT = { type: "spring", stiffness: 160, damping: 24, mass: 1 };
 export const SPRING_SNAPPY = { type: "spring", stiffness: 520, damping: 36 };
+// Headline words rise past their resting line and settle back, like the Pop Up and
+// Swing Up presets in the After Effects extension. It overshoots by about a tenth of
+// the travel, which the word mask leaves room for (see KineticText).
+export const SPRING_BOUNCE = { type: "spring", stiffness: 240, damping: 18, mass: 1 };
 
 export const riseVariants = {
   hidden: { opacity: 0, y: 24, filter: "blur(10px)" },
@@ -158,23 +162,32 @@ export function KineticText({ text, className = "", wordClassName = "", delay = 
           inline-block is dropped by some browsers, which ran the words together. */}
       {/* The mask only clips top and bottom (the slide is vertical), with room below for
           descenders, so letters that reach past their spacing (e, D, v, the tail of p)
-          are never trimmed. The word's own padding lets a shimmer gradient cover the
-          whole letter; the negative margins keep the spacing unchanged. */}
-      {words.map((word, index) => (
-        <Fragment key={`${word}-${index}`}>
-          <span aria-hidden="true" className="inline-block overflow-x-visible overflow-y-clip align-bottom pt-[0.06em] -mt-[0.06em] pb-[0.24em] -mb-[0.24em]">
-            <motion.span
-              className={`-mx-[0.1em] inline-block px-[0.1em] pb-[0.1em] -mb-[0.1em] ${highlight[word] || ""} ${wordClassName}`}
-              initial={reduce ? false : { y: "125%", opacity: 0, filter: "blur(8px)" }}
-              animate={{ y: "0%", opacity: 1, filter: "blur(0px)", transitionEnd: { filter: "none" } }}
-              transition={{ duration: 1.05, ease: EASE_OUT, delay: delay + index * stagger }}
-            >
-              {word}
-            </motion.span>
-          </span>
-          {index < words.length - 1 ? " " : null}
-        </Fragment>
-      ))}
+          are never trimmed. The space above also holds the bounce's overshoot. The word's
+          own padding lets a shimmer gradient cover the whole letter; the negative margins
+          keep the spacing unchanged. */}
+      {words.map((word, index) => {
+        const wordDelay = delay + index * stagger;
+        return (
+          <Fragment key={`${word}-${index}`}>
+            <span aria-hidden="true" className="inline-block overflow-x-visible overflow-y-clip align-bottom pt-[0.36em] -mt-[0.36em] pb-[0.24em] -mb-[0.24em]">
+              <motion.span
+                className={`-mx-[0.1em] inline-block px-[0.1em] pb-[0.1em] -mb-[0.1em] ${highlight[word] || ""} ${wordClassName}`}
+                initial={reduce ? false : { y: "125%", opacity: 0, filter: "blur(8px)" }}
+                animate={{ y: "0%", opacity: 1, filter: "blur(0px)", transitionEnd: { filter: "none" } }}
+                // Only the rise bounces; the fade and de-blur stay smooth.
+                transition={{
+                  default: { ...SPRING_BOUNCE, delay: wordDelay },
+                  opacity: { duration: 0.55, ease: EASE_OUT, delay: wordDelay },
+                  filter: { duration: 0.75, ease: EASE_OUT, delay: wordDelay },
+                }}
+              >
+                {word}
+              </motion.span>
+            </span>
+            {index < words.length - 1 ? " " : null}
+          </Fragment>
+        );
+      })}
     </span>
   );
 }
