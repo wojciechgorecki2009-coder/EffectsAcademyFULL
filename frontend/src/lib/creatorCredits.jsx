@@ -9,7 +9,17 @@ import { api } from "./api";
 
 const CreditsCtx = createContext({ credits: {}, rows: [], refresh: () => {} });
 
-const key = (name) => String(name || "").trim().toLowerCase();
+/**
+ * One key per creator, so "MrBit" and "MRBIT AUDIOS" are the same person. Case,
+ * spacing and punctuation are ignored, and a trailing "audio(s)" is dropped unless
+ * that would leave almost nothing (so "Studios" stays "studios").
+ * Must match creator_key() in backend/server.py.
+ */
+export function creatorKey(name) {
+  const text = String(name || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+  const match = /^(.*?)(?:audios|audio)$/.exec(text);
+  return match && match[1].length >= 3 ? match[1] : text;
+}
 
 export function CreatorCreditsProvider({ children }) {
   const [rows, setRows] = useState([]);
@@ -30,7 +40,7 @@ export function CreatorCreditsProvider({ children }) {
   const credits = useMemo(() => {
     const map = {};
     for (const row of rows) {
-      if (row?.name && row.credit_url) map[key(row.name)] = row.credit_url;
+      if (row?.credit_url) map[row.key || creatorKey(row.name)] = row.credit_url;
     }
     return map;
   }, [rows]);
@@ -46,7 +56,7 @@ export function useCreatorCredits() {
 /** The credit link for a creator name, or "" when none is set. */
 export function useCreatorCredit(name) {
   const { credits } = useContext(CreditsCtx);
-  return credits[key(name)] || "";
+  return credits[creatorKey(name)] || "";
 }
 
 /** Which site a credit link goes to, for labels and icons. */

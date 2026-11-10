@@ -704,6 +704,8 @@ function CreditLinkRow({ row, onSaved }) {
 
   const dirty = value.trim() !== (row.credit_url || "");
   const platform = row.credit_url ? creditPlatform(row.credit_url) : null;
+  // One link covers every spelling of a creator's name.
+  const otherNames = (row.names || []).filter((name) => name !== row.name);
 
   const save = async () => {
     setSaving(true);
@@ -720,14 +722,16 @@ function CreditLinkRow({ row, onSaved }) {
   };
 
   return (
-    <tr className="border-b border-[var(--line)] align-top hover:bg-[var(--fill)]" data-testid={`credit-row-${row.name.toLowerCase().replace(/\s+/g, "-")}`}>
+    <tr className="border-b border-[var(--line)] align-top hover:bg-[var(--fill)]" data-testid={`credit-row-${row.key || row.name.toLowerCase().replace(/\s+/g, "-")}`}>
       <td className="px-5 md:px-6 py-4">
         <p className="font-semibold text-ink">{row.name}</p>
         <p className="mt-0.5 text-xs text-ink-3">
           {row.asset_count} {row.asset_count === 1 ? "asset" : "assets"}
-          {row.audio_count && row.audio_count !== row.asset_count ? ` · ${row.audio_count} audio` : ""}
-          {row.deleted ? " · pack hidden" : ""}
+          {row.audio_count ? ` · ${row.audio_count} audio` : ""}
         </p>
+        {otherNames.length > 0 ? (
+          <p className="mt-1 text-xs text-ink-3">Also uploads as {otherNames.join(", ")}</p>
+        ) : null}
       </td>
       <td className="px-5 md:px-6 py-4">
         <form
@@ -783,7 +787,7 @@ function CreditLinks() {
   const { rows, refresh } = useCreatorCredits();
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
-  const visible = q ? rows.filter((row) => row.name.toLowerCase().includes(q)) : rows;
+  const visible = q ? rows.filter((row) => (row.names || [row.name]).some((name) => name.toLowerCase().includes(q))) : rows;
   const linked = rows.filter((row) => row.credit_url).length;
 
   return (
@@ -816,7 +820,7 @@ function CreditLinks() {
           </thead>
           <tbody>
             {visible.map((row) => (
-              <CreditLinkRow key={row.name} row={row} onSaved={() => refresh()} />
+              <CreditLinkRow key={row.key || row.name} row={row} onSaved={() => refresh()} />
             ))}
             {visible.length === 0 && (
               <tr>

@@ -5,7 +5,7 @@ import { buildFileUrl, getTheme } from "@/lib/api";
 import { useUploadAccess } from "@/lib/uploadAccess";
 import EditCategoryModal from "@/components/EditCategoryModal";
 import { PlatformIcon } from "@/components/CreatorLink";
-import { creditPlatform, useCreatorCredits } from "@/lib/creatorCredits";
+import { creatorKey, creditPlatform, useCreatorCredits } from "@/lib/creatorCredits";
 import { EASE_OUT } from "@/lib/motion";
 
 const DEFAULT_BLUR_PX = 0; // sharper by default per latest spec
@@ -58,7 +58,7 @@ export default function CategoryPicker({
             text: ov.text_color || baseTheme.text,
           };
           const count = getCount(label);
-          const creditUrl = kind === "creator" ? credits[label.trim().toLowerCase()] || "" : "";
+          const creditUrl = kind === "creator" ? credits[creatorKey(label)] || "" : "";
           const platform = creditUrl ? creditPlatform(creditUrl) : null;
           const img = ov.image_url || images[label];
           const blur = typeof ov.blur_px === "number" ? ov.blur_px : DEFAULT_BLUR_PX;

@@ -7,6 +7,7 @@ import {
   SHOW_THEMES,
   SHOW_IMAGES,
   CATEGORY_COLORS,
+  hasPackCustomization,
 } from "@/lib/api";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import CategoryPicker from "@/components/CategoryPicker";
@@ -183,7 +184,10 @@ export default function CategoryPage() {
     const creatorsFromAssets = Array.from(
       new Set(categorySearchFilteredAssets.filter((a) => a.creator_tag).map((a) => a.creator_tag))
     );
-    const creatorsFromOverrides = Object.keys(overrides.creator || {});
+    // Only packs a moderator styled; a creator with no audios isn't an audio pack.
+    const creatorsFromOverrides = Object.entries(overrides.creator || {})
+      .filter(([, override]) => hasPackCustomization(override))
+      .map(([name]) => name);
     return Array.from(new Set([...creatorsFromAssets, ...creatorsFromOverrides]))
       .filter((name) => !overrides.creator?.[name]?.deleted);
   }, [categorySearchFilteredAssets, overrides.creator]);

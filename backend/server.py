@@ -1282,11 +1282,23 @@ class CategoryOverrideUpsert(BaseModel):
     text_color: Optional[str] = None
     blur_px: Optional[float] = None
     deleted: Optional[bool] = None
-    credit_url: Optional[str] = None
 
 
 class CreatorCreditUpdate(BaseModel):
     credit_url: str = ""
+
+
+def creator_key(name: Optional[str]) -> str:
+    """One key per creator, so "MrBit" and "MRBIT AUDIOS" are the same person.
+
+    Case, spacing and punctuation are ignored, and a trailing "audio(s)" is dropped
+    unless that would leave almost nothing (so "Studios" stays "studios").
+    """
+    text = re.sub(r"[^a-z0-9]+", "", (name or "").lower())
+    match = re.match(r"^(.*?)(?:audios|audio)$", text)
+    if match and len(match.group(1)) >= 3:
+        text = match.group(1)
+    return text
 
 
 def normalize_credit_url(value: Optional[str]) -> str:
@@ -3127,8 +3139,6 @@ async def upsert_category_override(
             v = getattr(payload, k)
             if v is not None:
                 updates[k] = v
-        if payload.credit_url is not None:
-            updates["credit_url"] = normalize_credit_url(payload.credit_url)
         await db.category_overrides.update_one(
             {"kind": kind, "name": target_name}, {"$set": updates}
         )
@@ -3146,7 +3156,6 @@ async def upsert_category_override(
         text_color=payload.text_color or "",
         blur_px=payload.blur_px,
         deleted=bool(payload.deleted) if payload.deleted is not None else False,
-        credit_url=normalize_credit_url(payload.credit_url),
     )
     await db.category_overrides.insert_one(record.model_dump())
     return record
@@ -3155,32 +3164,51 @@ async def upsert_category_override(
 # Creator credits ---------------------------------------------------------
 # Every creator named on an asset, with the link their name points to. Moderators set
 # the links on the Stats page; a creator appears here as soon as an upload names them.
+# Links live in their own collection, keyed by creator_key, so one link covers every
+# spelling of a name and setting one never creates an audio pack.
 async def creator_credit_rows() -> List[dict]:
-    counts: dict = {}
-    audio_counts: dict = {}
+    groups: dict = {}
     cursor = db.assets.find({"creator_tag": {"$nin": ["", None]}}, {"_id": 0, "creator_tag": 1, "category": 1})
     async for doc in cursor:
         name = (doc.get("creator_tag") or "").strip()
-        if not name:
+        key = creator_key(name)
+        if not key:
             continue
-        counts[name] = counts.get(name, 0) + 1
+        group = groups.setdefault(key, {"names": {}, "asset_count": 0, "audio_count": 0})
+        group["names"][name] = group["names"].get(name, 0) + 1
+        group["asset_count"] += 1
         if doc.get("category") == "Audios":
-            audio_counts[name] = audio_counts.get(name, 0) + 1
-    overrides = {}
+            group["audio_count"] += 1
+
+    links: dict = {}
+    async for doc in db.creator_credits.find({}, {"_id": 0}):
+        if doc.get("credit_url"):
+            links[doc.get("key", "")] = doc
+    # Links saved before credits had their own collection.
     async for doc in db.category_overrides.find({"kind": "creator"}, {"_id": 0}):
-        overrides[doc.get("name", "")] = doc
-    names = set(counts) | {name for name, doc in overrides.items() if doc.get("credit_url")}
+        key = creator_key(doc.get("name"))
+        if key and doc.get("credit_url") and key not in links:
+            links[key] = {"key": key, "name": doc.get("name"), "credit_url": doc["credit_url"], "updated_at": doc.get("updated_at", "")}
+
+    for key, doc in links.items():
+        group = groups.setdefault(key, {"names": {}, "asset_count": 0, "audio_count": 0})
+        group["names"].setdefault(doc.get("name") or key, 0)
+
     rows = []
-    for name in sorted(names, key=lambda value: value.lower()):
-        override = overrides.get(name) or {}
+    for key, group in groups.items():
+        # The spelling used on the most assets is the one shown.
+        names = sorted(group["names"], key=lambda value: (-group["names"][value], -len(value), value.lower()))
+        link = links.get(key) or {}
         rows.append({
-            "name": name,
-            "credit_url": override.get("credit_url") or "",
-            "asset_count": counts.get(name, 0),
-            "audio_count": audio_counts.get(name, 0),
-            "deleted": bool(override.get("deleted")),
-            "updated_at": override.get("updated_at") or "",
+            "key": key,
+            "name": names[0] if names else key,
+            "names": names,
+            "credit_url": link.get("credit_url") or "",
+            "asset_count": group["asset_count"],
+            "audio_count": group["audio_count"],
+            "updated_at": link.get("updated_at") or "",
         })
+    rows.sort(key=lambda row: row["name"].lower())
     return rows
 
 
@@ -3193,31 +3221,19 @@ async def list_creator_credits():
 async def update_creator_credit(name: str, payload: CreatorCreditUpdate, request: Request):
     await require_uploader(request)
     name = name.strip()
-    if not name or len(name) > 120:
+    key = creator_key(name)
+    if not name or len(name) > 120 or not key:
         raise HTTPException(status_code=400, detail="Creator name is required")
     credit_url = normalize_credit_url(payload.credit_url)
-    existing = await db.category_overrides.find_one({"kind": "creator", "name": name}, {"_id": 0})
-    if existing:
-        await db.category_overrides.update_one(
-            {"kind": "creator", "name": name},
-            {"$set": {"credit_url": credit_url, "updated_at": now_iso()}},
-        )
-    else:
-        record = CategoryOverride(kind="creator", name=name, credit_url=credit_url)
-        await db.category_overrides.insert_one(record.model_dump())
+    await db.creator_credits.update_one(
+        {"key": key},
+        {"$set": {"key": key, "name": name, "credit_url": credit_url, "updated_at": now_iso()}},
+        upsert=True,
+    )
     for row in await creator_credit_rows():
-        if row["name"] == name:
+        if row["key"] == key:
             return row
-    return {"name": name, "credit_url": credit_url, "asset_count": 0, "audio_count": 0, "deleted": False, "updated_at": now_iso()}
-
-
-@api_router.delete("/category-overrides/{kind}/{name}")
-async def delete_category_override(
-    kind: str, name: str, request: Request
-):
-    await require_delete_access(request)
-    await db.category_overrides.delete_one({"kind": kind, "name": name})
-    return {"ok": True}
+    return {"key": key, "name": name, "names": [name], "credit_url": credit_url, "asset_count": 0, "audio_count": 0, "updated_at": now_iso()}
 
 
 @app.middleware("http")
