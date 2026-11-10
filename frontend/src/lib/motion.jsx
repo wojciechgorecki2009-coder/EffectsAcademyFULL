@@ -142,7 +142,7 @@ export function KineticText({ text, className = "", wordClassName = "", delay = 
         <span ref={typedRef} aria-hidden="true">
           {words.map((word, index) => (
             <Fragment key={`${word}-${index}`}>
-              <span className={`${typedDone ? highlight[word] || "" : ""} ${wordClassName}`}>{word}</span>
+              <span className={`${typedDone && highlight[word] ? `-mx-[0.1em] px-[0.1em] ${highlight[word]}` : ""} ${wordClassName}`}>{word}</span>
               {index < words.length - 1 ? " " : null}
             </Fragment>
           ))}
@@ -156,12 +156,16 @@ export function KineticText({ text, className = "", wordClassName = "", delay = 
       <span className="sr-only">{text}</span>
       {/* The space goes between the word boxes, not inside them: a space at the end of an
           inline-block is dropped by some browsers, which ran the words together. */}
+      {/* The mask only clips top and bottom (the slide is vertical), with room below for
+          descenders, so letters that reach past their spacing (e, D, v, the tail of p)
+          are never trimmed. The word's own padding lets a shimmer gradient cover the
+          whole letter; the negative margins keep the spacing unchanged. */}
       {words.map((word, index) => (
         <Fragment key={`${word}-${index}`}>
-          <span aria-hidden="true" className="inline-block overflow-hidden align-bottom pb-[0.08em] -mb-[0.08em]">
+          <span aria-hidden="true" className="inline-block overflow-x-visible overflow-y-clip align-bottom pt-[0.06em] -mt-[0.06em] pb-[0.24em] -mb-[0.24em]">
             <motion.span
-              className={`inline-block ${highlight[word] || ""} ${wordClassName}`}
-              initial={reduce ? false : { y: "105%", opacity: 0, filter: "blur(8px)" }}
+              className={`-mx-[0.1em] inline-block px-[0.1em] pb-[0.1em] -mb-[0.1em] ${highlight[word] || ""} ${wordClassName}`}
+              initial={reduce ? false : { y: "125%", opacity: 0, filter: "blur(8px)" }}
               animate={{ y: "0%", opacity: 1, filter: "blur(0px)", transitionEnd: { filter: "none" } }}
               transition={{ duration: 1.05, ease: EASE_OUT, delay: delay + index * stagger }}
             >
