@@ -14,7 +14,6 @@ import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
 import CategoryPicker from "@/components/CategoryPicker";
 import Hero from "@/components/Hero";
 import LiquidGlass from "@/components/LiquidGlass";
-import BetaBadge from "@/components/BetaBadge";
 import {
   AssetGrid,
   AssetSkeletonGrid,
@@ -421,7 +420,6 @@ function FilterTabs({ orientation, filter, setFilter, countLabel }) {
           >
             <Box className="h-3.5 w-3.5 text-[#ff9f0a]" />
             3D Models
-            <BetaBadge />
           </Link>
         </motion.div>
         {vertical && (

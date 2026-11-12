@@ -43,7 +43,7 @@ const PRIMARY_TABS = [
   { to: "/category/videos", label: "Videos" },
   { to: "/convert", label: "Converter" },
   { to: "/remove-background", label: "Remove BG" },
-  { to: "/3d-models", label: "3D Models", beta: true },
+  { to: "/3d-models", label: "3D Models" },
 ];
 
 const MORE_TABS = [

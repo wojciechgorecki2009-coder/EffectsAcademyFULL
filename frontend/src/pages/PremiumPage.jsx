@@ -23,6 +23,7 @@ const BENEFITS = [
 const COMPARISON_ROWS = [
   { feature: "Free assets", free: true, premium: true },
   { feature: "Video file converter", free: true, premium: true },
+  { feature: "3D model downloader", free: true, premium: true },
   { feature: "After Effects extension", free: false, premium: true },
   { feature: "Premium assets", free: false, premium: true },
   { feature: "Premium presets", free: false, premium: true },

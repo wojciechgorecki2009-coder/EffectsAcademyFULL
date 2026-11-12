@@ -5,7 +5,6 @@ import {
   Box,
   Check,
   Copy,
-  Crown,
   Download,
   ExternalLink,
   KeyRound,
@@ -16,13 +15,9 @@ import {
   Search,
   ShieldCheck,
   Sparkles,
-  UserCircle,
 } from "lucide-react";
-import { Link } from "react-router-dom";
 import { toast } from "sonner";
-import BetaBadge from "@/components/BetaBadge";
 import { PageIntro } from "@/components/Library";
-import { useAuth } from "@/lib/auth";
 import { EASE_OUT, Reveal, SPRING } from "@/lib/motion";
 import {
   FORMATS,
@@ -191,53 +186,8 @@ function ConnectPanel({ onConnected }) {
   );
 }
 
-/** Shown instead of the tool to anyone without Premium while it's in beta. */
-function PremiumGate({ signedIn }) {
-  const reduce = useReducedMotion();
-  return (
-    <Reveal className="surface relative mt-10 overflow-hidden rounded-[28px] px-6 py-16 text-center md:py-20" data-testid="sketchfab-premium-gate">
-      <span className="ui-tint pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-[#ff9f0a] opacity-[0.16] blur-3xl" />
-      <span className="ui-tint pointer-events-none absolute -bottom-28 -right-20 h-80 w-80 rounded-full bg-[#ffd60a] opacity-[0.1] blur-3xl" />
-      <motion.span
-        className="ui-tint relative mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-[26px] text-black shadow-[0_18px_40px_-14px_rgb(255_159_10/0.8)]"
-        style={{ background: "linear-gradient(140deg, #ffd60a 0%, #ff9f0a 100%)" }}
-        animate={reduce ? undefined : { y: [0, -6, 0], rotateY: [0, 180, 360] }}
-        transition={{ duration: 5, ease: "easeInOut", repeat: Infinity }}
-      >
-        <Box className="h-9 w-9" />
-      </motion.span>
-      <p className="eyebrow relative mb-2 inline-flex items-center gap-1.5 !text-[#c27a00] dark:!text-[#ffb340]">
-        <Crown className="h-4 w-4" /> Premium beta
-      </p>
-      <h2 className="display-md relative mx-auto max-w-xl text-ink">3D Models is in beta for Premium members.</h2>
-      <p className="relative mx-auto mt-4 max-w-lg text-[15px] leading-relaxed text-ink-2">
-        Paste a Sketchfab link and download the model as GLB, glTF or USDZ with its textures, ready for After Effects,
-        Blender or Cinema 4D. Premium members get it first while it&apos;s in beta.
-      </p>
-      <div className="relative mt-8 flex flex-wrap justify-center gap-2">
-        {signedIn ? (
-          <Link to="/premium" className="btn btn-primary btn-lg" data-testid="sketchfab-get-premium">
-            <Crown /> Get Premium
-          </Link>
-        ) : (
-          <>
-            <Link to="/login" className="btn btn-primary btn-lg" data-testid="sketchfab-sign-in">
-              <UserCircle /> Sign in
-            </Link>
-            <Link to="/premium" className="btn btn-secondary btn-lg">
-              <Crown /> See Premium
-            </Link>
-          </>
-        )}
-      </div>
-    </Reveal>
-  );
-}
-
 export default function SketchfabPage() {
   const reduce = useReducedMotion();
-  // In beta: Premium members (and moderators) only.
-  const { hasPremium, loading: authLoading, user } = useAuth();
   const inputRef = useRef(null);
   const [link, setLink] = useState("");
   const [model, setModel] = useState(null);
@@ -254,7 +204,7 @@ export default function SketchfabPage() {
 
   // Check a saved token still works, and show whose account it is.
   useEffect(() => {
-    if (!hasPremium || !token || account) return;
+    if (!token || account) return;
     fetchAccount(token)
       .then(setAccount)
       .catch((err) => {
@@ -262,7 +212,7 @@ export default function SketchfabPage() {
         clearToken();
         setToken("");
       });
-  }, [hasPremium, token, account]);
+  }, [token, account]);
 
   const loadLinks = async (uid, activeToken = token) => {
     setLinksError("");
@@ -281,9 +231,9 @@ export default function SketchfabPage() {
 
   // Once a downloadable model and an account are both there, find out which formats exist.
   useEffect(() => {
-    if (hasPremium && model?.isDownloadable && token && !links) loadLinks(model.uid);
+    if (model?.isDownloadable && token && !links) loadLinks(model.uid);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasPremium, model, token]);
+  }, [model, token]);
 
   const find = async (text = link) => {
     const uid = parseModelUid(text);
@@ -360,11 +310,7 @@ export default function SketchfabPage() {
   return (
     <section className="mx-auto max-w-[1200px] px-5 pb-28 pt-32 md:px-8 md:pt-36" data-testid="sketchfab-page">
       <PageIntro
-        eyebrow={
-          <span className="inline-flex items-center gap-2">
-            3D Models <BetaBadge />
-          </span>
-        }
+        eyebrow="3D Models"
         icon={<Box />}
         title="Download 3D models."
       >
@@ -380,12 +326,6 @@ export default function SketchfabPage() {
         ))}
       </Reveal>
 
-      {authLoading ? (
-        <div className="skeleton mt-10 h-[420px] rounded-[28px]" aria-busy="true" />
-      ) : !hasPremium ? (
-        <PremiumGate signedIn={Boolean(user)} />
-      ) : (
-      <>
       <Reveal className="mt-10" delay={0.1}>
         <form
           onSubmit={(e) => {
@@ -584,8 +524,6 @@ export default function SketchfabPage() {
           </p>
         </Reveal>
       </div>
-      </>
-      )}
     </section>
   );
 }
