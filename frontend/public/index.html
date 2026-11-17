@@ -36,8 +36,13 @@
         try {
           var ls = window.localStorage;
           var theme = ls.getItem("ea_theme");
-          if (!ls.getItem("ea_theme_dark_default_v1") && (!theme || theme === "blue")) theme = "dark";
-          if (["dark", "blue", "gray", "mono"].indexOf(theme) < 0) theme = "dark";
+          // Same rules as src/lib/theme.jsx, which persists them a moment later.
+          var now = Date.now();
+          var inViceSeason = now >= Date.parse("2026-11-17T00:00:00Z") && now < Date.parse("2026-12-17T00:00:00Z");
+          if (inViceSeason && !ls.getItem("ea_theme_vice_season_v1")) theme = "vice";
+          else if (!inViceSeason && theme === "vice" && ls.getItem("ea_theme_picked_v1") !== "1") theme = "dark";
+          else if (!ls.getItem("ea_theme_dark_default_v1") && (!theme || theme === "blue")) theme = "dark";
+          if (["dark", "blue", "gray", "mono", "vice"].indexOf(theme) < 0) theme = "dark";
           var font = ls.getItem("ea_font_v3");
           if (["system", "outfit", "space", "mono"].indexOf(font) < 0) font = "system";
           var root = document.documentElement;
@@ -46,7 +51,7 @@
           root.dataset.font = font;
           root.dataset.scheme = theme === "blue" ? "light" : "dark";
           var meta = document.querySelector('meta[name="theme-color"]');
-          if (meta) meta.content = theme === "blue" ? "#f5f5f7" : theme === "gray" ? "#1c1c1e" : "#000000";
+          if (meta) meta.content = theme === "blue" ? "#f5f5f7" : theme === "gray" ? "#1c1c1e" : theme === "vice" ? "#140a22" : "#000000";
         } catch (e) {}
         // Phones and tablets get a lighter rendering path (see "Touch devices" in index.css).
         try {

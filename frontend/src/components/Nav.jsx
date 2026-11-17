@@ -28,7 +28,20 @@ const THEME_OPTIONS = [
   { value: "blue", label: "Light" },
   { value: "gray", label: "Gray" },
   { value: "mono", label: "Black & White", short: "B&W" },
+  { value: "vice", label: "Vice City", short: "Vice" },
 ];
+
+/** During the Vice City season it is the one the site opens with, so it says so. */
+function themeOptions(seasonActive) {
+  if (!seasonActive) return THEME_OPTIONS;
+  return THEME_OPTIONS.map((option) =>
+    option.value === "vice"
+      ? { ...option, note: "Default" }
+      : option.value === "dark"
+        ? { value: option.value, label: option.label, short: option.short }
+        : option
+  );
+}
 
 const FONT_OPTIONS = [
   { value: "system", label: "San Francisco", note: "Default" },
@@ -203,7 +216,8 @@ function Segmented({ options, value, onSelect, layoutId }) {
 export default function Nav() {
   const { isUploader, lock, localPasswordEnabled } = useUploadAccess();
   const { user, hasPremium, logout, config } = useAuth();
-  const { theme, setTheme, font, setFont } = useTheme();
+  const { theme, setTheme, font, setFont, seasonActive } = useTheme();
+  const appearanceOptions = themeOptions(seasonActive);
   const [accessOpen, setAccessOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -365,7 +379,7 @@ export default function Nav() {
                     </IconButton>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="glass min-w-56 rounded-[22px] border-0 p-1.5 text-ink" align="end" sideOffset={14}>
-                    <SettingsGroup title="Appearance" options={THEME_OPTIONS} value={theme} onSelect={setTheme} testPrefix="theme" />
+                    <SettingsGroup title="Appearance" options={appearanceOptions} value={theme} onSelect={setTheme} testPrefix="theme" />
                     <div className="mx-2.5 my-1 h-px bg-[var(--line)]" />
                     <SettingsGroup title="Font" options={FONT_OPTIONS} value={font} onSelect={setFont} testPrefix="font" previewFonts />
                   </DropdownMenuContent>
@@ -505,7 +519,7 @@ export default function Nav() {
                     <p className="flex items-center gap-1.5 text-xs font-medium text-ink-3">
                       <Settings2 className="h-3.5 w-3.5" /> Appearance
                     </p>
-                    <Segmented options={THEME_OPTIONS.map((o) => ({ ...o, label: o.short || o.label }))} value={theme} onSelect={setTheme} layoutId="m-theme" />
+                    <Segmented options={appearanceOptions.map((o) => ({ ...o, label: o.short || o.label }))} value={theme} onSelect={setTheme} layoutId="m-theme" />
                     <Segmented options={FONT_OPTIONS.map((o) => ({ ...o, label: o.value === "system" ? "SF" : o.label.split(" ")[0] }))} value={font} onSelect={setFont} layoutId="m-font" />
                   </div>
                 </div>

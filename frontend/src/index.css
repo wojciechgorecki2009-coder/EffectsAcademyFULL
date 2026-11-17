@@ -281,6 +281,52 @@
     --input: 0 0% 20%;
     --ring: 0 0% 96%;
   }
+
+  /* Vice City: a sunset palette — deep violet through magenta to warm orange.
+     The site opens with this for one month; see src/lib/theme.jsx. */
+  :root[data-site-style="apple"][data-theme="vice"] {
+    --canvas: 20 10 34;
+    --panel: 35 19 56;
+    --panel-2: 46 25 71;
+    --ink: 250 240 252;
+    --ink-2: 201 173 216;
+    --ink-3: 152 124 171;
+    --tint: 240 78 170;
+    --tint-ink: 26 6 24;
+    --line: rgb(255 190 235 / 0.12);
+    --line-strong: rgb(255 190 235 / 0.22);
+    --fill: rgb(255 190 235 / 0.08);
+    --fill-2: rgb(255 190 235 / 0.14);
+
+    --shadow-card: 0 1px 1px rgb(14 4 26 / 0.5), 0 12px 32px -12px rgb(14 4 26 / 0.8);
+    --shadow-card-hover: 0 2px 4px rgb(14 4 26 / 0.5), 0 30px 64px -18px rgb(201 52 155 / 0.45);
+    --shadow-pop: 0 30px 90px -16px rgb(14 4 26 / 0.85);
+
+    --glass-tint: rgb(84 42 112 / 0.42);
+    --glass-tint-strong: rgb(52 25 78 / 0.84);
+    --glass-rim: rgb(255 214 240 / 0.38);
+    --glass-rim-soft: rgb(255 214 240 / 0.07);
+    --glass-sheen: rgb(255 224 245 / 0.18);
+    --glass-shadow: 0 12px 40px -10px rgb(14 4 26 / 0.75), 0 1px 2px rgb(14 4 26 / 0.5);
+
+    --background: 266 54% 9%;
+    --foreground: 282 75% 96%;
+    --card: 265 48% 15%;
+    --card-foreground: 282 75% 96%;
+    --popover: 265 48% 19%;
+    --popover-foreground: 282 75% 96%;
+    --primary: 326 84% 62%;
+    --primary-foreground: 310 62% 6%;
+    --secondary: 274 40% 24%;
+    --secondary-foreground: 282 75% 96%;
+    --muted: 274 40% 24%;
+    --muted-foreground: 282 25% 70%;
+    --accent: 290 45% 30%;
+    --accent-foreground: 282 75% 96%;
+    --border: 285 35% 28%;
+    --input: 285 35% 32%;
+    --ring: 326 84% 62%;
+  }
 }
 
 /* ==========================================================================
@@ -1219,3 +1265,18 @@ body { overflow-x: clip; }
 }
 .creator-credit-chip:hover { background: rgb(var(--tint) / 0.2); transform: translateY(-1px); }
 .creator-credit-chip:active { transform: scale(0.97); }
+
+/* ==========================================================================
+   Vice City: the sunset season (see src/lib/theme.jsx)
+   Colour that comes from these tokens follows automatically; these are the few
+   places that name their own colours.
+   ========================================================================== */
+/* Headline shimmer runs violet → magenta → orange, like the skyline art */
+:root[data-theme="vice"] .text-shimmer {
+  background-image: linear-gradient(100deg, #c9349b 0%, #f36a78 28%, #ff9b55 50%, #f36a78 72%, #c9349b 100%);
+}
+/* The drifting light behind the hero becomes a Vice City sunset */
+:root[data-theme="vice"] .aurora { --aurora-opacity: 0.6; }
+:root[data-theme="vice"] .aurora span:nth-child(2) { background: radial-gradient(circle, rgb(123 32 143 / 0.85), transparent 62%); }
+:root[data-theme="vice"] .aurora span:nth-child(3) { background: radial-gradient(circle, rgb(255 155 85 / 0.6), transparent 62%); }
+:root[data-theme="vice"] .aurora span:nth-child(4) { background: radial-gradient(circle, rgb(255 180 88 / 0.5), transparent 62%); }
