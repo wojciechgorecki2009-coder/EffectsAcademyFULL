@@ -49,8 +49,10 @@ export default function Hero({ query, setQuery, totalAssets }) {
       className="relative isolate flex min-h-[82vh] flex-col items-center justify-center overflow-hidden px-5 pb-20 pt-36 text-center md:min-h-[86vh] md:pt-40"
       data-testid="hero-section"
     >
-      {/* Background composition */}
-      <motion.div className="absolute inset-0 -z-10" style={staticHero ? undefined : { y: bgY, scale: bgScale }} aria-hidden="true">
+      {/* Background composition. One wrapper, so a theme can fade the whole backdrop at once
+          (Vice City opens its sides and bottom so the palms behind the page show through). */}
+      <div className="hero-backdrop pointer-events-none absolute inset-0 -z-10" aria-hidden="true">
+      <motion.div className="absolute inset-0" style={staticHero ? undefined : { y: bgY, scale: bgScale }}>
         <img
           src={HERO_BACKGROUND}
           alt=""
@@ -58,21 +60,21 @@ export default function Hero({ query, setQuery, totalAssets }) {
           data-testid="hero-bg-gif"
         />
       </motion.div>
-      <div className="aurora -z-10" aria-hidden="true">
+      <div className="aurora">
         <span />
         <span />
         <span />
         <span />
       </div>
-      <div className="grain pointer-events-none absolute inset-0 -z-10" aria-hidden="true" />
+      <div className="grain pointer-events-none absolute inset-0" />
       <div
-        className="pointer-events-none absolute inset-0 -z-10"
+        className="pointer-events-none absolute inset-0"
         style={{
           background:
             "radial-gradient(120% 80% at 50% 30%, transparent 30%, rgb(var(--canvas) / 0.55) 75%), linear-gradient(to bottom, rgb(var(--canvas) / 0.15), transparent 35%, rgb(var(--canvas)) 96%)",
         }}
-        aria-hidden="true"
       />
+      </div>
 
       <motion.div
         className="flex w-full flex-col items-center"

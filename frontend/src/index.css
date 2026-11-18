@@ -1284,3 +1284,11 @@ body { overflow-x: clip; }
    comes from <html>, so <body> and the app wrapper let them show through. */
 :root[data-theme="vice"] body,
 :root[data-theme="vice"] .App { background: transparent; }
+/* The home hero is its own layer, so its backdrop would hide the palms and end in a hard
+   line. In Vice City it fades out at the sides and the bottom instead. */
+:root[data-theme="vice"] .hero-backdrop {
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 24%, #000 76%, transparent 100%), linear-gradient(to bottom, #000 55%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to right, transparent 0%, #000 24%, #000 76%, transparent 100%), linear-gradient(to bottom, #000 55%, transparent 100%);
+  mask-composite: intersect;
+}

@@ -76,7 +76,9 @@ export default function PalmBackdrop() {
   const fade = useTransform(reveal, [0, 0.35, 1], [0, 0.7, 1]);
 
   return (
-    <div className="palm-backdrop pointer-events-none fixed inset-0 -z-10 hidden overflow-hidden lg:block" aria-hidden="true">
+    // z-index -5: above the decorative glows and fades that pages put at -10, still below
+    // all real content.
+    <div className="palm-backdrop pointer-events-none fixed inset-0 -z-[5] hidden overflow-hidden lg:block" aria-hidden="true">
       <motion.div className="absolute inset-y-0 left-0 w-1/2" style={reduce ? undefined : { x: leftX, opacity: fade }}>
         <Palm kind="short" className="left-[7vw]" style={{ height: "60vh", bottom: "-3vh" }} sway={SWAYS.leftShort} opacity={0.22} />
         <Palm kind="tall" className="-left-[7vw]" style={{ height: "96vh", bottom: "-2vh" }} sway={SWAYS.leftTall} opacity={0.34} />
