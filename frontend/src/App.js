@@ -16,6 +16,7 @@ import PersistentAudioBar from "@/components/PersistentAudioBar";
 import ConverterDock from "@/components/ConverterDock";
 import PremiumTermsGate from "@/components/PremiumTermsGate";
 import ExtensionLaunchAnnouncement from "@/components/ExtensionLaunchAnnouncement";
+import PalmBackdrop from "@/components/PalmBackdrop";
 import Home from "@/pages/Home";
 import CategoryPage from "@/pages/CategoryPage";
 import DmcaPage from "@/pages/DmcaPage";
@@ -157,11 +158,12 @@ function RefreshableRoutes() {
 function AppFrame() {
   const { pathname } = useLocation();
   const isSetupMiniSite = pathname === "/products-i-use";
-  const { scheme } = useTheme();
+  const { scheme, theme } = useTheme();
 
   return (
     <GlassSheenRoot>
       <div className="App min-h-screen">
+        {theme === "vice" && !isSetupMiniSite ? <PalmBackdrop /> : null}
         <ScrollToTopOnRouteChange />
         <AnalyticsTracker />
         {!isSetupMiniSite ? <Nav /> : null}

@@ -1280,3 +1280,7 @@ body { overflow-x: clip; }
 :root[data-theme="vice"] .aurora span:nth-child(2) { background: radial-gradient(circle, rgb(123 32 143 / 0.85), transparent 62%); }
 :root[data-theme="vice"] .aurora span:nth-child(3) { background: radial-gradient(circle, rgb(255 155 85 / 0.6), transparent 62%); }
 :root[data-theme="vice"] .aurora span:nth-child(4) { background: radial-gradient(circle, rgb(255 180 88 / 0.5), transparent 62%); }
+/* The palms (components/PalmBackdrop.jsx) sit behind the content; the page colour
+   comes from <html>, so <body> and the app wrapper let them show through. */
+:root[data-theme="vice"] body,
+:root[data-theme="vice"] .App { background: transparent; }
