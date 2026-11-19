@@ -9,6 +9,7 @@ import { hasPremiumAccess, useAuth } from "@/lib/auth";
 import { useUploadAccess } from "@/lib/uploadAccess";
 import TwitchIcon from "@/components/TwitchIcon";
 import AfterEffectsLogo from "@/components/AfterEffectsLogo";
+import { EXTENSION_DOWNLOAD_URL, EXTENSION_VERSION } from "@/lib/extensionRelease";
 
 const BENEFITS = [
   "All premium assets included with membership",
@@ -450,13 +451,13 @@ export default function PremiumPage() {
                       </p>
                       <div className="mt-4 flex flex-wrap gap-2">
                         <a
-                          href="/downloads/EffectsAcademy-AE-Extension-1.1.0.zxp"
+                          href={EXTENSION_DOWNLOAD_URL}
                           download
                           className="btn btn-sm btn-primary"
                           data-testid="download-ae-extension"
                         >
                           <Download />
-                          Download extension 1.1.0
+                          Download extension {EXTENSION_VERSION}
                         </a>
                         <button
                           type="button"

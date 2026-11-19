@@ -1,37 +1,39 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, PresenceContext, motion, useReducedMotion } from "framer-motion";
-import { ArrowRight, AudioLines, Crown, Download, Folder, Gauge, Music2, Palette, SlidersHorizontal, Sparkles, X } from "lucide-react";
+import { AppWindow, ArrowRight, AudioLines, Box, ClipboardPaste, Crown, Download, Sparkles, Type, X } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import AfterEffectsLogo from "@/components/AfterEffectsLogo";
 import { EASE_OUT, SPRING, SPRING_SOFT } from "@/lib/motion";
+import { EXTENSION_ANNOUNCE_END, EXTENSION_ANNOUNCE_START, EXTENSION_SHORT_VERSION } from "@/lib/extensionRelease";
 
 /*
- * Extension update announcement (v1.1). Shown once per visit until the
- * campaign ends, on every page except the standalone and auth routes.
+ * "New version" announcement for the extension (dates and version in
+ * lib/extensionRelease.js). Shown once per visit while it runs, on every page
+ * except the standalone and auth routes.
  */
-const CAMPAIGN_END = new Date("2026-11-01T23:59:59+00:00").getTime();
-const SEEN_KEY = "ea_extension_update_1_1_seen";
+const SEEN_KEY = `ea_extension_update_${EXTENSION_SHORT_VERSION.replace(".", "_")}_seen`;
+const inCampaign = () => Date.now() >= EXTENSION_ANNOUNCE_START && Date.now() < EXTENSION_ANNOUNCE_END;
 const EXTENSION_DESTINATION = "/premium#after-effects-extension";
 const HIDDEN_ROUTES = ["/products-i-use", "/login", "/auth/", "/download/"];
 const OPEN_DELAY_MS = 900;
 
 const WHATS_NEW = [
-  { icon: Palette, title: "A brand-new look", text: "The same Liquid Glass design as the site, with a clean black & white theme." },
-  { icon: Gauge, title: "Instant browsing", text: "Jump between Audios, Presets and Project Files without a stutter." },
-  { icon: SlidersHorizontal, title: "Make it fit", text: "New card size and interface scale settings for any panel shape." },
-  { icon: Music2, title: "Smoother previews", text: "Audio opens in a Dynamic Island-style player, with motion throughout." },
+  { icon: Type, title: "One-click text animations", text: "A new Expressions tab: Letter Fade in, Pop Up, Swing Up and Letter Swing Up, with keyframes you can still edit." },
+  { icon: AppWindow, title: "Expressions in its own window", text: "Float or dock the text animations anywhere, without opening the full panel." },
+  { icon: Box, title: "3D models", text: "Paste a Sketchfab link and import the model straight into your comp." },
+  { icon: ClipboardPaste, title: "Paste images", text: "Copy an image and press Ctrl+V in the panel to drop it into your comp." },
 ];
 
 // The mock panel cycles through these tabs; cards re-flow to match.
-const MOCK_TABS = ["All", "Audios", "Presets", "Projects"];
+const MOCK_TABS = ["All", "Audios", "Expressions", "3D"];
 const MOCK_CARDS = [
   { id: 1, tab: "Audios", tone: "#3a3a3e", icon: AudioLines },
-  { id: 2, tab: "Presets", tone: "#2c2c30", icon: SlidersHorizontal },
-  { id: 3, tab: "Projects", tone: "#343438", icon: Folder },
+  { id: 2, tab: "Expressions", tone: "#2c2c30", icon: Type },
+  { id: 3, tab: "3D", tone: "#343438", icon: Box },
   { id: 4, tab: "Audios", tone: "#28282c", icon: AudioLines },
-  { id: 5, tab: "Projects", tone: "#38383c", icon: Folder },
-  { id: 6, tab: "Presets", tone: "#303034", icon: SlidersHorizontal },
+  { id: 5, tab: "3D", tone: "#38383c", icon: Box },
+  { id: 6, tab: "Expressions", tone: "#303034", icon: Type },
 ];
 
 const readSeen = () => {
@@ -64,10 +66,10 @@ export default function ExtensionLaunchAnnouncement() {
   const reduce = useReducedMotion();
   const primaryRef = useRef(null);
   const [ready, setReady] = useState(false);
-  const [open, setOpen] = useState(() => Date.now() <= CAMPAIGN_END && !readSeen());
+  const [open, setOpen] = useState(() => inCampaign() && !readSeen());
 
   const routeAllowed = !HIDDEN_ROUTES.some((route) => pathname.startsWith(route));
-  const visible = open && ready && !loading && routeAllowed && Date.now() <= CAMPAIGN_END && !user?.premium_terms_required;
+  const visible = open && ready && !loading && routeAllowed && inCampaign() && !user?.premium_terms_required;
 
   // Let the page settle before the announcement rises over it.
   useEffect(() => {
@@ -143,19 +145,19 @@ export default function ExtensionLaunchAnnouncement() {
 
             <motion.div className="flex flex-col p-5 pt-6 sm:p-8 md:py-10 md:pl-6 md:pr-10" variants={container} initial="hidden" animate="shown">
               <motion.p variants={rise} className="eyebrow inline-flex items-center gap-1.5 text-tint">
-                <Sparkles className="h-3.5 w-3.5" /> Extension update · Version 1.1
+                <Sparkles className="h-3.5 w-3.5" /> New version · {EXTENSION_SHORT_VERSION}
               </motion.p>
               <motion.h2
                 variants={rise}
                 id="extension-update-title"
                 className="mt-2 font-display text-[1.85rem] font-semibold leading-[1.04] tracking-[-0.035em] text-ink sm:text-[2.4rem]"
               >
-                Updated
+                A new version
                 <br />
-                <span className="text-ink-2">Extension</span>
+                <span className="text-ink-2">of the extension</span>
               </motion.h2>
               <motion.p variants={rise} className="mt-3 text-[14px] leading-relaxed text-ink-2 sm:text-[15px]">
-                The Effects Academy After Effects extension has been updated with a fresh design, smoother motion and faster browsing.
+                Effects Academy {EXTENSION_SHORT_VERSION} for After Effects is out, with one-click text animations, 3D models and image pasting.
               </motion.p>
 
               <motion.ul variants={container} className="mt-4 grid grid-cols-2 gap-2.5 sm:mt-5 sm:grid-cols-1 sm:gap-3">
@@ -244,7 +246,7 @@ function PanelPreview({ reduce }) {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ ...SPRING, delay: 0.8 }}
           >
-            v1.1
+            v{EXTENSION_SHORT_VERSION}
           </motion.span>
           <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[#30d158] shadow-[0_0_8px_#30d158]" />
         </div>
