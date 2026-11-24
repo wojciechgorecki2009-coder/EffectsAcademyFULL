@@ -164,6 +164,7 @@ function AppFrame() {
   return (
     <GlassSheenRoot>
       <div className="App min-h-screen">
+        <div className="film-grain" aria-hidden="true" />
         {theme === "vice" && !isSetupMiniSite ? <PalmBackdrop /> : null}
         {theme === "mono" && !isSetupMiniSite ? <GridBackdrop /> : null}
         <ScrollToTopOnRouteChange />

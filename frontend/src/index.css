@@ -338,6 +338,7 @@
 
   html {
     background: rgb(var(--canvas));
+    transition: background-color var(--dur-3) var(--ease-out);
     -webkit-text-size-adjust: 100%;
     text-rendering: optimizeLegibility;
   }
@@ -346,7 +347,8 @@
     margin: 0;
     font-family: var(--font-text);
     font-feature-settings: "cv11", "ss01", "ss03";
-    background: rgb(var(--canvas));
+    /* Clear: the page colour comes from <html>, so the backdrops behind the content show. */
+    background: transparent;
     color: rgb(var(--ink));
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -390,7 +392,7 @@
 
 .App {
   min-height: 100vh;
-  background: rgb(var(--canvas));
+  background: transparent; /* the page colour comes from <html>; see body */
   color: rgb(var(--ink));
 }
 
@@ -1280,12 +1282,6 @@ body { overflow-x: clip; }
 :root[data-theme="vice"] .aurora span:nth-child(2) { background: radial-gradient(circle, rgb(123 32 143 / 0.85), transparent 62%); }
 :root[data-theme="vice"] .aurora span:nth-child(3) { background: radial-gradient(circle, rgb(255 155 85 / 0.6), transparent 62%); }
 :root[data-theme="vice"] .aurora span:nth-child(4) { background: radial-gradient(circle, rgb(255 180 88 / 0.5), transparent 62%); }
-/* The palms (components/PalmBackdrop.jsx) sit behind the content; the page colour
-   comes from <html>, so <body> and the app wrapper let them show through. */
-:root[data-theme="vice"] body,
-:root[data-theme="vice"] .App,
-:root[data-theme="mono"] body,
-:root[data-theme="mono"] .App { background: transparent; }
 /* The home hero is its own layer, so its backdrop would hide the palms and end in a hard
    line. In Vice City it fades out at the sides and the bottom instead. */
 :root[data-theme="vice"] .hero-backdrop {
@@ -1318,4 +1314,36 @@ body { overflow-x: clip; }
 :root[data-theme="mono"] .hero-backdrop {
   -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
   mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
+}
+
+/* ==========================================================================
+   Film grain, on every appearance (the .film-grain layer in App.js)
+   Fine grey noise over the page background, behind the content. It jumps to a
+   new position a few times a second like film, lightening the dark appearances
+   and darkening the light one.
+   ========================================================================== */
+.film-grain {
+  position: fixed;
+  inset: -50%;
+  z-index: -4;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+  opacity: 0.09;
+  mix-blend-mode: screen;
+  animation: film-grain 0.8s steps(1, end) infinite;
+}
+:root[data-scheme="light"] .film-grain { mix-blend-mode: multiply; opacity: 0.1; }
+@keyframes film-grain {
+  0% { transform: translate(0, 0); }
+  14% { transform: translate(-7%, 5%); }
+  28% { transform: translate(6%, -9%); }
+  42% { transform: translate(-11%, -4%); }
+  57% { transform: translate(9%, 8%); }
+  71% { transform: translate(-3%, 11%); }
+  85% { transform: translate(4%, -6%); }
+}
+/* Still on phones (saves battery) and for anyone who prefers less motion. */
+:root[data-lite] .film-grain { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .film-grain { animation: none; }
 }
