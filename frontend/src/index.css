@@ -1304,7 +1304,7 @@ body { overflow-x: clip; }
   background-image:
     linear-gradient(to right, rgb(255 255 255 / 0.3) 1px, transparent 1px),
     linear-gradient(to bottom, rgb(255 255 255 / 0.3) 1px, transparent 1px);
-  background-size: 40px 40px;
+  background-size: 80px 80px;
   background-position: center bottom;
   filter: blur(0.8px);
   -webkit-mask-image: linear-gradient(to top, #000 0%, rgb(0 0 0 / 0.75) 30%, transparent 85%);
