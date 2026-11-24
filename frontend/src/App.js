@@ -17,6 +17,7 @@ import ConverterDock from "@/components/ConverterDock";
 import PremiumTermsGate from "@/components/PremiumTermsGate";
 import ExtensionLaunchAnnouncement from "@/components/ExtensionLaunchAnnouncement";
 import PalmBackdrop from "@/components/PalmBackdrop";
+import GridBackdrop from "@/components/GridBackdrop";
 import Home from "@/pages/Home";
 import CategoryPage from "@/pages/CategoryPage";
 import DmcaPage from "@/pages/DmcaPage";
@@ -164,6 +165,7 @@ function AppFrame() {
     <GlassSheenRoot>
       <div className="App min-h-screen">
         {theme === "vice" && !isSetupMiniSite ? <PalmBackdrop /> : null}
+        {theme === "mono" && !isSetupMiniSite ? <GridBackdrop /> : null}
         <ScrollToTopOnRouteChange />
         <AnalyticsTracker />
         {!isSetupMiniSite ? <Nav /> : null}
